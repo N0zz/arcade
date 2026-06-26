@@ -373,7 +373,7 @@
           method: 'POST', headers: { 'Accept': 'application/json' }, body: new URLSearchParams({ email_address: nlEmail.value.trim() })
         });
         const data = await res.json().catch(() => ({}));
-        if (res.ok && (!data.status || data.status === 'success' || data.status === 'quarantined')) {
+        if (res.ok && (data.status === 'success' || data.status === 'quarantined')) {
           nlStatus.className = 'fb-status ok'; nlStatus.textContent = 'Almost there — check your inbox to confirm ✓';
           nlForm.reset();
           setTimeout(() => nlModal.close(), 2200);
