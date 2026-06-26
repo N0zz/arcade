@@ -48,9 +48,10 @@
   .hidden { display: none !important; }
   /* mobile touch controls (only shown on touch devices) */
   #tcontrols { position:fixed; inset:0; z-index:7; pointer-events:none; }
-  .tc-joy { position:absolute; left:24px; bottom:24px; width:132px; height:132px; border-radius:50%; border:2px solid rgba(120,200,255,0.4); background:rgba(20,30,50,0.32); pointer-events:auto; touch-action:none; }
+  .tc-zone { position:absolute; left:0; top:0; width:50%; height:100%; pointer-events:auto; touch-action:none; }
+  .tc-joy { position:absolute; width:116px; height:116px; border-radius:50%; border:2px solid rgba(120,200,255,0.5); background:rgba(20,30,50,0.4); pointer-events:none; display:none; opacity:0.5; }
   .tc-knob { position:absolute; left:50%; top:50%; width:54px; height:54px; margin:-27px 0 0 -27px; border-radius:50%; background:rgba(159,232,255,0.55); box-shadow:0 0 16px rgba(120,200,255,0.6); }
-  .tc-fire { position:absolute; right:24px; bottom:34px; width:96px; height:96px; border-radius:50%; border:2px solid rgba(255,150,150,0.55); background:rgba(80,20,20,0.4); color:#ffc0c0; font:bold 15px "Courier New",monospace; letter-spacing:2px; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; }
+  .tc-fire { position:absolute; right:24px; bottom:34px; width:96px; height:96px; border-radius:50%; border:2px solid rgba(255,150,150,0.6); background:rgba(80,20,20,0.45); color:#ffc0c0; font:bold 15px "Courier New",monospace; letter-spacing:2px; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; opacity:0.5; }
   .tc-pause { position:absolute; right:16px; top:14px; width:46px; height:46px; border-radius:10px; border:1px solid rgba(120,200,255,0.4); background:rgba(10,16,30,0.6); color:#cfe8ff; font:bold 15px "Courier New",monospace; pointer-events:auto; }
   body.touch #hudR, body.touch #lives { top: 60px; }
   body.touch #xpwrap { bottom: 172px; width: min(420px, 60vw); }
@@ -280,17 +281,20 @@
     if(fireBtn) fireBtn.style.display = ship.auto ? 'none' : 'flex'; }
   function buildTouch(){
     const wrap=document.createElement('div'); wrap.id='tcontrols';
+    const zone=document.createElement('div'); zone.className='tc-zone';
     const joy=document.createElement('div'); joy.className='tc-joy'; const knob=document.createElement('div'); knob.className='tc-knob'; joy.appendChild(knob);
     fireBtn=document.createElement('button'); fireBtn.className='tc-fire'; fireBtn.textContent='FIRE';
-    wrap.appendChild(joy); wrap.appendChild(fireBtn);
+    wrap.appendChild(zone); wrap.appendChild(joy); wrap.appendChild(fireBtn);
     if(HAS_PAUSE){ const pb=document.createElement('button'); pb.className='tc-pause'; pb.textContent='II'; pb.addEventListener('click',()=>{ if(state==='playing') pauseGame(); else if(state==='paused') resumeGame(); }); wrap.appendChild(pb); }
     document.body.appendChild(wrap);
+    const R=58; let ox=0, oy=0;
     function getT(e){ for(const x of e.changedTouches) if(x.identifier===joyId) return x; return null; }
-    function jset(t){ const r=joy.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2; const dx=t.clientX-cx, dy=t.clientY-cy; const rad=r.width/2; const dist=Math.hypot(dx,dy)||0.0001; const cl=Math.min(dist,rad); joyAngle=Math.atan2(dy,dx); joyMag=cl/rad; knob.style.transform='translate('+(Math.cos(joyAngle)*cl)+'px,'+(Math.sin(joyAngle)*cl)+'px)'; }
-    joy.addEventListener('touchstart',e=>{ const t=e.changedTouches[0]; joyId=t.identifier; joyActive=true; jset(t); e.preventDefault(); },{passive:false});
-    joy.addEventListener('touchmove',e=>{ const t=getT(e); if(t){ jset(t); e.preventDefault(); } },{passive:false});
-    const rel=e=>{ if(getT(e)){ joyActive=false; joyId=null; joyMag=0; knob.style.transform='translate(0,0)'; } };
-    joy.addEventListener('touchend',rel); joy.addEventListener('touchcancel',rel);
+    function jset(t){ const dx=t.clientX-ox, dy=t.clientY-oy; const dist=Math.hypot(dx,dy)||0.0001; const cl=Math.min(dist,R); joyAngle=Math.atan2(dy,dx); joyMag=cl/R; knob.style.transform='translate('+(Math.cos(joyAngle)*cl)+'px,'+(Math.sin(joyAngle)*cl)+'px)'; }
+    // floating joystick: spawns wherever the first touch lands in the left half
+    zone.addEventListener('touchstart',e=>{ if(joyId!==null) return; const t=e.changedTouches[0]; joyId=t.identifier; ox=t.clientX; oy=t.clientY; joy.style.left=(ox-R)+'px'; joy.style.top=(oy-R)+'px'; joy.style.display='block'; joyActive=true; joyMag=0; knob.style.transform='translate(0,0)'; e.preventDefault(); },{passive:false});
+    zone.addEventListener('touchmove',e=>{ const t=getT(e); if(t){ jset(t); e.preventDefault(); } },{passive:false});
+    const rel=e=>{ if(getT(e)){ joyActive=false; joyId=null; joyMag=0; joy.style.display='none'; } };
+    zone.addEventListener('touchend',rel); zone.addEventListener('touchcancel',rel);
     fireBtn.addEventListener('touchstart',e=>{ keys[' ']=true; e.preventDefault(); },{passive:false});
     fireBtn.addEventListener('touchend',e=>{ keys[' ']=false; e.preventDefault(); },{passive:false});
     fireBtn.addEventListener('touchcancel',()=>{ keys[' ']=false; });
