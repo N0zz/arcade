@@ -34,11 +34,13 @@
   .opt-row { display:grid; grid-template-columns:54px 1fr; align-items:center; gap:12px; }
   .opt-label { font-size:11px; letter-spacing:2px; opacity:0.55; text-align:left; }
   .opt-btns { display:flex; gap:8px; }
-  .opt-btn { flex:1; min-width:0; font-family:inherit; cursor:pointer; font-size:11px; letter-spacing:2px; padding:8px 4px;
-    border-radius:6px; color:rgba(150,195,215,0.6); background:transparent; border:1px solid rgba(120,200,255,0.22);
-    transition:all 0.12s; white-space:nowrap; text-align:center; }
-  .opt-btn:hover { border-color:#0af; color:#cfefff; }
-  .opt-btn.active { color:#03141b; border-color:#0ff; background:#3ff0ff; box-shadow:0 0 16px rgba(0,240,255,0.55); font-weight:bold; }
+  /* scoped under #overlay to outrank the generic "#overlay button" rule above */
+  #overlay .opt-btn { flex:1; min-width:0; font-family:inherit; cursor:pointer; font-size:11px; letter-spacing:2px; padding:8px 4px;
+    border-radius:6px; color:rgba(150,195,215,0.6); background:transparent; border:1px solid rgba(120,200,255,0.25);
+    text-shadow:none; box-shadow:none; transition:all 0.12s; white-space:nowrap; text-align:center; }
+  #overlay .opt-btn:hover { border-color:#0af; color:#cfefff; box-shadow:none; }
+  #overlay .opt-btn.active { color:#04222b; border-color:#0ff; background:#2ff3ff; text-shadow:none;
+    box-shadow:0 0 18px rgba(0,240,255,0.7); font-weight:bold; }
 </style>
 </head>
 <body>
