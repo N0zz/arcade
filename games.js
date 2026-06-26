@@ -116,6 +116,5 @@ window.GAMES = [
     icon: "🐍",
     accent: "#7fffb0",
     tag: "CLASSIC",
-    soon: true,
   },
 ];
