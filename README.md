@@ -24,9 +24,14 @@ external assets — and gets a tile on the home page plus a **‹ Arcade** link 
 | Game | Folder | About |
 | --- | --- | --- |
 | **Asteroids** | `games/asteroids/` | Fly/shoot/survive — classic arcade + roguelite modes, speedruns, mobile controls |
-| **Keep Defender** | `games/tower-defense/` | Fixed-path tower defense — build towers, spend gold, hold the keep (Castle & Parchment theme) |
+| **Keep Defender** | `games/tower-defense/` | Fixed-path tower defense — towers, gold, mage/fast-forward/boss telegraph (Castle & Parchment theme) |
+| **Stack** | `games/stacker/` | One-tap tower stacker — slice the overhang, chain perfect drops (pastel-clean theme) |
+| **Neon Snake** | `games/snake/` | Grid snake in glowing neon — arrows/WASD/swipe, deadly walls |
+| **Meadow Flyer** | `games/flappy/` | One-tap flyer through a soft storybook meadow |
+| **Brick Breaker** | `games/breakout/` | Paddle/ball/bricks with power-ups and level progression (synthwave neon) |
+| **Range** | `games/aim-trainer/` | Timed flick-aim target practice with accuracy + combo (tactical theme) |
 
-More to come (flappy-like, aim trainer, a magic game, …).
+More on the way (Invaders, Road Hop, Icy Tower, Trap the Cat, Pulse Dash, …).
 
 ## Install on your phone (PWA)
 
