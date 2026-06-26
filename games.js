@@ -54,7 +54,6 @@ window.GAMES = [
     icon: "🧊",
     accent: "#ff9aa2",
     tag: "REFLEX",
-    soon: true,
   },
   {
     slug: "icy-tower",
