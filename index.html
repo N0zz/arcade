@@ -106,8 +106,8 @@
   #shareCopy.ok { color:#7fe0a0; border-color:#7fe0a0; }
 
   /* feedback modal */
-  #fbModal { border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:16px; padding:0; width:min(440px,92vw); box-shadow:0 20px 60px rgba(0,0,0,0.6); }
-  #fbModal::backdrop { background:rgba(5,8,13,0.66); }
+  #fbModal, #nlModal { border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:16px; padding:0; width:min(440px,92vw); box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+  #fbModal::backdrop, #nlModal::backdrop { background:rgba(5,8,13,0.66); }
   .fb-form { padding:20px; display:flex; flex-direction:column; gap:11px; }
   .fb-form h3 { margin:0; font-family:var(--mono); letter-spacing:2px; font-size:16px; }
   .fb-intro { margin:0 0 4px; color:var(--muted); font-size:13px; }
@@ -144,6 +144,7 @@
             <span style="opacity:.8">Already installed? Open it from your home screen, or the “Open in app” icon in the address bar.</span></span>
         </span>
         <button class="ibtn" id="feedback" style="margin-left:8px">💬 Feedback</button>
+        <button class="ibtn" id="newsletter">📬 Subscribe</button>
       </div>
     </header>
 
@@ -195,6 +196,23 @@
       <div class="fb-actions">
         <button type="button" class="fb-cancel" id="fbCancel">Cancel</button>
         <button type="submit" class="fb-submit" id="fbSubmit">Send ▸</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="nlModal">
+    <form class="fb-form" id="nlForm">
+      <h3>📬 Subscribe</h3>
+      <p class="fb-intro">Get an email when a new game ships or something gets fixed. No spam, unsubscribe anytime.</p>
+      <input type="text" id="nlHp" name="nl_hp" style="display:none !important" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <div>
+        <label for="nlEmail">Email</label>
+        <input id="nlEmail" type="email" name="email_address" required placeholder="you@example.com">
+      </div>
+      <div class="fb-status" id="nlStatus" role="status" aria-live="polite"></div>
+      <div class="fb-actions">
+        <button type="button" class="fb-cancel" id="nlCancel">Cancel</button>
+        <button type="submit" class="fb-submit" id="nlSubmit">Subscribe ▸</button>
       </div>
     </form>
   </dialog>
@@ -331,6 +349,41 @@
         fbStatus.className = 'fb-status err'; fbStatus.textContent = 'Network error — please try again.';
       } finally {
         fbSubmit.disabled = false;
+      }
+    });
+
+    // ---- Newsletter (Kit inline subscribe — no redirect, no payment options) ----
+    const nlModal = document.getElementById('nlModal');
+    const nlForm = document.getElementById('nlForm');
+    const nlStatus = document.getElementById('nlStatus');
+    const nlSubmit = document.getElementById('nlSubmit');
+    const nlEmail = document.getElementById('nlEmail');
+    document.getElementById('newsletter').addEventListener('click', () => {
+      nlStatus.textContent = ''; nlStatus.className = 'fb-status';
+      nlModal.showModal();
+    });
+    document.getElementById('nlCancel').addEventListener('click', () => nlModal.close());
+    nlModal.addEventListener('click', (e) => { if (e.target === nlModal) nlModal.close(); });
+    nlForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (document.getElementById('nlHp').value) return; // honeypot
+      nlSubmit.disabled = true; nlStatus.className = 'fb-status'; nlStatus.textContent = 'Subscribing…';
+      try {
+        const res = await fetch('https://app.kit.com/forms/9615603/subscriptions', {
+          method: 'POST', headers: { 'Accept': 'application/json' }, body: new URLSearchParams({ email_address: nlEmail.value.trim() })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && (!data.status || data.status === 'success' || data.status === 'quarantined')) {
+          nlStatus.className = 'fb-status ok'; nlStatus.textContent = 'Almost there — check your inbox to confirm ✓';
+          nlForm.reset();
+          setTimeout(() => nlModal.close(), 2200);
+        } else {
+          nlStatus.className = 'fb-status err'; nlStatus.textContent = (data && data.message) || 'Something went wrong — please try again.';
+        }
+      } catch (err) {
+        nlStatus.className = 'fb-status err'; nlStatus.textContent = 'Network error — please try again.';
+      } finally {
+        nlSubmit.disabled = false;
       }
     });
 

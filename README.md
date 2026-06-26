@@ -38,6 +38,9 @@ external assets — and gets a tile on the home page plus a **‹ Arcade** link 
 
 More on the way (Invaders, Road Hop, Icy Tower, Trap the Cat, Pulse Dash, …).
 
+**Stay updated:** hit **📬 Subscribe** on the home page to get an email when a new
+game ships or something gets fixed (free, no spam, unsubscribe anytime).
+
 ## Install on your phone (PWA)
 
 The arcade is a Progressive Web App — install it to play **fullscreen & offline**, no
