@@ -15,11 +15,9 @@
   <a href="https://buymeacoffee.com/n0zz"><img src="https://img.shields.io/badge/%E2%98%95%20Buy%20me%20a%20coffee-ffce5c?style=for-the-badge&logoColor=000" alt="Buy me a coffee"></a>
 </p>
 
-<p align="center"><b>▶ Play in your browser: <a href="https://funyo.online/">funyo.online</a></b></p>
-
 ---
 
-A little **neal.fun-style catalogue** of self-contained browser games. Each game is its
+A little **catalogue** of self-contained browser games. Each game is its
 own folder of static HTML/Canvas + vanilla JS — no build step, no dependencies, no
 external assets — and gets a tile on the home page plus a **‹ Arcade** link back.
 
