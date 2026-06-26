@@ -2,9 +2,13 @@
 
 _Date: 2026-06-25_
 
-> **Build status:** all five versions + launcher implemented and passing a headless
-> test suite (`test.mjs`, 101 assertions). Run `node test.mjs` to verify.
-> Speedrun mode (below) was added across every version per the build goal.
+> **This is the original design spec (2026-06-25), kept for history — parts are now
+> superseded.** Since then the project evolved: versions are **living, not frozen**;
+> all five are built; and many features were added (procedural audio + settings menus,
+> map pickups, Auto-Fire, WASD controls, normal-mode best score/wave + a reset button,
+> the `levels/` folder, `levels.js`, `favicon.svg`). For the **current** state and
+> conventions, see **README.md** and **CLAUDE.md**. Tests now exceed 290 assertions
+> (`node test.mjs`). The sections below reflect the initial plan, not every later change.
 
 ## 1. Versioning model
 

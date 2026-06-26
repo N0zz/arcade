@@ -23,19 +23,22 @@ Pick a version from the menu. Toggle **NORMAL / SPEEDRUN** at the top before lau
 > Tip: after clicking a version, click once on the game so it has keyboard focus.
 
 **Audio** — procedural retro SFX + a generated background music loop (synthesized via
-the Web Audio API, no sound files). Toggle SFX/music and set volume from the launcher's
-**AUDIO** bar or any game's **pause** screen; settings persist.
+the Web Audio API, no sound files), including menu music. Toggle SFX/music and set
+**separate SFX and music volumes** from the launcher's **AUDIO** bar or any game's
+**pause** screen; settings persist.
 
 ### Controls
 
 | Key | Action |
 | --- | --- |
-| `←` / `→` | Rotate ship |
-| `↑` | Thrust (momentum; screen wraps) |
+| `←` `→` or `A` `D` | Rotate ship |
+| `↑` or `W` | Thrust (momentum; screen wraps) |
 | `Space` | Shoot |
 | `Esc` | Pause / resume |
 | `Enter` / `Space` | Start / restart |
-| `←` `→` `↑` `↓` + `Enter`, or `1`–`9` | Choose upgrades (roguelite picker & shop) |
+| Arrows or `WASD` + `Enter`/`Space`, or `1`–`9` | Navigate & pick/buy upgrades (roguelite picker & shop) |
+
+WASD mirrors the arrow keys everywhere — both steering and menu navigation.
 
 ## Versions
 
@@ -67,15 +70,26 @@ from `levels.js`.
 
 Launch any version with the SPEEDRUN toggle (adds `?speedrun=1`). A timer runs while
 you play (frozen during pause / upgrade screens). Goal: **2000 points** (Classic) or
-**clear wave 5 — the first boss** (Roguelite). Best times are saved to `localStorage`
-and shown on the menu cards.
+**clear wave 5 — the first boss** (Roguelite).
+
+### Scores & saves
+
+All bests are stored in `localStorage` and shown on the menu cards:
+
+- **Normal mode** — best **score** (plus best **wave** reached, for roguelite).
+- **Speedrun** — best **time**.
+
+Your best is recorded on game-over *and* if you **quit to the menu mid-run** (so an
+overpowered run you simply exit still counts). A **RESET BEST SCORES** button on the
+menu clears every version's saved bests.
 
 ## Project layout
 
-```
-index.html                launcher (version select + mode toggle), reads levels.js
-levels.js               the version manifest (single source of truth for the menu)
+```text
+index.html                launcher (version select, mode toggle, audio + reset, menu music/stars)
+levels.js                 the version manifest (single source of truth for the menu)
 favicon.svg               themed neon-ship icon
+.nojekyll                 tells GitHub Pages to serve files as-is (no Jekyll build)
 levels/                   all playable game builds (each is one standalone .html)
   classic.html              ┐
   classic-enhanced.html     │

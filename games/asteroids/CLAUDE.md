@@ -66,4 +66,16 @@ Never hand-edit the two generated files — changes will be overwritten.
   only while `state === 'playing'`.
 - The in-game **Quit to menu** button posts `window.parent.postMessage('asteroids:menu')`;
   the launcher listens and returns to version select.
+- **Audio engine (`SND`) is inlined** in each game (full version) and in the launcher
+  (music-only, for menu music). It's procedural Web Audio — no asset files — and is
+  inert when `AudioContext` is absent (so the harness is unaffected). When you change
+  it, update the roguelite base (then regenerate), both classic files, and the launcher.
+- **WASD mirrors the arrow keys** for steering *and* menu navigation: keydown maps
+  `w/a/s/d → Arrow Up/Left/Down/Right` and the picker/shop branches use the mapped key.
+- **`localStorage` keys** (all suffixed with the file **basename**):
+  `asteroids_best_<file>` (speedrun time), `asteroids_score_<file>` / `asteroids_wave_<file>`
+  (normal-mode bests), `asteroids_sfx` / `asteroids_music` (on/off),
+  `asteroids_sfxvol` / `asteroids_musvol` (0–1). The launcher's menu reads these for the
+  card "BEST …" lines and the **RESET BEST SCORES** button clears the per-version bests.
+- `.nojekyll` (repo root) disables GitHub Pages' Jekyll build so files serve as-is.
 - Match the existing terse, single-line code style in the game files. Comment sparingly.
