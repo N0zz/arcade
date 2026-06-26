@@ -27,7 +27,6 @@ window.GAMES = [
     icon: "🧱",
     accent: "#ff5cc8",
     tag: "ARCADE",
-    soon: true,
   },
   {
     slug: "invaders",
