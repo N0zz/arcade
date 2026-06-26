@@ -1,6 +1,6 @@
 // Single source of truth for the arcade catalogue.
 // Add a game = drop it in games/<slug>/ and add one entry here.
-// `soon: true` renders a greyed, non-clickable "coming soon" tile.
+// `soon: true` renders a greyed, non-clickable "coming soon" tile (the genre tag still shows).
 window.GAMES = [
   {
     slug: "asteroids",
@@ -26,6 +26,7 @@ window.GAMES = [
     blurb: "Bounce the ball, smash every brick. Synthwave neon, power-ups, escalating walls.",
     icon: "🧱",
     accent: "#ff5cc8",
+    tag: "ARCADE",
     soon: true,
   },
   {
@@ -34,6 +35,7 @@ window.GAMES = [
     blurb: "Marching aliens descend on a green CRT. Dodge, shoot, hold the line.",
     icon: "👾",
     accent: "#5fe07a",
+    tag: "SHOOTER",
     soon: true,
   },
   {
@@ -42,6 +44,7 @@ window.GAMES = [
     blurb: "Hop across roads and rivers without getting squished. Blocky and endless.",
     icon: "🐸",
     accent: "#5bb6e0",
+    tag: "ARCADE",
     soon: true,
   },
   {
@@ -50,6 +53,7 @@ window.GAMES = [
     blurb: "Time the drop to stack the tower. One tap, pastel-clean, just-one-more.",
     icon: "🧊",
     accent: "#ff9aa2",
+    tag: "REFLEX",
     soon: true,
   },
   {
@@ -58,6 +62,7 @@ window.GAMES = [
     blurb: "Build speed, leap higher, wall-bounce and chain combos up an endless tower.",
     icon: "🧗",
     accent: "#7fd8ff",
+    tag: "PLATFORMER",
     soon: true,
   },
   {
@@ -66,6 +71,7 @@ window.GAMES = [
     blurb: "Auto-run and jump to the beat — one-tap rhythm platforming through neon gauntlets.",
     icon: "🔺",
     accent: "#caff4d",
+    tag: "RHYTHM",
     soon: true,
   },
   {
@@ -74,6 +80,7 @@ window.GAMES = [
     blurb: "Wall off the hex board to corner the cat before it slips off the edge.",
     icon: "🐱",
     accent: "#f0a6c8",
+    tag: "PUZZLE",
     soon: true,
   },
   {
@@ -82,6 +89,7 @@ window.GAMES = [
     blurb: "One-tap flyer through a soft storybook meadow.",
     icon: "🐤",
     accent: "#8fd3a6",
+    tag: "CASUAL",
     soon: true,
   },
   {
@@ -90,6 +98,7 @@ window.GAMES = [
     blurb: "Flick-aim headshot practice on a tactical range, against the clock.",
     icon: "🎯",
     accent: "#ff7a3c",
+    tag: "SKILL",
     soon: true,
   },
   {
@@ -98,6 +107,7 @@ window.GAMES = [
     blurb: "Cast spells against waves of the dark. Runes, sigils, and gold filigree.",
     icon: "🔮",
     accent: "#b98cff",
+    tag: "ACTION",
     soon: true,
   },
   {
@@ -106,6 +116,7 @@ window.GAMES = [
     blurb: "The classic, in glowing neon. Grow long, don't bite yourself.",
     icon: "🐍",
     accent: "#7fffb0",
+    tag: "CLASSIC",
     soon: true,
   },
 ];
