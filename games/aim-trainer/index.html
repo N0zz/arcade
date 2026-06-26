@@ -12,9 +12,11 @@
     font-family:'Courier New',Courier,monospace; user-select:none; touch-action:none; }
   #game { display:block; width:100vw; height:100vh; cursor:none; }
   .back { position:fixed; top:8px; left:10px; z-index:9; font-family:inherit; font-size:12px; letter-spacing:1px;
-    color:var(--fg); text-decoration:none; background:rgba(13,17,23,0.75); border:1px solid #2a3540; border-radius:7px; padding:6px 10px; cursor:auto; }
+    color:var(--fg); text-decoration:none; background:rgba(13,17,23,0.75); border:1px solid #2a3540; border-radius:7px; padding:6px 10px; cursor:pointer; }
+  .nav { position:fixed; top:8px; left:10px; z-index:9; display:flex; gap:8px; }
+  .nav .back { position:static; top:auto; left:auto; }
   #hud { position:fixed; top:0; left:0; right:0; height:48px; z-index:5; display:flex; align-items:center;
-    gap:22px; padding:0 16px; padding-left:100px; background:rgba(13,17,23,0.82); border-bottom:1px solid #1e2d3a; }
+    gap:22px; padding:0 16px; padding-left:176px; background:rgba(13,17,23,0.82); border-bottom:1px solid #1e2d3a; }
   #hud .stat .lbl { opacity:0.5; font-size:10px; letter-spacing:2px; }
   #hud .stat b { color:var(--accent); font-size:15px; }
   #hud .stat b.warn { color:#ff3c3c; }
@@ -45,7 +47,10 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<a class="back" href="../../">‹ Arcade</a>
+<div class="nav">
+  <button class="back" id="menuBtn" type="button">&#x2039; Menu</button>
+  <a class="back" href="../../">Arcade &#x203A;</a>
+</div>
 <div id="hud">
   <div class="stat"><div class="lbl">SCORE</div><b id="hScore">0</b></div>
   <div class="stat"><div class="lbl">ACC</div><b id="hAcc">--%</b></div>
@@ -553,6 +558,8 @@
     step(n) { for (let i = 0; i < (n || 1); i++) update(); },
     setSeed(s) { _rng = seededRng(s); },
   };
+
+  document.getElementById('menuBtn').addEventListener('click', () => { try { location.reload(); } catch (e) {} });
 
   resize();
   updateHud();
