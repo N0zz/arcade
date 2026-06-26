@@ -30,15 +30,15 @@
   #overlay button:hover { box-shadow:0 0 32px #0af9; }
   #goScore { font-size:28px; color:#f0f; text-shadow:0 0 20px #f0f; letter-spacing:3px; }
   #goBest { font-size:14px; color:#0af; opacity:0.8; }
-  .opts { display:flex; flex-direction:column; gap:10px; width:100%; max-width:340px; }
-  .opt-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-  .opt-label { font-size:11px; letter-spacing:2px; opacity:0.6; min-width:60px; text-align:left; }
-  .opt-btns { display:flex; gap:6px; }
-  .opt-btn { font-family:inherit; cursor:pointer; font-size:11px; letter-spacing:2px; padding:6px 12px;
-    border-radius:6px; color:#0af; background:transparent; border:1px solid #0af4;
-    text-shadow:0 0 6px #0af4; transition:all 0.12s; white-space:nowrap; }
-  .opt-btn.active { color:#0ff; border-color:#0ff; background:rgba(0,220,255,0.12); text-shadow:0 0 10px #0ff; box-shadow:0 0 12px #0af6; }
-  .opt-btn:hover { border-color:#0af; }
+  .opts { display:flex; flex-direction:column; gap:11px; width:100%; max-width:380px; }
+  .opt-row { display:grid; grid-template-columns:54px 1fr; align-items:center; gap:12px; }
+  .opt-label { font-size:11px; letter-spacing:2px; opacity:0.55; text-align:left; }
+  .opt-btns { display:flex; gap:8px; }
+  .opt-btn { flex:1; min-width:0; font-family:inherit; cursor:pointer; font-size:11px; letter-spacing:2px; padding:8px 4px;
+    border-radius:6px; color:rgba(150,195,215,0.6); background:transparent; border:1px solid rgba(120,200,255,0.22);
+    transition:all 0.12s; white-space:nowrap; text-align:center; }
+  .opt-btn:hover { border-color:#0af; color:#cfefff; }
+  .opt-btn.active { color:#03141b; border-color:#0ff; background:#3ff0ff; box-shadow:0 0 16px rgba(0,240,255,0.55); font-weight:bold; }
 </style>
 </head>
 <body>
