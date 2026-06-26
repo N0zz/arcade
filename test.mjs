@@ -24,7 +24,9 @@ function makeEl() {
 
 function runInline(file, extraSandbox = {}) {
   const html = fs.readFileSync(path.join(DIR, file), 'utf8');
-  const m = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
+  // greedy lead → grab the LAST attribute-less <script> before </body> (the game's main
+  // script), even if earlier attribute-less <script>s exist (e.g. the GA4 tag in <head>).
+  const m = html.match(/[\s\S]*<script>([\s\S]*?)<\/script>\s*<\/body>/);
   if (!m) throw new Error('no inline script in ' + file);
   const cache = {}; const getEl = id => (cache[id] ||= makeEl());
   const handlers = {}; const store = {};
