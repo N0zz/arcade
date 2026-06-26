@@ -214,6 +214,19 @@ while (T5().state === 'playing' && g5Guard++ < 300) { T5().step(3); T5().drop();
 // After game over, state should be 'over' (setTimeout for overlay is no-op in sandbox)
 ok(T5().state === 'over', 'state is "over" after miss (got ' + T5().state + ')');
 
+section('restart from game-over via Space/Enter (handleDrop in state over)');
+const g6 = runStacker();
+g6.test().start();
+const T6 = () => g6.test();
+let g6Guard = 0;
+while (T6().state === 'playing' && g6Guard++ < 300) { T6().step(3); T6().drop(); }
+ok(T6().state === 'over', 'reached game-over state');
+// Fire the keydown handler simulating Space press
+g6.handlers['keydown']?.forEach(fn => fn({ key: ' ', preventDefault() {} }));
+ok(T6().state === 'playing', 'Space in state "over" restarts the game (got ' + T6().state + ')');
+ok(T6().blocks === 0, 'blocks reset to 0 on restart from over');
+ok(T6().score === 0, 'score reset to 0 on restart from over');
+
 // ---- Summary ----
 console.log('\n----------------------------------------');
 console.log('PASS: ' + pass + '   FAIL: ' + fail);

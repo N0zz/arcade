@@ -382,9 +382,10 @@
   window.addEventListener('resize', resize);
 
   // ---- Input ----
-  function handleDrop() { if (state === 'playing') drop(); else if (state === 'ready') startGame(); }
+  function handleDrop() { if (state === 'playing') drop(); else if (state === 'ready' || state === 'over') startGame(); }
 
   canvas.addEventListener('pointerdown', handleDrop);
+  overlay.addEventListener('pointerdown', e => { if (e.target === overlay) handleDrop(); });
   document.addEventListener('keydown', e => {
     if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); handleDrop(); }
   });
