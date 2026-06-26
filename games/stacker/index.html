@@ -9,12 +9,14 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #b8d4f0; font-family: system-ui, -apple-system, sans-serif; user-select: none; touch-action: none; }
   #game { display: block; width: 100vw; height: 100vh; }
+  .nav { position: fixed; top: 10px; left: 12px; z-index: 10; display: flex; gap: 8px; }
   .back { position: fixed; top: 10px; left: 12px; z-index: 10; font-size: 12px; letter-spacing: 1px; font-weight: 600;
     color: #fff; text-decoration: none; background: rgba(122,79,191,0.92); border: 1px solid rgba(255,255,255,0.6);
-    border-radius: 8px; padding: 7px 12px; box-shadow: 0 2px 8px rgba(90,60,140,0.3); }
+    border-radius: 8px; padding: 7px 12px; box-shadow: 0 2px 8px rgba(90,60,140,0.3); cursor: pointer; }
   .back:hover { background: #7a4fbf; }
+  .nav .back { position: static; top: auto; left: auto; }
   #hud { position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 5; display: flex; align-items: center;
-    gap: 22px; padding: 0 14px 0 96px; background: rgba(255,255,255,0.45); backdrop-filter: blur(6px);
+    gap: 22px; padding: 0 14px 0 164px; background: rgba(255,255,255,0.45); backdrop-filter: blur(6px);
     border-bottom: 1px solid rgba(200,180,240,0.35); font-size: 15px; color: #4a3070; }
   #hud .stat b { color: #8a4fbf; font-size: 18px; }
   #hud .lbl { opacity: 0.65; font-size: 11px; letter-spacing: 1px; display: block; }
@@ -43,7 +45,10 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<a class="back" href="../../">‹ Arcade</a>
+<div class="nav">
+  <button class="back" id="menuBtn" type="button">&#x2039; Menu</button>
+  <a class="back" href="../../">Arcade &#x203A;</a>
+</div>
 <div id="hud">
   <div class="stat"><span class="lbl">SCORE</span> <b id="score">0</b></div>
   <div class="stat"><span class="lbl">BEST</span> <b id="best">0</b></div>
@@ -515,6 +520,8 @@
   resize();
   updateHud();
   loop();
+
+  document.getElementById('menuBtn').addEventListener('click', () => { try { location.reload(); } catch (e) {} });
 })();
 </script>
 </body>
