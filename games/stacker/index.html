@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>Stack</title>
 <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#ff9aa2">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stack">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #b8d4f0; font-family: system-ui, -apple-system, sans-serif; user-select: none; touch-action: none; }
@@ -523,6 +529,7 @@
 
   document.getElementById('menuBtn').addEventListener('click', () => { try { location.reload(); } catch (e) {} });
 })();
+  if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {} }
 </script>
 </body>
 </html>
