@@ -27,7 +27,11 @@
     text-shadow:0 0 20px var(--mg), 0 0 40px var(--mg); }
   #overlay p { margin:2px; font-size:14px; opacity:0.85; max-width:480px; line-height:1.6; letter-spacing:1px; }
   #overlay .hint { opacity:0.5; font-size:12px; letter-spacing:1px; }
-  #overlay button { font-family:inherit; cursor:pointer; font-size:15px; letter-spacing:3px; padding:11px 28px;
+  .modeBtn { font-family:inherit; cursor:pointer; font-size:13px; letter-spacing:2px; padding:8px 18px;
+    border-radius:4px; color:#fff; background:transparent; border:2px solid rgba(255,0,255,0.4);
+    text-shadow:0 0 6px rgba(255,0,255,0.5); }
+  .modeBtn.active { border-color:var(--cy); text-shadow:0 0 8px var(--cy); box-shadow:0 0 12px rgba(0,255,255,0.3); }
+  #startBtn { font-family:inherit; cursor:pointer; font-size:15px; letter-spacing:3px; padding:11px 28px;
     border-radius:4px; color:#fff; background:transparent; border:2px solid var(--mg);
     text-shadow:0 0 8px var(--mg); box-shadow:0 0 16px rgba(255,0,255,0.4), inset 0 0 16px rgba(255,0,255,0.1); }
 </style>
@@ -40,10 +44,17 @@
   <div class="stat"><span class="lbl">BEST</span><span class="val" id="bestEl">0</span></div>
   <div class="stat"><span class="lbl">LIVES</span><span class="hrt" id="livesEl">♥♥♥</span></div>
   <div class="stat"><span class="lbl">LEVEL</span><span class="val" id="levelEl">1</span></div>
+  <div class="stat"><span class="lbl">MODE</span><span class="val" id="modeEl">CLASSIC</span></div>
 </div>
 <div id="overlay">
   <h1>BRICK BREAKER</h1>
   <p>Destroy all bricks. Catch power-ups. Don't let the ball fall.</p>
+  <div id="modeRow" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+    <button class="modeBtn" data-mode="classic" id="modeBtnClassic">CLASSIC</button>
+    <button class="modeBtn" data-mode="endless" id="modeBtnEndless">ENDLESS</button>
+    <button class="modeBtn" data-mode="survival" id="modeBtnSurvival">SURVIVAL</button>
+  </div>
+  <p id="modeDesc" class="hint">Level progression — clear all bricks</p>
   <p class="hint">Mouse / Touch to move · Click / Space to launch</p>
   <button id="startBtn">INSERT COIN</button>
 </div>
@@ -78,10 +89,17 @@
 
   // ---- Config ----
   const PADDLE_H = 14, BALL_R = 7;
-  const BRICK_ROWS = 6, BRICK_COLS = 10, BRICK_GAP = 3;
+  const BRICK_ROWS = 8, BRICK_COLS = 14, BRICK_GAP = 3;
   const LIVES_START = 3;
-  const STORAGE_KEY = 'breakout_best';
   const MIN_VY = 1.5;
+  const ENDLESS_ROW_INTERVAL = 420;
+  const SURVIVAL_DESCENT_RATE = 0.04;
+
+  const MODE_DESCS = {
+    classic: 'Level progression — clear all bricks',
+    endless: 'Endless rows descend — score as long as you survive',
+    survival: 'The wall descends — clear it before it reaches your paddle',
+  };
 
   // ---- State ----
   let W, H, paddleW, paddleX, brickW, brickH, brickOffX, brickOffY;
@@ -92,16 +110,19 @@
   let shakeFrames = 0;
   let paddleTarget = 0;
   let widePaddle = 0, slowBall = 0; // power-up timers (frames remaining)
+  let gameMode = 'classic';
+  let endlessTimer = 0;
+  let survivalOffset = 0;
 
-  function loadBest() { try { best = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10) || 0; } catch(_){} }
-  function saveBest() { try { localStorage.setItem(STORAGE_KEY, String(best)); } catch(_){} }
-  loadBest();
+  function storageKey(mode) { return 'breakout_best_' + (mode || gameMode); }
+  function loadBest(mode) { try { return parseInt(localStorage.getItem(storageKey(mode)) || '0', 10) || 0; } catch(_){ return 0; } }
+  function saveBest() { try { const k = storageKey(); const cur = loadBest(); if (score > cur) localStorage.setItem(k, String(score)); } catch(_){} }
 
   function resize() {
     W = canvas.width = window.innerWidth;
     H = canvas.height = window.innerHeight;
     brickW = Math.floor((W - BRICK_GAP * (BRICK_COLS + 1)) / BRICK_COLS);
-    brickH = Math.max(14, Math.floor(brickW * 0.38));
+    brickH = Math.max(12, Math.floor(brickW * 0.32));
     brickOffX = Math.floor((W - (brickW + BRICK_GAP) * BRICK_COLS + BRICK_GAP) / 2);
     brickOffY = 56;
     paddleW = Math.floor(W * 0.14);
@@ -116,6 +137,7 @@
   ];
   function buildLevel() {
     bricks = [];
+    if (gameMode === 'survival') survivalOffset = 0;
     for (let r = 0; r < BRICK_ROWS; r++) {
       for (let c = 0; c < BRICK_COLS; c++) {
         const hp = (level >= 3 && r < 2) ? 2 : 1;
@@ -127,7 +149,7 @@
   function brickRect(b) {
     return {
       x: brickOffX + b.c * (brickW + BRICK_GAP),
-      y: brickOffY + b.r * (brickH + BRICK_GAP),
+      y: brickOffY + b.r * (brickH + BRICK_GAP) + Math.round(survivalOffset),
       w: brickW, h: brickH,
     };
   }
@@ -139,15 +161,15 @@
   }
 
   function makeBall(x, y, speed) {
-    const spd = speed || (3 + level * 0.4);
+    const spd = speed || (4.5 + level * 0.5);
     const ang = -Math.PI / 2 + (Math.random() - 0.5) * 0.4;
     return { x, y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd };
   }
 
   // ---- Power-ups ----
   function dropPowerup(bx, by) {
-    if (Math.random() > 0.22) return;
-    const types = ['wide', 'slow', 'multi'];
+    if (Math.random() > 0.35) return;
+    const types = ['wide', 'slow', 'multi', 'multi'];
     powerups.push({ x: bx, y: by, type: types[Math.floor(Math.random() * types.length)], vy: 2.5 });
   }
 
@@ -179,7 +201,9 @@
     score = 0; lives = LIVES_START; level = 1; ballStuck = true;
     widePaddle = 0; slowBall = 0;
     particles = []; powerups = []; trail = [];
+    endlessTimer = 0; survivalOffset = 0;
     balls = [{ x: paddleX, y: paddleY() - BALL_R - PADDLE_H / 2, vx: 0, vy: 0 }];
+    best = loadBest(gameMode);
     buildLevel();
     updateHud();
   }
@@ -191,10 +215,15 @@
     updateHud();
   }
 
+  function startMode(mode) {
+    gameMode = mode || 'classic';
+    startGame();
+  }
+
   function launch() {
     if (!ballStuck || state !== 'playing') return;
     ballStuck = false;
-    const spd = 3 + level * 0.4;
+    const spd = 4.5 + level * 0.5;
     balls[0].vx = (Math.random() - 0.5) * spd * 0.6;
     balls[0].vy = -spd;
     SND.play('launch');
@@ -205,6 +234,7 @@
     ballStuck = true;
     widePaddle = 0; slowBall = 0;
     powerups = []; particles = []; trail = [];
+    if (gameMode === 'survival') survivalOffset = 0;
     balls = [{ x: paddleX, y: paddleY() - BALL_R - PADDLE_H / 2, vx: 0, vy: 0 }];
     buildLevel();
     SND.play('levelup');
@@ -217,8 +247,8 @@
     updateHud();
     if (lives <= 0) {
       state = 'over';
-      if (score > best) { best = score; } saveBest();
-      overlay.innerHTML = '<h1>GAME OVER</h1><p>Score: <b style="color:#00ffff">' + score + '</b></p><button id="startBtn">PLAY AGAIN</button>';
+      saveBest();
+      overlay.innerHTML = '<h1>GAME OVER</h1><p>Mode: <b style="color:#ff00ff">' + gameMode.toUpperCase() + '</b> &nbsp; Score: <b style="color:#00ffff">' + score + '</b></p><button id="startBtn">PLAY AGAIN</button>';
       overlay.classList.remove('hidden');
       document.getElementById('startBtn').addEventListener('click', startGame);
     } else {
@@ -233,6 +263,7 @@
     document.getElementById('bestEl').textContent = best;
     document.getElementById('livesEl').textContent = '♥'.repeat(Math.max(0, lives));
     document.getElementById('levelEl').textContent = level;
+    document.getElementById('modeEl').textContent = gameMode.toUpperCase();
   }
 
   // ---- Collision ----
@@ -274,6 +305,32 @@
   // ---- Physics update ----
   function update() {
     if (state !== 'playing') return;
+
+    // Endless: spawn new top row periodically
+    if (gameMode === 'endless' && !ballStuck) {
+      endlessTimer++;
+      if (endlessTimer >= ENDLESS_ROW_INTERVAL) {
+        endlessTimer = 0;
+        for (const b of bricks) b.r++;
+        for (let c = 0; c < BRICK_COLS; c++) {
+          bricks.push({ r: 0, c, hp: 1, maxHp: 1 });
+        }
+      }
+    }
+
+    // Survival: descend wall
+    if (gameMode === 'survival' && !ballStuck) {
+      survivalOffset += SURVIVAL_DESCENT_RATE * (1 + level * 0.1);
+      const py = paddleY();
+      for (const b of bricks) {
+        const { y, h } = brickRect(b);
+        if (y + h >= py) {
+          lives = 0;
+          loseLife();
+          return;
+        }
+      }
+    }
 
     // paddle
     const pw = widePaddle > 0 ? paddleW * 1.6 : paddleW;
@@ -567,6 +624,17 @@
 
   document.getElementById('startBtn').addEventListener('click', startGame);
 
+  // Mode picker
+  const modeBtns = document.querySelectorAll('.modeBtn');
+  const modeDescEl = document.getElementById('modeDesc');
+  function setActiveMode(mode) {
+    gameMode = mode;
+    modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    if (modeDescEl) modeDescEl.textContent = MODE_DESCS[mode] || '';
+  }
+  modeBtns.forEach(b => b.addEventListener('click', e => { e.stopPropagation(); setActiveMode(b.dataset.mode); }));
+  setActiveMode('classic'); // default highlight
+
   // ---- Key hold polling ----
   function pollKeys() {
     const pw = widePaddle > 0 ? paddleW * 1.6 : paddleW;
@@ -592,7 +660,17 @@
     get bricks() { return bricks.length; },
     get ballStuck() { return ballStuck; },
     get level() { return level; },
+    get mode() { return gameMode; },
+    get survivalOffset() { return survivalOffset; },
+    get lowestBrickY() {
+      if (!bricks.length) return 0;
+      let maxY = 0;
+      for (const b of bricks) { const { y, h } = brickRect(b); if (y + h > maxY) maxY = y + h; }
+      return maxY;
+    },
+    get endlessTimer() { return endlessTimer; },
     start: startGame,
+    startMode,
     launch,
     setPaddle(x) { paddleX = x; paddleTarget = x; },
     setBall(x, y, vx, vy) {

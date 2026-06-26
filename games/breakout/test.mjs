@@ -172,7 +172,7 @@ while (T2().state === 'playing' && g2guard++ < 500) {
 ok(T2().state === 'over', 'game over before checking best');
 // If we scored anything, best should be persisted
 if (sc2 > 0) {
-  const stored = parseInt(g2.store['breakout_best'] || '0', 10);
+  const stored = parseInt(g2.store['breakout_best_classic'] || '0', 10);
   ok(stored >= sc2, 'best score persisted to localStorage (score=' + sc2 + ', stored=' + stored + ')');
 } else {
   // No bricks were hit — acceptable to skip persistence check
@@ -255,7 +255,121 @@ section('Breakout: restart resets all state');
   ok(Tr().lives === 3, 'lives reset to 3 on restart');
   ok(Tr().level === 1, 'level reset to 1 on restart');
   ok(Tr().ballStuck === true, 'ball stuck on restart');
-  ok(Tr().bricks === 60, 'all 60 bricks present on restart (got ' + Tr().bricks + ')');
+  ok(Tr().bricks === 112, 'all 112 bricks present on restart (got ' + Tr().bricks + ')');
+}
+
+section('Breakout: startMode — classic defaults');
+{
+  const gc = runGame();
+  const Tc = gc.T;
+  Tc().start(); // defaults to classic
+  ok(Tc().mode === 'classic', 'start() defaults to classic mode');
+  ok(Tc().bricks === 112, 'classic mode has 112 bricks (8×14)');
+}
+
+section('Breakout: startMode(\'endless\')');
+{
+  const ge = runGame();
+  const Te = ge.T;
+  Te().startMode('endless');
+  ok(Te().state === 'playing', 'endless mode starts playing');
+  ok(Te().mode === 'endless', 'mode getter returns endless');
+  Te().launch();
+  const bricksAtStart = Te().bricks;
+  // Keep ball safe (below bricks, above paddle) so no bricks are destroyed during timer
+  // bricks bottom ~301px, paddleY=740. Keep ball bouncing in safe zone.
+  Te().setBall(640, 500, 3, 4);
+  // step enough frames for a new row to spawn (ENDLESS_ROW_INTERVAL = 420)
+  // Track destroyed bricks separately to verify net addition
+  const bricksAfter430 = (() => {
+    for (let i = 0; i < 430; i++) {
+      // Reset ball to safe zone every 10 steps to prevent paddle miss
+      if (i % 10 === 0) Te().setBall(640, 500, 3, -4);
+      Te().step(1);
+    }
+    return Te().bricks;
+  })();
+  ok(bricksAfter430 > bricksAtStart, 'endless: new bricks added after ' + bricksAtStart + ' -> ' + bricksAfter430);
+}
+
+section('Breakout: startMode(\'survival\') — wall descends');
+{
+  const gs = runGame();
+  const Ts = gs.T;
+  Ts().startMode('survival');
+  ok(Ts().mode === 'survival', 'mode getter returns survival');
+  Ts().launch();
+  Ts().step(10);
+  ok(Ts().survivalOffset > 0, 'survivalOffset increases while playing (got ' + Ts().survivalOffset + ')');
+}
+
+section('Breakout: survival — wall reaching paddle causes game over');
+{
+  const gs2 = runGame();
+  const Ts2 = gs2.T;
+  Ts2().startMode('survival');
+  Ts2().launch();
+  // paddleY=740, last brick bottom ~301px, distance ~439px at 0.044px/frame = ~9977 frames
+  // Keep the ball bouncing in a safe zone (below bricks ~301, above paddle ~740) so:
+  //   - no bricks are destroyed (no nextLevel/survivalOffset reset)
+  //   - no ball falls past paddle (no life loss that could end game early)
+  // bricks bottom ~301. Keep ball at y=500 bouncing with +vy so it stays well above paddle.
+  // Reset every 50 steps to ensure it stays in safe zone.
+  const ly1 = Ts2().lowestBrickY;
+  // Step 100 with safe ball to verify descent
+  for (let i = 0; i < 100; i++) {
+    if (i % 50 === 0) Ts2().setBall(640, 500, 3, -4);
+    Ts2().step(1);
+  }
+  const ly2 = Ts2().lowestBrickY;
+  ok(ly2 > ly1, 'survival: lowestBrickY increases over time (' + ly1 + ' -> ' + ly2 + ')');
+  // Now step until wall reaches paddle (keep ball safe, no brick hits, no nextLevel)
+  // At 0.044px/frame remaining distance is ~439 - (ly2-ly1). Continue stepping.
+  let survSteps = 0;
+  while (Ts2().state === 'playing' && survSteps < 15000) {
+    if (survSteps % 50 === 0) Ts2().setBall(640, 500, 3, -4);
+    Ts2().step(1);
+    survSteps++;
+  }
+  ok(Ts2().state === 'over', 'survival: game ends when wall reaches paddle (steps: ' + survSteps + ')');
+}
+
+section('Breakout: best score per mode persists in localStorage');
+{
+  const gb = runGame();
+  const Tb = gb.T;
+  // Play classic, score some points, game over
+  Tb().startMode('classic');
+  Tb().launch();
+  Tb().setBall(640, 120, 0, -15);
+  Tb().step(30);
+  const classicScore = Tb().score;
+  let gbg = 0;
+  while (Tb().state === 'playing' && gbg++ < 500) { Tb().setBall(640, 790, 0, 10); Tb().step(10); }
+  ok(Tb().state === 'over', 'classic game over for best-score test');
+  if (classicScore > 0) {
+    const stored = parseInt(gb.store['breakout_best_classic'] || '0', 10);
+    ok(stored >= classicScore, 'classic best persisted (score=' + classicScore + ', stored=' + stored + ')');
+  } else {
+    ok(true, 'classic best check skipped (score=0)');
+  }
+
+  // Also check endless key is separate
+  const gb2 = runGame();
+  const Tb2 = gb2.T;
+  Tb2().startMode('endless');
+  Tb2().launch();
+  Tb2().setBall(640, 120, 0, -15);
+  Tb2().step(30);
+  const endlessScore = Tb2().score;
+  let gb2g = 0;
+  while (Tb2().state === 'playing' && gb2g++ < 500) { Tb2().setBall(640, 790, 0, 10); Tb2().step(10); }
+  if (endlessScore > 0) {
+    const stored2 = parseInt(gb2.store['breakout_best_endless'] || '0', 10);
+    ok(stored2 >= endlessScore, 'endless best persisted (score=' + endlessScore + ', stored=' + stored2 + ')');
+  } else {
+    ok(true, 'endless best check skipped (score=0)');
+  }
 }
 
 // ---- Summary ----
