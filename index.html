@@ -266,7 +266,13 @@
     let deferredPrompt = null, installed = false;
     const standalone = () => (typeof matchMedia !== 'undefined' && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
     function refresh() {
-      if (standalone()) { if (helpRow) helpRow.style.display = 'none'; return; } // already inside the app
+      if (standalone()) {
+        // inside the installed app: drop the now-pointless Install button + its (?) tip,
+        // but keep the Feedback button (and the rest of the row) — it should always be there.
+        installBtn.style.display = 'none';
+        const tip = qbtn && qbtn.parentElement; if (tip) tip.style.display = 'none';
+        return;
+      }
       installBtn.textContent = installed ? '✓ Installed' : '📱 Install app';
     }
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; installed = false; refresh(); });
