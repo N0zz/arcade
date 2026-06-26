@@ -31,6 +31,13 @@
     box-shadow: 0 4px 16px rgba(160,100,240,0.35); }
   #overlay .score-display { font-size: 42px; font-weight: bold; color: #8a4fbf; }
   #overlay .best-display { font-size: 15px; color: #7a5aaa; }
+  .mode-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .mode-btn { font-family: inherit; cursor: pointer; font-size: 14px; letter-spacing: 1px;
+    padding: 10px 22px; border-radius: 20px; border: 2px solid rgba(160,100,240,0.4);
+    background: rgba(255,255,255,0.55); color: #6a3fa8;
+    transition: background 0.15s, border-color 0.15s; }
+  .mode-btn.active { background: linear-gradient(135deg, #c084fc, #818cf8); border-color: transparent; color: #fff; }
+  .mode-desc { font-size: 12px; color: #7a5aaa; opacity: 0.75; min-height: 18px; }
 </style>
 </head>
 <body>
@@ -40,12 +47,19 @@
   <div class="stat"><span class="lbl">SCORE</span> <b id="score">0</b></div>
   <div class="stat"><span class="lbl">BEST</span> <b id="best">0</b></div>
   <div class="stat"><span class="lbl">HEIGHT</span> <b id="height">0</b></div>
+  <div class="stat" id="timer-stat" style="display:none"><span class="lbl">TIME</span> <b id="timer">60</b></div>
 </div>
 <div id="combo"></div>
 
 <div id="overlay">
   <h1>STACK</h1>
   <p class="sub">Tap to drop the block.<br>Stack perfectly for a bonus!</p>
+  <div class="mode-btns">
+    <button class="mode-btn active" id="btn-classic">Classic</button>
+    <button class="mode-btn" id="btn-time">Time Attack</button>
+    <button class="mode-btn" id="btn-zen">Zen</button>
+  </div>
+  <p class="mode-desc" id="mode-desc">Endless — stack as high as you can</p>
   <p class="hint">Tap · Click · Space · Enter</p>
   <button id="startBtn">Play</button>
 </div>
@@ -56,6 +70,8 @@
   const ctx = canvas.getContext('2d');
   const overlay = document.getElementById('overlay');
   const comboEl = document.getElementById('combo');
+  const timerStat = document.getElementById('timer-stat');
+  const timerEl = document.getElementById('timer');
 
   // ---- Audio (procedural, inert without AudioContext) ----
   const SND = (() => {
@@ -68,6 +84,7 @@
       perfect: () => chord([523, 659, 784], 0.18, 0.1),
       drop: () => tone(180, 0.15, 'sawtooth', 0.08),
       over: () => [330, 220, 165].forEach((f, i) => setTimeout(() => tone(f, 0.2, 'sawtooth', 0.1), i * 120)),
+      timeup: () => chord([330, 220, 165, 110], 0.25, 0.09),
     };
     return {
       play(n) { ensure(); if (ac && ac.state === 'suspended') ac.resume(); if (ac) (S[n] || (() => {}))(); }
@@ -76,8 +93,17 @@
 
   // ---- Constants ----
   const BLOCK_H = 28;
-  const PERFECT_TOL = 6; // px tolerance for perfect placement
-  const REGROW = 4;      // px regrow on perfect
+  // Playfield max width — keeps traversal snappy on wide/landscape screens
+  const MAX_PLAY_W = 380;
+
+  // Per-mode config
+  const MODE_CFG = {
+    classic: { perfectTol: 6,  regrow: 4,  initSpeed: 4.5, speedRamp: 0.35, speedCap: 10, timeLimit: 0,  storageKey: 'stacker_best_classic', label: 'Classic',     desc: 'Endless — stack as high as you can' },
+    time:    { perfectTol: 6,  regrow: 4,  initSpeed: 4.5, speedRamp: 0.35, speedCap: 10, timeLimit: 60, storageKey: 'stacker_best_time',    label: 'Time Attack',  desc: '60 seconds — stack as many as possible' },
+    zen:     { perfectTol: 14, regrow: 6,  initSpeed: 2.2, speedRamp: 0.10, speedCap: 5,  timeLimit: 0,  storageKey: 'stacker_best_zen',     label: 'Zen',          desc: 'Relaxed — slow speed, wide perfect zone' },
+  };
+
+  const MODE_DESCS = { classic: 'Endless — stack as high as you can', time: '60 seconds — stack as many as possible', zen: 'Relaxed — slow speed, wide perfect zone' };
 
   // ---- Palette: pastel hues cycling per layer ----
   function blockColor(layer) {
@@ -93,8 +119,8 @@
 
   // ---- State ----
   let state = 'ready'; // ready | playing | over
+  let mode = 'classic';
   let score = 0;
-  let best = parseInt(localStorage.getItem('stacker_best') || '0', 10);
   let combo = 0;
   let blocks = []; // { x, w, y }  y = world-Y of top of block
   let mover = null; // { x, w, y, dir, speed }
@@ -105,20 +131,35 @@
   let screenFlash = 0;
   let comboTimer = 0;
   let W = 0, H = 0;
+  // playfield offset + width (centered, capped)
+  let PF_X = 0, PF_W = 0; // updated in resize()
 
-  function saveBest() { if (score > best) { best = score; localStorage.setItem('stacker_best', String(best)); } }
+  // Time Attack
+  let timeLeft = 0;      // seconds remaining (float)
+  let timeTick = 0;      // frames accumulated for countdown
+
+  function getBest(m) { return parseInt(localStorage.getItem(MODE_CFG[m].storageKey) || '0', 10); }
+  function saveBest() {
+    const key = MODE_CFG[mode].storageKey;
+    const cur = parseInt(localStorage.getItem(key) || '0', 10);
+    if (score > cur) localStorage.setItem(key, String(score));
+  }
+  function currentBest() { return getBest(mode); }
+
   function updateHud() {
     document.getElementById('score').textContent = score;
-    document.getElementById('best').textContent = best;
+    document.getElementById('best').textContent = currentBest();
     document.getElementById('height').textContent = blocks.length > 1 ? blocks.length - 1 : 0;
+    if (mode === 'time') {
+      timerStat.style.display = '';
+      timerEl.textContent = Math.ceil(timeLeft);
+    } else {
+      timerStat.style.display = 'none';
+    }
   }
 
   // ---- World coords ----
-  // World Y: 0 at bottom of first block, increases upward.
-  // Canvas Y: 0 at top. canvasY = H - (worldY - cameraY) * scale
-  // We use a fixed vertical scale of 1 pixel per world-pixel.
   function worldToCanvas(wy) { return H - BLOCK_H - (wy - cameraY); }
-  function canvasToWorld(cy) { return cameraY + (H - BLOCK_H - cy); }
 
   // ---- Init / reset ----
   function resetGame() {
@@ -128,13 +169,16 @@
     screenFlash = 0;
     comboTimer = 0;
 
-    const baseW = Math.min(Math.floor(W * 0.55), 220);
-    const baseX = (W - baseW) / 2;
-    // First block is the foundation (world Y = 0, top at 0)
+    const cfg = MODE_CFG[mode];
+    timeLeft = cfg.timeLimit > 0 ? cfg.timeLimit : 0;
+    timeTick = 0;
+
+    // Base block fills play column
+    const baseW = Math.min(Math.floor(PF_W * 0.75), 220);
+    const baseX = PF_X + (PF_W - baseW) / 2;
     blocks.push({ x: baseX, w: baseW, y: 0 });
 
-    const startSpeed = 2.5;
-    mover = { x: baseX, w: baseW, y: BLOCK_H, dir: 1, speed: startSpeed };
+    mover = { x: baseX, w: baseW, y: BLOCK_H, dir: 1, speed: cfg.initSpeed };
 
     cameraY = 0;
     targetCameraY = 0;
@@ -142,7 +186,10 @@
   }
 
   // ---- Mover speed by height ----
-  function moverSpeed(level) { return Math.min(2.5 + level * 0.18, 7.5); }
+  function moverSpeed(level) {
+    const cfg = MODE_CFG[mode];
+    return Math.min(cfg.initSpeed + level * cfg.speedRamp, cfg.speedCap);
+  }
 
   // ---- Drop logic ----
   function drop() {
@@ -157,33 +204,31 @@
     const overlap = overlapRight - overlapLeft;
 
     if (overlap <= 0) {
-      // Miss — game over
       SND.play('drop');
       spawnFallPiece(mx, mw, mover.y);
       gameOver();
       return;
     }
 
-    const perfect = Math.abs((mx + mw / 2) - (tx + tw / 2)) <= PERFECT_TOL;
+    const cfg = MODE_CFG[mode];
+    const perfect = Math.abs((mx + mw / 2) - (tx + tw / 2)) <= cfg.perfectTol;
     let placedW, placedX;
 
     if (perfect) {
-      // Snap perfectly onto the block below, optionally regrow
       placedX = tx;
-      placedW = Math.min(tw + REGROW, Math.min(W * 0.55, 220));
+      // Regrow capped to playfield width
+      placedW = Math.min(tw + cfg.regrow, Math.min(PF_W * 0.75, 220));
       combo++;
       score += 1 + Math.floor(combo / 3);
       SND.play('perfect');
-      spawnParticles(placedX + placedW / 2, worldToCanvas(mover.y + BLOCK_H), 18, blockColor(blocks.length));
-      screenFlash = 8;
+      spawnParticles(placedX + placedW / 2, worldToCanvas(mover.y + BLOCK_H), 22, blockColor(blocks.length));
+      screenFlash = 10;
     } else {
-      // Slice
       placedX = overlapLeft;
       placedW = overlap;
       combo = 0;
       score += 1;
       SND.play('place');
-      // Spawn falling piece(s)
       if (mx < tx) spawnFallPiece(mx, tx - mx, mover.y);
       if (mx + mw > tx + tw) spawnFallPiece(tx + tw, (mx + mw) - (tx + tw), mover.y);
     }
@@ -195,19 +240,20 @@
     const topWorldY = mover.y + BLOCK_H;
     targetCameraY = Math.max(0, topWorldY - H * 0.35);
 
-    // Spawn next mover
+    // Spawn next mover — starts from a random edge of the play column
     const level = blocks.length - 1;
     const spd = moverSpeed(level);
-    const startSide = Math.random() < 0.5 ? 0 : W - placedW;
-    mover = { x: startSide, w: placedW, y: mover.y + BLOCK_H, dir: startSide === 0 ? 1 : -1, speed: spd };
+    const startLeft = Math.random() < 0.5;
+    const startX = startLeft ? PF_X : PF_X + PF_W - placedW;
+    mover = { x: startX, w: placedW, y: mover.y + BLOCK_H, dir: startLeft ? 1 : -1, speed: spd };
 
     comboTimer = combo >= 2 ? 90 : 0;
     updateHud();
   }
 
-  function gameOver() {
+  function gameOver(reason) {
     state = 'over';
-    SND.play('over');
+    SND.play(reason === 'time' ? 'timeup' : 'over');
     saveBest();
     setTimeout(() => showOverlay('over'), 400);
   }
@@ -215,27 +261,54 @@
   function showOverlay(type) {
     overlay.classList.remove('hidden');
     if (type === 'over') {
+      const best = currentBest();
+      const modeName = MODE_CFG[mode].label;
       overlay.innerHTML = `
         <h1>OOPS!</h1>
+        <div style="font-size:13px;color:#7a5aaa;opacity:0.7;letter-spacing:1px">${modeName.toUpperCase()}</div>
         <div class="score-display">${score}</div>
         <div class="best-display">Best: ${best}</div>
         <button id="restartBtn">Play Again</button>`;
-      document.getElementById('restartBtn').addEventListener('click', startGame);
+      document.getElementById('restartBtn').addEventListener('click', () => startGameMode(mode));
     }
   }
 
-  function startGame() {
+  function startGameMode(m) {
+    mode = m || 'classic';
     state = 'playing';
     overlay.classList.add('hidden');
     resetGame();
   }
 
+  // Keep backward compat: start() = classic
+  function startGame() { startGameMode('classic'); }
+
+  // ---- Mode picker UI ----
+  let selectedMode = 'classic';
+  const modeDescEl = document.getElementById('mode-desc');
+
+  function selectMode(m) {
+    selectedMode = m;
+    ['classic', 'time', 'zen'].forEach(id => {
+      const btn = document.getElementById('btn-' + id);
+      if (btn) btn.classList.toggle('active', id === m);
+    });
+    if (modeDescEl) modeDescEl.textContent = MODE_DESCS[m] || '';
+  }
+
+  ['classic', 'time', 'zen'].forEach(m => {
+    const btn = document.getElementById('btn-' + m);
+    if (btn) btn.addEventListener('click', e => { e.stopPropagation(); selectMode(m); });
+  });
+
+  document.getElementById('startBtn').addEventListener('click', () => startGameMode(selectedMode));
+
   // ---- Particles ----
   function spawnParticles(cx, cy, n, color) {
     for (let i = 0; i < n; i++) {
       const angle = (Math.PI * 2 * i) / n + Math.random() * 0.3;
-      const speed = 1.5 + Math.random() * 3;
-      particles.push({ x: cx, y: cy, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 2, life: 1, color });
+      const speed = 1.5 + Math.random() * 3.5;
+      particles.push({ x: cx, y: cy, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 2.5, life: 1, color });
     }
   }
 
@@ -247,10 +320,19 @@
   function update() {
     if (state !== 'playing') return;
 
-    // Move mover
+    // Move mover — clamped to play column bounds
     mover.x += mover.dir * mover.speed;
-    if (mover.x + mover.w >= W) { mover.x = W - mover.w; mover.dir = -1; }
-    if (mover.x <= 0) { mover.x = 0; mover.dir = 1; }
+    const rightBound = PF_X + PF_W - mover.w;
+    if (mover.x >= rightBound) { mover.x = rightBound; mover.dir = -1; }
+    if (mover.x <= PF_X) { mover.x = PF_X; mover.dir = 1; }
+
+    // Time Attack countdown (60fps assumed — good enough)
+    if (mode === 'time' && timeLeft > 0) {
+      timeTick++;
+      if (timeTick >= 60) { timeTick = 0; timeLeft = Math.max(0, timeLeft - 1); }
+      updateHud();
+      if (timeLeft <= 0) { gameOver('time'); return; }
+    }
 
     // Smooth camera
     cameraY += (targetCameraY - cameraY) * 0.07;
@@ -290,9 +372,15 @@
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
+    // Playfield column subtle bg (only on wide screens)
+    if (PF_W < W - 4) {
+      ctx.fillStyle = 'rgba(0,0,0,0.035)';
+      ctx.fillRect(PF_X, 0, PF_W, H);
+    }
+
     // Screen flash (perfect placement)
     if (screenFlash > 0) {
-      ctx.fillStyle = `rgba(255,220,255,${screenFlash / 8 * 0.25})`;
+      ctx.fillStyle = `rgba(255,220,255,${screenFlash / 10 * 0.3})`;
       ctx.fillRect(0, 0, W, H);
     }
 
@@ -309,7 +397,6 @@
       ctx.strokeStyle = stroke;
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      // Highlight top edge
       ctx.fillStyle = 'rgba(255,255,255,0.35)';
       roundRect(ctx, b.x + 2, cy + 2, b.w - 4, 6, 3);
       ctx.fill();
@@ -378,19 +465,20 @@
   function resize() {
     W = canvas.width = window.innerWidth;
     H = canvas.height = window.innerHeight;
+    // Constrain play column so block traversal feels snappy
+    PF_W = Math.min(W, MAX_PLAY_W);
+    PF_X = (W - PF_W) / 2;
   }
   window.addEventListener('resize', resize);
 
   // ---- Input ----
-  function handleDrop() { if (state === 'playing') drop(); else if (state === 'ready' || state === 'over') startGame(); }
+  function handleDrop() { if (state === 'playing') drop(); else if (state === 'ready' || state === 'over') startGameMode(selectedMode); }
 
   canvas.addEventListener('pointerdown', handleDrop);
   overlay.addEventListener('pointerdown', e => { if (e.target === overlay) handleDrop(); });
   document.addEventListener('keydown', e => {
     if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); handleDrop(); }
   });
-
-  document.getElementById('startBtn').addEventListener('click', startGame);
 
   // ---- Game loop ----
   function loop() {
@@ -402,20 +490,25 @@
   window.__test = {
     get state() { return state; },
     get score() { return score; },
-    get blocks() { return blocks.length > 0 ? blocks.length - 1 : 0; }, // placed (not counting base)
+    get blocks() { return blocks.length > 0 ? blocks.length - 1 : 0; },
     get combo() { return combo; },
     get moving() { return mover ? { x: mover.x, w: mover.w } : null; },
     get base() { return blocks.length > 0 ? { x: blocks[blocks.length - 1].x, w: blocks[blocks.length - 1].w } : null; },
+    get mode() { return mode; },
+    get timeLeft() { return timeLeft; },
     start() { startGame(); },
+    startMode(m) { startGameMode(m); },
     drop() { drop(); },
     step(n) { for (let i = 0; i < (n || 1); i++) update(); },
     dropPerfect() {
       if (state !== 'playing' || !mover || blocks.length === 0) return;
       const top = blocks[blocks.length - 1];
-      // Align mover center exactly over top block center
       mover.x = top.x + (top.w - mover.w) / 2;
       drop();
     },
+    // Expose for tests: force timeLeft (Time Attack sim)
+    _setTimeLeft(v) { timeLeft = v; },
+    _setTimeTick(v) { timeTick = v; },
   };
 
   resize();

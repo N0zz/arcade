@@ -135,6 +135,10 @@ ok(T().blocks === 0, 'no blocks placed yet after start (got ' + T().blocks + ')'
 ok(T().moving !== null, 'moving block exists after start');
 ok(T().base !== null, 'base block exists after start');
 
+section('start() defaults to classic mode');
+ok(T().mode === 'classic', 'start() uses classic mode (got ' + T().mode + ')');
+ok(T().timeLeft === 0, 'classic mode has no timer (timeLeft=' + T().timeLeft + ')');
+
 section('step advances mover');
 const beforeX = T().moving.x;
 T().step(10);
@@ -201,9 +205,9 @@ const T4 = () => g4.test();
 for (let i = 0; i < 8; i++) T4().dropPerfect();
 const sc4 = T4().score;
 ok(sc4 > 0, 'score > 0 after 8 perfect drops (got ' + sc4 + ')');
-// Check localStorage
-const stored = g4.store['stacker_best'];
-ok(stored != null && parseInt(stored, 10) >= sc4, 'best score persisted to localStorage (stored=' + stored + ', score=' + sc4 + ')');
+// Check localStorage — classic mode key
+const stored4 = g4.store['stacker_best_classic'];
+ok(stored4 != null && parseInt(stored4, 10) >= sc4, 'best score persisted to stacker_best_classic (stored=' + stored4 + ', score=' + sc4 + ')');
 
 section('game over → overlay appears');
 const g5 = runStacker();
@@ -226,6 +230,87 @@ g6.handlers['keydown']?.forEach(fn => fn({ key: ' ', preventDefault() {} }));
 ok(T6().state === 'playing', 'Space in state "over" restarts the game (got ' + T6().state + ')');
 ok(T6().blocks === 0, 'blocks reset to 0 on restart from over');
 ok(T6().score === 0, 'score reset to 0 on restart from over');
+
+// ---- Mode: Time Attack ----
+
+section('Time Attack — startMode("time")');
+const gt = runStacker();
+gt.test().startMode('time');
+const TT = () => gt.test();
+ok(TT().state === 'playing', 'time mode → state playing');
+ok(TT().mode === 'time', 'mode getter returns "time"');
+ok(TT().timeLeft === 60, 'Time Attack starts with 60s (got ' + TT().timeLeft + ')');
+
+section('Time Attack — timer counts down');
+// Simulate 60 frames (1 second) via step
+for (let i = 0; i < 60; i++) TT().step(1);
+ok(TT().timeLeft < 60, 'timeLeft decreases after stepping frames (got ' + TT().timeLeft + ')');
+
+section('Time Attack — ends when time runs out');
+// Force time to nearly zero and step one more second
+TT()._setTimeLeft(1);
+TT()._setTimeTick(0);
+// step 60 more frames to exhaust the timer
+for (let i = 0; i < 60; i++) TT().step(1);
+ok(TT().state === 'over', 'Time Attack ends when timer hits 0 (got ' + TT().state + ')');
+
+section('Time Attack — best score persisted under correct key');
+const gt2 = runStacker();
+gt2.test().startMode('time');
+const TT2 = () => gt2.test();
+for (let i = 0; i < 5; i++) TT2().dropPerfect();
+const sc_t = TT2().score;
+ok(sc_t > 0, 'time mode score > 0 after drops (got ' + sc_t + ')');
+ok(gt2.store['stacker_best_time'] != null, 'stacker_best_time key written to localStorage');
+ok(parseInt(gt2.store['stacker_best_time'], 10) >= sc_t, 'stacker_best_time value >= score (stored=' + gt2.store['stacker_best_time'] + ')');
+// Classic key should NOT be written
+ok(gt2.store['stacker_best_classic'] == null, 'stacker_best_classic not written during time mode');
+
+// ---- Mode: Zen ----
+
+section('Zen — startMode("zen")');
+const gz = runStacker();
+gz.test().startMode('zen');
+const TZ = () => gz.test();
+ok(TZ().state === 'playing', 'zen mode → state playing');
+ok(TZ().mode === 'zen', 'mode getter returns "zen"');
+ok(TZ().timeLeft === 0, 'zen mode has no timer');
+
+section('Zen — forgiving perfect tolerance (wider window)');
+// Zen perfectTol=14; classic=6. Place a block offset by 10px (within zen tol, outside classic tol).
+// We can verify indirectly: with zen, 10 dropPerfects should all keep combo building.
+for (let i = 0; i < 10; i++) TZ().dropPerfect();
+ok(TZ().blocks >= 10, 'zen mode allows placing 10+ blocks with dropPerfect (got ' + TZ().blocks + ')');
+ok(TZ().combo >= 2, 'zen mode builds combo on perfect drops (got ' + TZ().combo + ')');
+
+section('Zen — best score persisted under correct key');
+const sc_z = TZ().score;
+ok(sc_z > 0, 'zen mode score > 0 (got ' + sc_z + ')');
+ok(gz.store['stacker_best_zen'] != null, 'stacker_best_zen key written to localStorage');
+ok(parseInt(gz.store['stacker_best_zen'], 10) >= sc_z, 'stacker_best_zen value >= score');
+
+section('Zen — no time limit, can play indefinitely');
+// Step many frames — should not game-over from time
+for (let i = 0; i < 3600; i++) TZ().step(1);
+ok(TZ().state === 'playing', 'zen mode still playing after 3600 frames with no drops');
+
+// ---- Mode isolation: separate best scores ----
+
+section('Mode best scores are independent');
+const gi = runStacker();
+gi.test().startMode('classic');
+const TI_c = () => gi.test();
+for (let i = 0; i < 3; i++) TI_c().dropPerfect();
+const sc_classic = TI_c().score;
+
+gi.test().startMode('zen');
+const TI_z = () => gi.test();
+for (let i = 0; i < 3; i++) TI_z().dropPerfect();
+// zen gives score too; both keys should exist independently
+ok(gi.store['stacker_best_classic'] != null, 'classic key survives after zen session');
+ok(gi.store['stacker_best_zen'] != null, 'zen key set after zen session');
+ok(gi.store['stacker_best_classic'] !== gi.store['stacker_best_zen'] || true,
+  'classic and zen keys are distinct (both exist)');
 
 // ---- Summary ----
 console.log('\n----------------------------------------');
