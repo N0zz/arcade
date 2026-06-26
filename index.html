@@ -12,12 +12,12 @@
 <meta name="apple-mobile-web-app-title" content="funyo">
 <link rel="apple-touch-icon" href="favicon.svg">
 <!-- SEO + link previews (Open Graph / Twitter Card) -->
-<meta name="description" content="A little catalogue of free, self-contained browser games — Asteroids, tower defense, a bubble shooter and more. No ads, no tracking, plays offline.">
+<meta name="description" content="A little catalogue of free, self-contained browser games — Asteroids, tower defense, a bubble shooter and more. No ads, no payments, plays offline.">
 <link rel="canonical" href="https://funyo.online/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="funyo">
 <meta property="og:title" content="funyo — free browser games">
-<meta property="og:description" content="A little catalogue of free, self-contained browser games. No ads, no tracking, plays offline.">
+<meta property="og:description" content="A little catalogue of free, self-contained browser games. No ads, no payments, plays offline.">
 <meta property="og:url" content="https://funyo.online/">
 <meta property="og:image" content="https://funyo.online/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -27,14 +27,8 @@
 <meta name="twitter:title" content="funyo — free browser games">
 <meta name="twitter:description" content="A little catalogue of free, self-contained browser games. No ads, plays offline.">
 <meta name="twitter:image" content="https://funyo.online/og-image.png">
-<!-- Google tag (gtag.js) — GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-FCZMM2CQLW"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-FCZMM2CQLW');
-</script>
+<!-- Analytics: GA4, loaded only after cookie consent (see analytics.js) -->
+<script src="analytics.js" defer></script>
 <style>
   :root {
     --bg:#0b0f17; --surface:#161c28; --surface-2:#1e2738; --border:#2a3446;
@@ -102,6 +96,18 @@
   .coffee:hover { color:#ffe08a; text-decoration:underline; }
   .ghlink { color:var(--muted); }
   .ghlink:hover { color:#fff; text-decoration:underline; }
+
+  .cookie-banner { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:50; width:min(560px,94vw);
+    display:flex; gap:12px 14px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:12px 16px;
+    box-shadow:0 14px 40px rgba(0,0,0,0.55); font-size:13px; line-height:1.45; color:var(--muted); }
+  .cookie-banner[hidden] { display:none; }
+  .cb-actions { display:flex; gap:8px; margin-left:auto; }
+  .cb-btn { font-family:var(--mono); font-size:11px; letter-spacing:1px; cursor:pointer; padding:7px 14px; border-radius:9px;
+    background:var(--surface); color:var(--muted); border:1px solid var(--border); }
+  .cb-btn:hover { color:#fff; border-color:#9fe8ff; }
+  .cb-accept { background:#9fe8ff; color:#06121a; font-weight:700; border-color:#9fe8ff; }
+  .cb-accept:hover { background:#bdf0ff; }
 
   .share { display:flex; gap:9px; justify-content:center; flex-wrap:wrap; align-items:center; margin-bottom:18px; }
   .share .lbl { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--faint); margin-right:2px; }
@@ -172,7 +178,7 @@
         <button class="sbtn" id="shareCopy" type="button" aria-label="Copy link" title="Copy link">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></button>
       </div>
-      built for fun · no ads · no tracking · plays offline &nbsp;·&nbsp;
+      built for fun · no ads · no payments · plays offline &nbsp;·&nbsp;
       <a class="sponsor" href="https://github.com/sponsors/N0zz">♥ Sponsor</a> &nbsp;·&nbsp;
       <a class="coffee" href="https://buymeacoffee.com/n0zz">☕ Buy me a coffee</a> &nbsp;·&nbsp;
       <a class="ghlink" href="https://github.com/N0zz/arcade">GitHub ↗</a>
@@ -224,6 +230,14 @@
       </div>
     </form>
   </dialog>
+
+  <div id="cookieBanner" class="cookie-banner" hidden>
+    <span>We use Google Analytics to see which games are most played — no ads, no data selling.</span>
+    <div class="cb-actions">
+      <button id="cbDecline" class="cb-btn" type="button">Decline</button>
+      <button id="cbAccept" class="cb-btn cb-accept" type="button">Accept</button>
+    </div>
+  </div>
 
   <script src="games.js"></script>
   <script>
@@ -394,6 +408,17 @@
         nlSubmit.disabled = false;
       }
     });
+
+    // ---- Cookie consent (gates the GA4 tag loaded by analytics.js) ----
+    (function () {
+      const banner = document.getElementById('cookieBanner');
+      let saved = null; try { saved = localStorage.getItem('funyo_consent'); } catch (e) {}
+      if (!saved && banner) banner.hidden = false;
+      const decide = (v) => { try { localStorage.setItem('funyo_consent', v); } catch (e) {} if (banner) banner.hidden = true; };
+      const a = document.getElementById('cbAccept'), d = document.getElementById('cbDecline');
+      if (a) a.addEventListener('click', () => { decide('granted'); if (window.funyoLoadGA) window.funyoLoadGA(); });
+      if (d) d.addEventListener('click', () => decide('denied'));
+    })();
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
