@@ -87,3 +87,14 @@ MVP + 2–3 polish passes," self-contained single file with a `__test` hook.
 | Pulse Dash (rhythm) | high | obstacles authored to a beat + generate/sync a track (priciest) |
 
 See `games.js` for tags/accents.
+
+## Parked ideas (someday)
+
+- **Sort tiles by popularity (most-played first), driven by GA4.** No new database —
+  reuse GA4: a scheduled GitHub Action reads the GA4 Data API (service-account key in
+  a repo secret), writes a static `stats.json` (`{slug: plays}`), and `render()` sorts
+  playable tiles by it (favorites still pinned on top; missing/zero → current order).
+  Caveats: refresh is daily, not live; GA4 is **consent-sampled** (only counts visitors
+  who accepted the banner), so sort by it but don't show raw counts. A live counter was
+  rejected — it needs a datastore (DB / serverless KV / flaky free hit-API), so it isn't
+  actually "lightweight"; reusing GA4 adds zero new infra.
