@@ -1,12 +1,23 @@
 # Asteroids
 
+<p align="center">
+  <a href="https://n0zz.github.io/asteroids-game/">
+    <img src="https://img.shields.io/badge/%E2%96%B6%20%20PLAY%20NOW-1f6feb?style=for-the-badge&logoColor=white" alt="Play Asteroids now" height="64">
+  </a>
+</p>
+
+<p align="center"><b>▶ Play in your browser: <a href="https://n0zz.github.io/asteroids-game/">n0zz.github.io/asteroids-game</a></b></p>
+
+---
+
 A self-contained, dependency-free Asteroids game with multiple evolving versions,
 each playable from a launcher. Pure HTML5 Canvas + vanilla JS — no build step,
 no external assets. Just open it in a browser.
 
 ## Play
 
-Open `index.html` in any modern browser (double-click, or `open index.html` on macOS).
+Play online at **https://n0zz.github.io/asteroids-game/**, or run it locally: open
+`index.html` in any modern browser (double-click, or `open index.html` on macOS).
 Pick a version from the menu. Toggle **NORMAL / SPEEDRUN** at the top before launching.
 
 > Tip: after clicking a version, click once on the game so it has keyboard focus.
@@ -57,7 +68,7 @@ and shown on the menu cards.
 index.html                launcher (version select + mode toggle), reads versions.js
 versions.js               the version manifest (single source of truth for the menu)
 classic.html              ┐
-classic-enhanced.html     │ frozen, self-contained game builds
+classic-enhanced.html     │ self-contained game builds (each is one standalone .html)
 roguelite-levelup.html    │ (the roguelite base; the two below are generated from it)
 roguelite-milestones.html │
 roguelite-shop.html       ┘
