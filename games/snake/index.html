@@ -12,10 +12,12 @@
   #game { display:block; width:100vw; height:100vh; }
   .back { position:fixed; top:8px; left:10px; z-index:9; font-family:inherit; font-size:12px; letter-spacing:1px;
     color:#b0f0ff; text-decoration:none; background:rgba(0,20,30,0.7); border:1px solid #0af; border-radius:7px; padding:6px 10px;
-    text-shadow:0 0 8px #0af; }
+    text-shadow:0 0 8px #0af; cursor:pointer; }
+  .nav { position:fixed; top:8px; left:10px; z-index:9; display:flex; gap:8px; }
+  .nav .back { position:static; top:auto; left:auto; }
   #hud { position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:5; display:flex; gap:24px;
     background:rgba(0,10,20,0.75); border:1px solid #0af3; border-radius:8px; padding:6px 18px;
-    font-size:14px; letter-spacing:2px; pointer-events:none; }
+    padding-left:170px; font-size:14px; letter-spacing:2px; pointer-events:none; }
   #hud .lbl { opacity:0.5; font-size:10px; }
   #hud b { color:#0ff; text-shadow:0 0 10px #0ff; }
   #overlay { position:fixed; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -45,7 +47,10 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<a class="back" href="../../">‹ Arcade</a>
+<div class="nav">
+  <button class="back" id="menuBtn" type="button">&#x2039; Menu</button>
+  <a class="back" href="../../">Arcade &#x203A;</a>
+</div>
 <div id="hud">
   <div><div class="lbl">SCORE</div><b id="scoreEl">0</b></div>
   <div><div class="lbl">BEST</div><b id="bestEl">0</b></div>
@@ -455,6 +460,9 @@
     step(n) { for (let i = 0; i < (n || 1); i++) tick(); },
     placeFoodAt(x, y) { if (state === 'playing') { pendingFood = { x, y }; food = { x, y }; } },
   };
+
+  const menuBtn = document.getElementById('menuBtn');
+  if (menuBtn) menuBtn.addEventListener('click', () => { try { location.reload(); } catch (e) {} });
 
   loadOpts();
   applyGridSize();
