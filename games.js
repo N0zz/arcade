@@ -19,6 +19,15 @@ window.GAMES = [
     tag: "STRATEGY",
   },
 
+  {
+    slug: "bubbles",
+    title: "Bubble Pop",
+    blurb: "Shoot glossy soap bubbles to pop matching groups of 3+. Arcade, Endless, and Zen modes with special shots.",
+    icon: "🫧",
+    accent: "#2ee8c8",
+    tag: "PUZZLE",
+  },
+
   // ---- coming soon ----
   {
     slug: "breakout",

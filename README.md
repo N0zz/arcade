@@ -30,6 +30,7 @@ external assets — and gets a tile on the home page plus a **‹ Arcade** link 
 | **Meadow Flyer** | `games/flappy/` | One-tap flyer through a soft storybook meadow |
 | **Brick Breaker** | `games/breakout/` | Paddle/ball/bricks with power-ups and level progression (synthwave neon) |
 | **Range** | `games/aim-trainer/` | Timed flick-aim target practice with accuracy + combo (tactical theme) |
+| **Bubble Pop** | `games/bubbles/` | Puzzle-Bobble bubble shooter — match 3+, Arcade/Endless/Zen + special shots |
 
 More on the way (Invaders, Road Hop, Icy Tower, Trap the Cat, Pulse Dash, …).
 
