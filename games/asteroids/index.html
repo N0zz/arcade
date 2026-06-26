@@ -47,7 +47,9 @@
   #modeToggle:hover { transform: translateY(-1px); }
   .modehint { font-size: 11px; opacity: 0.45; letter-spacing: 1px; min-height: 14px; }
 
-  .cards { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; max-width: 1100px; }
+  #cards { display: flex; flex-direction: column; gap: 12px; align-items: center; max-width: 1100px; }
+  .row-label { font-size: 12px; letter-spacing: 3px; opacity: 0.45; margin-top: 8px; }
+  .crow { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
   .card {
     width: 250px; padding: 22px 20px;
     border: 2px solid rgba(120,200,255,0.3);
@@ -134,25 +136,40 @@
       catch (e) { return null; }
     }
 
+    function makeCard(v) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.tabIndex = 0;
+      const best = readBest(v.file);
+      card.innerHTML =
+        '<span class="tag ' + v.tag + '">' + v.tag + '</span>' +
+        '<h2>' + v.title + '</h2>' +
+        '<p>' + v.desc + '</p>' +
+        '<div class="goal' + (speedrun ? ' show' : '') + '">GOAL: ' + v.goal + '</div>' +
+        '<div class="best' + (speedrun && best != null ? ' show' : '') + '">BEST ' + (best != null ? fmtTime(best) : '—') + '</div>';
+      const go = () => play(v.file);
+      card.addEventListener('click', go);
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+      });
+      return card;
+    }
+
+    // one row per family: Classic on top, Roguelite below
     function renderCards() {
       cardsEl.innerHTML = '';
-      (window.VERSIONS || []).forEach(v => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.tabIndex = 0;
-        const best = readBest(v.file);
-        card.innerHTML =
-          '<span class="tag ' + v.tag + '">' + v.tag + '</span>' +
-          '<h2>' + v.title + '</h2>' +
-          '<p>' + v.desc + '</p>' +
-          '<div class="goal' + (speedrun ? ' show' : '') + '">GOAL: ' + v.goal + '</div>' +
-          '<div class="best' + (speedrun && best != null ? ' show' : '') + '">BEST ' + (best != null ? fmtTime(best) : '—') + '</div>';
-        const go = () => play(v.file);
-        card.addEventListener('click', go);
-        card.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
-        });
-        cardsEl.appendChild(card);
+      const all = window.VERSIONS || [];
+      ['CLASSIC', 'ROGUELITE'].forEach(tag => {
+        const vs = all.filter(v => v.tag === tag);
+        if (!vs.length) return;
+        const label = document.createElement('div');
+        label.className = 'row-label';
+        label.textContent = tag;
+        const row = document.createElement('div');
+        row.className = 'crow';
+        vs.forEach(v => row.appendChild(makeCard(v)));
+        cardsEl.appendChild(label);
+        cardsEl.appendChild(row);
       });
     }
 
