@@ -29,6 +29,22 @@ Effort tiers: trivial / low / med / high — each a self-contained single file w
 | Icy Tower | high | momentum + variable jump + wall-bounce + combos + rising floor |
 | Pulse Dash (rhythm) | high | obstacles authored to a beat + generate/sync a track |
 
+### Kids-first (ages 6–10)
+
+Built *for* young kids: one-tap / big-target controls, no reading required, gentle or no
+fail-state, celebratory feedback. All self-contained with a `__test` hook. Anchor a future **Kids
+section/filter** (tag the cute-simple existing games — Stack, Bubble Pop, Snake-Slow, Meadow-gentle
+— alongside these). funyo's no-ads / no-payments / no-chat / offline story is the parent pitch.
+
+| Idea | Effort | Notes |
+| --- | --- | --- |
+| **Pop the Balloons** | trivial–low | tap big floating balloons; combos/colors; no fail state, pure delight. The natural kid-safe reskin target for Range's mechanic. |
+| **Memory / Matching Pairs** | low | flip cards to match animal/fruit emoji; grid sizes for age scaling; classic, calming |
+| **Simon (color + sound)** | low | repeat the growing color/tone sequence; teaches memory + patterns |
+| **Tap-to-Paint / Coloring** | low | fill regions or pixels by tapping a palette; no fail, creative, screenshot-shareable |
+| **Counting / Letters / Shapes** | low–med | early-learning taps (count the ducks, tap the letter A, match the shape) — *educational*, pairs with the Word/typing lane; a little "Learn" corner |
+| **Simple Maze** | low | guide a character (swipe/arrows) to the goal; bigger tiles + no timer for the youngest |
+
 ### Local multiplayer (single-screen)
 
 One self-contained file, shared input on one device. Desktop = split keyboard; mobile = each player
