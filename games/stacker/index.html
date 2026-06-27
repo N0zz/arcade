@@ -53,17 +53,19 @@
   .mode-btn.active::before { content: '✓'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
     font-size: 13px; font-weight: 700; }
   .mode-desc { font-size: 12px; color: #7a5aaa; opacity: 0.75; min-height: 18px; }
+  .mode-btn .mbest { display: block; font-size: 10px; font-weight: 600; letter-spacing: 1px;
+    opacity: 0.7; margin-top: 3px; }
 
   /* Share row on the end screen — themed copy of the catalogue footer share block */
   .share { display: flex; gap: 9px; justify-content: center; flex-wrap: wrap; align-items: center; margin-top: 4px; }
   .share .lbl { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #7a5aaa; opacity: 0.75; margin-right: 2px; }
-  .share .sbtn { appearance: none; -webkit-appearance: none; font: inherit; margin: 0; line-height: 0;
+  #overlay .share .sbtn { appearance: none; -webkit-appearance: none; font: inherit; margin: 0; line-height: 0;
     display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 0;
     cursor: pointer; border-radius: 10px; color: #6a3fa8; background: rgba(255,255,255,0.6);
     border: 1px solid rgba(160,100,240,0.4); transition: color .12s, border-color .12s, background .12s; text-decoration: none; }
-  .share .sbtn svg { width: 18px; height: 18px; fill: currentColor; display: block; }
-  .share .sbtn:hover { color: #fff; background: linear-gradient(135deg, #c084fc, #818cf8); border-color: transparent; }
-  .share .sbtn.ok { color: #fff; background: #6ac49a; border-color: transparent; }
+  #overlay .share .sbtn svg { width: 18px; height: 18px; fill: currentColor; display: block; }
+  #overlay .share .sbtn:hover { color: #fff; background: linear-gradient(135deg, #c084fc, #818cf8); border-color: transparent; }
+  #overlay .share .sbtn.ok { color: #fff; background: #6ac49a; border-color: transparent; }
 
   /* Portrait: nav buttons stack/clear the HUD — push HUD content below the nav bar */
   @media (orientation: portrait) {
@@ -90,9 +92,9 @@
   <h1>STACK</h1>
   <p class="sub">Tap to drop the block.<br>Stack perfectly for a bonus!</p>
   <div class="mode-btns">
-    <button class="mode-btn active" id="btn-classic">Classic</button>
-    <button class="mode-btn" id="btn-time">Time Attack</button>
-    <button class="mode-btn" id="btn-zen">Zen</button>
+    <button class="mode-btn active" id="btn-classic">Classic<span class="mbest" id="mbest-classic"></span></button>
+    <button class="mode-btn" id="btn-time">Time Attack<span class="mbest" id="mbest-time"></span></button>
+    <button class="mode-btn" id="btn-zen">Zen<span class="mbest" id="mbest-zen"></span></button>
   </div>
   <p class="mode-desc" id="mode-desc">Endless — stack as high as you can</p>
   <p class="hint">Tap · Click · Space · Enter</p>
@@ -368,6 +370,15 @@
     const btn = document.getElementById('btn-' + m);
     if (btn) btn.addEventListener('click', e => { e.stopPropagation(); selectMode(m); });
   });
+
+  // Per-mode best scores under each mode button (refreshed whenever the menu shows)
+  function refreshMenuBests() {
+    ['classic', 'time', 'zen'].forEach(m => {
+      const el = document.getElementById('mbest-' + m);
+      if (el) el.textContent = 'best: ' + getBest(m);
+    });
+  }
+  refreshMenuBests();
   selectMode(selectedMode); // make the default-selected mode obvious on load
 
   document.getElementById('startBtn').addEventListener('click', () => startGameMode(selectedMode));
@@ -578,6 +589,9 @@
     // Expose for tests: force timeLeft (Time Attack sim)
     _setTimeLeft(v) { timeLeft = v; },
     _setTimeTick(v) { timeTick = v; },
+    // Expose for tests: per-mode best line shown in the menu
+    refreshMenuBests() { refreshMenuBests(); },
+    menuBest(m) { const el = document.getElementById('mbest-' + m); return el ? el.textContent : null; },
   };
 
   resize();

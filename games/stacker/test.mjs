@@ -312,6 +312,36 @@ ok(gi.store['stacker_best_zen'] != null, 'zen key set after zen session');
 ok(gi.store['stacker_best_classic'] !== gi.store['stacker_best_zen'] || true,
   'classic and zen keys are distinct (both exist)');
 
+// ---- Menu: per-mode best scores ----
+
+section('Menu — shows best per mode on boot');
+const gm = runStacker();
+const TM = () => gm.test();
+ok(typeof TM().refreshMenuBests === 'function', 'exposes refreshMenuBests()');
+ok(TM().menuBest('classic') === 'best: 0', 'classic best line = "best: 0" on fresh boot (got ' + TM().menuBest('classic') + ')');
+ok(TM().menuBest('time') === 'best: 0', 'time best line = "best: 0" on fresh boot');
+ok(TM().menuBest('zen') === 'best: 0', 'zen best line = "best: 0" on fresh boot');
+
+section('Menu — best lines reflect persisted scores after refresh');
+const gm2 = runStacker();
+gm2.store['stacker_best_classic'] = '42';
+gm2.store['stacker_best_zen'] = '7';
+const TM2 = () => gm2.test();
+TM2().refreshMenuBests();
+ok(TM2().menuBest('classic') === 'best: 42', 'classic best line reflects stored 42 (got ' + TM2().menuBest('classic') + ')');
+ok(TM2().menuBest('zen') === 'best: 7', 'zen best line reflects stored 7 (got ' + TM2().menuBest('zen') + ')');
+ok(TM2().menuBest('time') === 'best: 0', 'time best line still 0 (got ' + TM2().menuBest('time') + ')');
+
+section('Menu — best line updates after a play raises the best');
+const gm3 = runStacker();
+const TM3 = () => gm3.test();
+TM3().startMode('classic');
+for (let i = 0; i < 6; i++) TM3().dropPerfect();
+const playedScore = TM3().score;
+TM3().refreshMenuBests();
+ok(TM3().menuBest('classic') === 'best: ' + playedScore,
+  'classic best line shows the just-played score ' + playedScore + ' (got ' + TM3().menuBest('classic') + ')');
+
 // ---- Summary ----
 console.log('\n----------------------------------------');
 console.log('PASS: ' + pass + '   FAIL: ' + fail);
