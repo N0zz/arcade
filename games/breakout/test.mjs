@@ -372,6 +372,36 @@ section('Breakout: best score per mode persists in localStorage');
   }
 }
 
+section('Breakout: end screen shows score/best + share row');
+{
+  const ge = runGame();
+  const Te = ge.T;
+  Te().start();
+  Te().launch();
+  Te().setBall(640, 120, 0, -15);
+  Te().step(30);
+  const sc = Te().score;
+  let eg = 0;
+  while (Te().state === 'playing' && eg++ < 500) { Te().setBall(640, 790, 0, 10); Te().step(10); }
+  ok(Te().state === 'over', 'reached game over');
+  const endOv = ge.getEl('endOverlay');
+  ok(!endOv.classList.contains('hidden'), 'end overlay is shown on game over');
+  ok(ge.getEl('overlay').classList.contains('hidden'), 'menu overlay is hidden on game over');
+  ok(String(ge.getEl('endScore').textContent) === String(sc), 'end screen shows final score (' + ge.getEl('endScore').textContent + ')');
+  ok(Number(ge.getEl('endBest').textContent) >= sc, 'end screen shows best >= score');
+  // share buttons wired with breakout url + live score in text
+  const xHref = ge.getEl('shareX').href || '';
+  ok(xHref.indexOf('twitter.com/intent/tweet') !== -1, 'X share button points at intent/tweet');
+  ok(xHref.indexOf('games%2Fbreakout') !== -1, 'X share url is the breakout page');
+  const rHref = ge.getEl('shareReddit').href || '';
+  ok(rHref.indexOf('reddit.com/submit') !== -1, 'Reddit share button points at submit');
+  // Play again returns to a fresh game
+  ge.getEl('againBtn').fire('click');
+  ok(Te().state === 'playing', 'Play again starts a new game');
+  ok(Te().score === 0, 'Play again resets score');
+  ok(endOv.classList.contains('hidden'), 'end overlay hidden after Play again');
+}
+
 // ---- Summary ----
 console.log('\n----------------------------------------');
 console.log('PASS: ' + pass + '   FAIL: ' + fail);
