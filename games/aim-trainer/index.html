@@ -43,6 +43,17 @@
   .mode-btn.selected::before { content:'\2713 '; }
   .start-btn { font-family:inherit; cursor:pointer; font-size:14px; letter-spacing:2px; padding:10px 32px;
     border-radius:6px; color:var(--fg); background:var(--accent); border:none; margin-top:4px; }
+  .opt-row { display:flex; gap:10px; justify-content:center; align-items:center; margin-top:6px; }
+  .opt-toggle { font-family:inherit; cursor:pointer; font-size:12px; letter-spacing:2px; padding:8px 16px;
+    border-radius:6px; color:var(--fg); background:transparent; border:1px solid #3a4a5a; transition:background 0.15s,border-color 0.15s; }
+  .opt-toggle:hover { border-color:var(--accent); }
+  .opt-toggle[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#0d1117; font-weight:bold;
+    box-shadow:0 0 14px rgba(255,122,60,0.5); }
+  .opt-toggle[aria-pressed="true"]::before { content:'\2713 '; }
+  #bestPanel { display:flex; gap:8px 16px; flex-wrap:wrap; justify-content:center; margin-top:8px;
+    font-size:11px; letter-spacing:1.5px; opacity:0.75; }
+  #bestPanel .bcell { white-space:nowrap; }
+  #bestPanel .bcell b { color:var(--accent); }
   #endScreen { position:fixed; inset:0; z-index:8; display:none; flex-direction:column; align-items:center; justify-content:center;
     text-align:center; gap:14px; background:rgba(13,17,23,0.92); padding:24px; }
   #endScreen h1 { margin:0; font-size:36px; letter-spacing:4px; color:var(--accent); }
@@ -93,6 +104,10 @@
   <div class="mode-row">
     <button class="mode-btn" data-mode="sprint">SPRINT TO 100</button>
   </div>
+  <div class="opt-row">
+    <button class="opt-toggle" id="movingToggle" type="button" aria-pressed="false">MOVING TARGETS</button>
+  </div>
+  <div id="bestPanel"></div>
   <p class="hint">CLICK / TAP TO SHOOT</p>
   <button class="start-btn" id="startBtn">READY UP</button>
 </div>
@@ -156,12 +171,28 @@
   const TARGET_BASE_R = 34;
   const SPAWN_INTERVAL_INIT = 90;
   const SPAWN_INTERVAL_MIN = 40;
+  // Moving-targets ramp: fraction of targets that move + their speed both grow with score.
+  const MOVE_START_SCORE = 50;   // points before any target starts drifting
+  const MOVE_FULL_SCORE = 400;   // score at which the ramp is maxed out
+  const MOVE_MAX_FRACTION = 0.85; // at most this share of targets move
+  const MOVE_SPEED_MIN = 0.4;    // px/frame at the moment movement begins
+  const MOVE_SPEED_MAX = 2.6;    // px/frame at full ramp
 
   // ---- Mode state ----
   // mode: 'timed' | 'sprint'
   // sessionSeconds: number (only for timed)
   let mode = 'timed';
   let sessionSeconds = DEFAULT_SESSION;
+
+  // ---- Moving targets (opt-in, persisted) ----
+  const MOVING_KEY = 'aim-trainer_moving';
+  function loadMoving() {
+    try { return localStorage.getItem(MOVING_KEY) === '1'; } catch (e) { return false; }
+  }
+  function saveMoving(on) {
+    try { localStorage.setItem(MOVING_KEY, on ? '1' : '0'); } catch (e) {}
+  }
+  let movingTargets = loadMoving();
 
   // ---- State ----
   let state = 'ready'; // ready | playing | over
@@ -237,7 +268,7 @@
     const x = pad + _rng() * (W - pad * 2);
     const y = HUD_H + pad + _rng() * (H - HUD_H - pad * 2);
     const r = TARGET_BASE_R * (0.75 + _rng() * 0.6);
-    targets.push({ x, y, r, born: frame, life: 1 });
+    targets.push({ x, y, r, born: frame, life: 1, vx: 0, vy: 0, moving: false });
     lastSpawnFrame = frame;
     SND.play('spawn');
   }
@@ -355,6 +386,9 @@
     // update target life (for pop-in animation)
     for (const t of targets) t.life = Math.min(1, (frame - t.born) / 6);
 
+    // moving targets: more targets drift + faster, the higher the score
+    if (movingTargets) updateMovement();
+
     // update particles
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
@@ -367,6 +401,50 @@
     for (let i = hitMarkers.length - 1; i >= 0; i--) {
       hitMarkers[i].life -= 0.06;
       if (hitMarkers[i].life <= 0) hitMarkers.splice(i, 1);
+    }
+  }
+
+  function moveRamp() {
+    if (score <= MOVE_START_SCORE) return 0;
+    const p = (score - MOVE_START_SCORE) / (MOVE_FULL_SCORE - MOVE_START_SCORE);
+    return Math.max(0, Math.min(1, p));
+  }
+
+  function updateMovement() {
+    const p = moveRamp();
+    // how many of the on-screen targets should be moving right now
+    const wantMoving = p > 0 ? Math.ceil(MOVE_MAX_FRACTION * p * targets.length) : 0;
+    const speed = MOVE_SPEED_MIN + (MOVE_SPEED_MAX - MOVE_SPEED_MIN) * p;
+
+    let movingCount = 0;
+    for (const t of targets) if (t.moving) movingCount++;
+
+    // promote stationary targets until we hit the desired count
+    if (movingCount < wantMoving) {
+      for (const t of targets) {
+        if (movingCount >= wantMoving) break;
+        if (!t.moving) {
+          const a = _rng() * Math.PI * 2;
+          t.vx = Math.cos(a) * speed;
+          t.vy = Math.sin(a) * speed;
+          t.moving = true;
+          movingCount++;
+        }
+      }
+    }
+
+    const minX = t => t.r, maxX = t => W - t.r;
+    const top = t => HUD_H + t.r, bot = t => H - 8 - t.r;
+    for (const t of targets) {
+      if (!t.moving) continue;
+      // rescale velocity toward the current ramp speed so existing targets speed up with score
+      const cur = Math.hypot(t.vx, t.vy);
+      if (cur > 0.0001) { const k = speed / cur; t.vx *= k; t.vy *= k; }
+      t.x += t.vx; t.y += t.vy;
+      if (t.x < minX(t)) { t.x = minX(t); t.vx = Math.abs(t.vx); }
+      else if (t.x > maxX(t)) { t.x = maxX(t); t.vx = -Math.abs(t.vx); }
+      if (t.y < top(t)) { t.y = top(t); t.vy = Math.abs(t.vy); }
+      else if (t.y > bot(t)) { t.y = bot(t); t.vy = -Math.abs(t.vy); }
     }
   }
 
@@ -551,6 +629,36 @@
     });
   });
 
+  // ---- Moving-targets toggle ----
+  function syncMovingToggle() {
+    const btn = $('movingToggle');
+    if (!btn) return;
+    btn.setAttribute('aria-pressed', movingTargets ? 'true' : 'false');
+  }
+  {
+    const mt = $('movingToggle');
+    if (mt) mt.addEventListener('click', () => {
+      movingTargets = !movingTargets;
+      saveMoving(movingTargets);
+      syncMovingToggle();
+    });
+    syncMovingToggle();
+  }
+
+  // ---- Top scores panel (per mode) ----
+  function renderBestPanel() {
+    const panel = $('bestPanel');
+    if (!panel) return;
+    const cells = [10, 20, 30, 60].map(s => {
+      const b = loadBest('timed', s);
+      return '<span class="bcell">' + s + 's <b>' + b + '</b></span>';
+    });
+    const st = loadBest('sprint', 0);
+    cells.push('<span class="bcell">SPRINT <b>' + (st > 0 ? (st / 60).toFixed(1) + 's' : '--') + '</b></span>');
+    panel.innerHTML = cells.join('');
+  }
+  renderBestPanel();
+
   $('startBtn').addEventListener('click', () => {
     mode = selectedMode;
     sessionSeconds = selectedSeconds || DEFAULT_SESSION;
@@ -560,6 +668,7 @@
   $('restartBtn').addEventListener('click', () => {
     endScreen.style.display = 'none';
     overlay.classList.remove('hidden');
+    renderBestPanel();
   });
 
   // ---- Share buttons (end screen) ----
@@ -597,7 +706,9 @@
     get timeLeft() { return timeLeft; },
     get elapsed() { return elapsedFrames / 60; }, // seconds elapsed (useful for sprint)
     get elapsedFrames() { return elapsedFrames; },
-    get targets() { return targets.map(t => ({ x: t.x, y: t.y, r: t.r })); },
+    get targets() { return targets.map(t => ({ x: t.x, y: t.y, r: t.r, vx: t.vx, vy: t.vy, moving: t.moving })); },
+    get movingTargets() { return movingTargets; },
+    setMoving(on) { movingTargets = !!on; saveMoving(movingTargets); syncMovingToggle(); },
     get bestScore() {
       if (mode === 'timed') return loadBest('timed', sessionSeconds);
       return 0;

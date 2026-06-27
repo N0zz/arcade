@@ -33,6 +33,9 @@ function makeEl(id) {
     removeEventListener: () => {},
     fire: (type, ev = {}) => (el._l[type] || []).forEach(fn => fn({ preventDefault() {}, stopPropagation() {}, ...ev })),
     appendChild: (c) => { el.children.push(c); return c; },
+    _attrs: {},
+    setAttribute: (k, v) => { el._attrs[k] = String(v); },
+    getAttribute: (k) => (k in el._attrs ? el._attrs[k] : null),
     querySelectorAll: () => [], querySelector: () => null,
     getContext: () => makeCtx2d(),
     focus: () => {},
@@ -374,6 +377,150 @@ section('portrait HUD clearance: targets spawn below nav + HUD band');
   const ys = Tp().targets.map(t => t.y);
   ok(ys.length >= 1, 'portrait has a target after start');
   ok(ys.every(y => y >= 96 + 80), 'portrait targets clear nav + HUD (min y=' + Math.min(...ys) + ', need ≥176)');
+}
+
+section('moving targets: API surface');
+ok(typeof T().movingTargets === 'boolean', 'movingTargets getter is a boolean');
+ok(typeof T().setMoving === 'function', 'setMoving() exposed');
+
+section('moving targets: off by default, targets stay put');
+{
+  const gm = runGame('index.html');
+  const Tm = () => gm.test();
+  ok(Tm().movingTargets === false, 'moving targets default off');
+  Tm().start();
+  Tm().setSeed(11);
+  Tm().step(2);
+  const before = Tm().targets[0];
+  Tm().step(40);
+  const after = Tm().targets[0];
+  // same target (no hit fired), should not have drifted
+  ok(after && before && Math.abs(after.x - before.x) < 0.001 && Math.abs(after.y - before.y) < 0.001,
+    'stationary target does not move when moving disabled');
+  ok(Tm().targets.every(t => t.moving === false), 'no target flagged moving when disabled');
+}
+
+section('moving targets: toggle persists to localStorage');
+{
+  const gm = runGame('index.html');
+  const Tm = () => gm.test();
+  Tm().setMoving(true);
+  ok(gm.store['aim-trainer_moving'] === '1', 'enabling moving writes "1" to localStorage');
+  ok(Tm().movingTargets === true, 'movingTargets reflects enabled');
+  Tm().setMoving(false);
+  ok(gm.store['aim-trainer_moving'] === '0', 'disabling moving writes "0" to localStorage');
+
+  // fresh instance reads the persisted value
+  const gm3 = (() => {
+    const html = fs.readFileSync(path.join(DIR, 'index.html'), 'utf8');
+    const m = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
+    const modeBtns = makeModeBtns();
+    const elCache = {};
+    const getEl = (id) => (elCache[id] ||= makeEl(id));
+    const store = { 'aim-trainer_moving': '1' };
+    const win = { innerWidth: 1280, innerHeight: 800, addEventListener: () => {}, removeEventListener: () => {} };
+    const sandbox = {
+      window: win,
+      document: { getElementById: getEl, createElement: t => makeEl(t), addEventListener: () => {}, querySelectorAll: (sel) => sel === '.mode-btn' ? modeBtns : [], body: makeEl('body') },
+      location: { search: '' }, navigator: {},
+      localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } },
+      requestAnimationFrame: () => 0, cancelAnimationFrame: () => {}, setTimeout: () => 0, setInterval: () => 0, clearInterval: () => {},
+      matchMedia: () => ({ matches: false }),
+      Math, JSON, String, Number, Array, Object, parseInt, parseFloat, isFinite, isNaN, Date, console, URLSearchParams,
+    };
+    sandbox.globalThis = sandbox;
+    const ctx = vm.createContext(sandbox);
+    try { vm.runInContext(m[1], ctx, { filename: 'index.html' }); } catch (e) {}
+    return { test: () => win.__test };
+  })();
+  ok(gm3.test().movingTargets === true, 'persisted moving=1 loaded on fresh boot');
+}
+
+section('moving targets: ramp — more targets move and faster as score grows');
+{
+  const gm = runGame('index.html');
+  const Tm = () => gm.test();
+  Tm().setMoving(true);
+  Tm().startMode('sprint'); // sprint escalates spawn so multiple targets appear
+  Tm().setSeed(5);
+
+  // low score: at/below MOVE_START_SCORE nothing should be moving
+  Tm().step(20);
+  ok(Tm().targets.every(t => !t.moving) || Tm().score <= 50,
+    'no movement at very low score');
+
+  // sprint ends at 100, so sample the ramp from a long timed run instead.
+  const gt = runGame('index.html');
+  const Tt = () => gt.test();
+  Tt().setMoving(true);
+  Tt().startMode(60);
+  Tt().setSeed(9);
+  function speedAndFractionAt(scoreTarget) {
+    let safety = 0;
+    while (Tt().state === 'playing' && Tt().score < scoreTarget && safety++ < 8000) {
+      Tt().step(2);
+      const t = Tt().targets[0];
+      if (t) Tt().shootAt(t.x, t.y);
+    }
+    Tt().step(5); // let movement assign velocities
+    const ts = Tt().targets;
+    const movingFrac = ts.length ? ts.filter(t => t.moving).length / ts.length : 0;
+    const maxSpeed = ts.reduce((mx, t) => Math.max(mx, Math.hypot(t.vx, t.vy)), 0);
+    return { movingFrac, maxSpeed, score: Tt().score };
+  }
+  const low = speedAndFractionAt(80);
+  const high = speedAndFractionAt(300);
+  ok(high.score > low.score, 'reached a higher score for the high sample (' + low.score + ' → ' + high.score + ')');
+  ok(high.movingFrac >= low.movingFrac, 'moving fraction does not decrease as score grows (' + low.movingFrac.toFixed(2) + ' → ' + high.movingFrac.toFixed(2) + ')');
+  ok(high.maxSpeed >= low.maxSpeed - 0.001, 'max target speed grows (or holds) with score (' + low.maxSpeed.toFixed(2) + ' → ' + high.maxSpeed.toFixed(2) + ')');
+  ok(high.maxSpeed > 0, 'targets are moving at high score (maxSpeed=' + high.maxSpeed.toFixed(2) + ')');
+}
+
+section('moving targets: stay within the playfield (bounce)');
+{
+  const gm = runGame('index.html');
+  const Tm = () => gm.test();
+  Tm().setMoving(true);
+  Tm().startMode(60);
+  Tm().setSeed(13);
+  // push score up so plenty of targets move fast, then run many frames
+  let safety = 0;
+  while (Tm().state === 'playing' && Tm().score < 400 && safety++ < 8000) {
+    Tm().step(2);
+    const t = Tm().targets[0];
+    if (t) Tm().shootAt(t.x, t.y);
+  }
+  let outOfBounds = false;
+  for (let i = 0; i < 600 && Tm().state === 'playing'; i++) {
+    Tm().step(1);
+    for (const t of Tm().targets) {
+      if (t.x < t.r - 1 || t.x > 1280 - t.r + 1 || t.y < 48 + t.r - 1 || t.y > 800 - 8 - t.r + 1) {
+        outOfBounds = true;
+      }
+    }
+  }
+  ok(!outOfBounds, 'moving targets never leave the playfield bounds');
+}
+
+section('moving targets: flick aim still hits a moving target at its current position');
+{
+  const gm = runGame('index.html');
+  const Tm = () => gm.test();
+  Tm().setMoving(true);
+  Tm().startMode(60);
+  Tm().setSeed(21);
+  // build up score so the first target is moving
+  let safety = 0;
+  while (Tm().state === 'playing' && Tm().score < 200 && safety++ < 8000) {
+    Tm().step(2);
+    const t = Tm().targets[0];
+    if (t) Tm().shootAt(t.x, t.y);
+  }
+  Tm().step(10);
+  const moving = Tm().targets.find(t => t.moving) || Tm().targets[0];
+  const hitsBefore = Tm().hits;
+  if (moving) Tm().shootAt(moving.x, moving.y);
+  ok(Tm().hits === hitsBefore + 1, 'clicking a moving target at its reported position registers a hit');
 }
 
 console.log('\n----------------------------------------');
