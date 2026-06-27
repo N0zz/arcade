@@ -18,7 +18,7 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #b8d4f0; font-family: system-ui, -apple-system, sans-serif; user-select: none; touch-action: none; }
   #game { display: block; width: 100vw; height: 100vh; }
-  #hud .stat b { color: #8a4fbf; font-size: 18px; }
+  #hud .stat b { color: #ede4ff; font-size: 18px; }
   #combo { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 5;
     font-size: 13px; color: #e06ab0; font-weight: bold; letter-spacing: 2px; opacity: 0; transition: opacity 0.2s; }
   #overlay { position: fixed; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center;
@@ -74,6 +74,10 @@
     <button class="mode-btn" id="btn-zen">Zen<span class="mbest" id="mbest-zen"></span></button>
   </div>
   <p class="mode-desc" id="mode-desc">Endless — stack as high as you can</p>
+  <div class="mode-btns" id="theme-btns">
+    <button class="mode-btn active" id="btn-theme-light">Light</button>
+    <button class="mode-btn" id="btn-theme-dark">Dark</button>
+  </div>
   <p class="hint">Tap · Click · Space · Enter</p>
   <button id="startBtn">Play</button>
 </div>
@@ -111,16 +115,27 @@
 
   const MODE_DESCS = { classic: 'Endless — stack as high as you can', time: '60 seconds — stack as many as possible', zen: 'Relaxed — slow speed, wide perfect zone' };
 
+  // ---- Theme ----
+  const HUES = [348, 20, 45, 80, 150, 190, 220, 260, 290, 320];
+  // Theme-specific palette knobs: block lightness, stroke lightness, sky stops, flash, shadow.
+  const THEMES = {
+    light: { blockS: 70, blockL: 72, strokeS: 60, strokeL: 55, skyTop: '#c4ddff', skyBot: '#f0e8ff',
+             flash: 'rgba(255,220,255,', shadow: 'rgba(0,0,0,0.06)', column: 'rgba(0,0,0,0.035)', bodyBg: '#b8d4f0' },
+    dark:  { blockS: 60, blockL: 58, strokeS: 70, strokeL: 38, skyTop: '#1b2238', skyBot: '#2a2140',
+             flash: 'rgba(200,170,255,', shadow: 'rgba(0,0,0,0.30)', column: 'rgba(255,255,255,0.04)', bodyBg: '#141a2e' },
+  };
+  let theme = (localStorage.getItem('stacker_theme') === 'dark') ? 'dark' : 'light';
+  function TH() { return THEMES[theme]; }
+  function applyTheme() { document.body.style.background = TH().bodyBg; }
+
   // ---- Palette: pastel hues cycling per layer ----
   function blockColor(layer) {
-    const hues = [348, 20, 45, 80, 150, 190, 220, 260, 290, 320];
-    const h = hues[layer % hues.length];
-    return `hsl(${h}, 70%, 72%)`;
+    const t = TH();
+    return `hsl(${HUES[layer % HUES.length]}, ${t.blockS}%, ${t.blockL}%)`;
   }
   function blockStroke(layer) {
-    const hues = [348, 20, 45, 80, 150, 190, 220, 260, 290, 320];
-    const h = hues[layer % hues.length];
-    return `hsl(${h}, 60%, 55%)`;
+    const t = TH();
+    return `hsl(${HUES[layer % HUES.length]}, ${t.strokeS}%, ${t.strokeL}%)`;
   }
 
   // ---- State ----
@@ -329,6 +344,20 @@
   refreshMenuBests();
   selectMode(selectedMode); // make the default-selected mode obvious on load
 
+  // ---- Theme picker UI ----
+  function selectTheme(t) {
+    theme = (t === 'dark') ? 'dark' : 'light';
+    localStorage.setItem('stacker_theme', theme);
+    const lb = document.getElementById('btn-theme-light');
+    const db = document.getElementById('btn-theme-dark');
+    if (lb) lb.classList.toggle('active', theme === 'light');
+    if (db) db.classList.toggle('active', theme === 'dark');
+    applyTheme();
+  }
+  document.getElementById('btn-theme-light')?.addEventListener('click', e => { e.stopPropagation(); selectTheme('light'); });
+  document.getElementById('btn-theme-dark')?.addEventListener('click', e => { e.stopPropagation(); selectTheme('dark'); });
+  selectTheme(theme); // apply saved theme on boot + sync button state
+
   document.getElementById('startBtn').addEventListener('click', () => startGameMode(selectedMode));
 
   // ---- Particles ----
@@ -393,22 +422,23 @@
 
   // ---- Render ----
   function render() {
+    const t = TH();
     // Sky gradient
     const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, '#c4ddff');
-    grad.addColorStop(1, '#f0e8ff');
+    grad.addColorStop(0, t.skyTop);
+    grad.addColorStop(1, t.skyBot);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
     // Playfield column subtle bg (only on wide screens)
     if (PF_W < W - 4) {
-      ctx.fillStyle = 'rgba(0,0,0,0.035)';
+      ctx.fillStyle = t.column;
       ctx.fillRect(PF_X, 0, PF_W, H);
     }
 
     // Screen flash (perfect placement)
     if (screenFlash > 0) {
-      ctx.fillStyle = `rgba(255,220,255,${screenFlash / 10 * 0.3})`;
+      ctx.fillStyle = `${t.flash}${screenFlash / 10 * 0.3})`;
       ctx.fillRect(0, 0, W, H);
     }
 
@@ -448,7 +478,7 @@
 
       // Shadow below mover showing where it'll land
       const topBlock = blocks[blocks.length - 1];
-      ctx.fillStyle = 'rgba(0,0,0,0.06)';
+      ctx.fillStyle = TH().shadow;
       roundRect(ctx, mover.x, worldToCanvas(topBlock.y), mover.w, BLOCK_H, 5);
       ctx.fill();
 
