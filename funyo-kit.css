@@ -1,0 +1,20 @@
+/* funyo-kit shared shell styles — neutral, readable on any dark game background.
+   Tint the share hover per game by setting --funyo-accent on the share container. */
+.funyo-nav { position: fixed; top: 8px; left: 10px; z-index: 9; display: flex; gap: 8px; }
+.funyo-back { font: 600 12px/1 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; letter-spacing: 1px;
+  color: #fff; text-decoration: none; background: rgba(8, 12, 20, 0.66); border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px; padding: 7px 11px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  transition: border-color .12s, color .12s, background .12s; }
+.funyo-back:hover { border-color: #9fe8ff; color: #fff; background: rgba(8, 12, 20, 0.85); }
+.funyo-mute { min-width: 34px; font-size: 14px; line-height: 0; }
+
+.funyo-share { display: flex; gap: 9px; justify-content: center; align-items: center; flex-wrap: wrap; --funyo-accent: #9fe8ff; }
+.funyo-share-lbl { font: 700 11px/1 ui-monospace, monospace; letter-spacing: 1.5px; text-transform: uppercase; opacity: .55; margin-right: 2px; }
+.funyo-share .sbtn { appearance: none; -webkit-appearance: none; font: inherit; margin: 0; line-height: 0;
+  display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 0; cursor: pointer;
+  color: #cfe6f5; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 9px;
+  text-decoration: none; transition: color .12s, border-color .12s, background .12s; }
+.funyo-share .sbtn svg { width: 18px; height: 18px; fill: currentColor; display: block; }
+.funyo-share .sbtn:hover { color: #fff; border-color: var(--funyo-accent); background: rgba(255, 255, 255, 0.12); }
+.funyo-share .sbtn.ok { color: #7fe0a0; border-color: #7fe0a0; }

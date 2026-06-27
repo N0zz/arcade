@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 
 const DIR = path.dirname(new URL(import.meta.url).pathname);
+const KIT = fs.readFileSync(path.join(DIR, 'funyo-kit.js'), 'utf8'); // shared kit, preloaded for game pages
 let pass = 0, fail = 0; const fails = [];
 const ok = (c, m) => { if (c) pass++; else { fail++; fails.push(m); console.log('  ✗ ' + m); } };
 const section = t => console.log('\n=== ' + t + ' ===');
@@ -80,7 +81,7 @@ function freeCell(T) { // find a buildable cell
 }
 function testTD() {
   section('games/tower-defense (logic)');
-  const g = runInline('games/tower-defense/index.html');
+  const g = runInline('games/tower-defense/index.html', { __preCode: KIT });
   ok(g.bootErr === null, 'TD boots: ' + g.bootErr);
   const T = () => g.test();
   ok(T() != null, 'TD exposes __test');
@@ -109,7 +110,7 @@ function testTD() {
   ok(T().gold < gBefore, 'upgrade spends gold');
 
   // leaks reduce keep HP -> game over after enough undefended waves
-  const g2 = runInline('games/tower-defense/index.html'); const U = () => g2.test();
+  const g2 = runInline('games/tower-defense/index.html', { __preCode: KIT }); const U = () => g2.test();
   U().start();
   let guard = 0; while (U().hp > 0 && guard++ < 60000) { if (U().state === 'build') U().startWave(); U().step(1); }
   ok(U().hp <= 0 && U().state === 'over', 'undefended waves drain the keep and end the run (hp=' + U().hp + ', state=' + U().state + ')');
@@ -126,16 +127,52 @@ function liveSlugs() {
 function testLiveGames() {
   section('live games (boot + __test)');
   for (const slug of liveSlugs()) {
-    const g = runInline('games/' + slug + '/index.html');
+    const g = runInline('games/' + slug + '/index.html', { __preCode: KIT });
     ok(g.bootErr === null, slug + ' boots headless: ' + g.bootErr);
     ok(g.test() != null, slug + ' exposes window.__test');
   }
+}
+
+// ---------------- funyo-kit (shared shell) ----------------
+function testKit() {
+  section('funyo-kit (shared shell)');
+  const store = {};
+  const cl = () => { const s = new Set(); return { add: (...c) => c.forEach(x => s.add(x)), remove: (...c) => c.forEach(x => s.delete(x)), contains: c => s.has(c), toggle: () => {} }; };
+  const mk = () => { const e = { textContent: '', style: {}, classList: cl(), _l: {}, addEventListener: (t, fn) => { (e._l[t] ||= []).push(fn); }, appendChild: c => c, querySelector: () => null, querySelectorAll: () => [] }; let h = ''; Object.defineProperty(e, 'innerHTML', { get: () => h, set: v => { h = String(v ?? ''); } }); return e; };
+  const els = {};
+  const doc = { getElementById: id => (els[id] ||= mk()), createElement: () => mk(), body: mk() };
+  const sandbox = {
+    window: { addEventListener() {} }, document: doc, navigator: {}, location: {},
+    localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } },
+    setTimeout: () => 0, setInterval: () => 0, Math, JSON, String, Number, Array, Object, encodeURIComponent, console,
+  };
+  sandbox.globalThis = sandbox;
+  const ctx = vm.createContext(sandbox);
+  let err = null; try { vm.runInContext(KIT, ctx, { filename: 'funyo-kit.js' }); } catch (e) { err = e.stack; }
+  ok(err === null, 'kit loads: ' + err);
+  const F = sandbox.funyo;
+  ok(F && F.sound && F.nav && F.shareRow && F.shareUrls && F.pwa, 'kit exposes sound/nav/shareRow/shareUrls/pwa');
+  if (!F) return;
+  const u = F.shareUrls('https://funyo.online/games/snake/', 'I scored 42 in Neon Snake 🐍');
+  ok(u.x.indexOf('twitter.com/intent/tweet') >= 0 && u.x.indexOf('&url=') >= 0, 'shareUrls.x is an X intent with url');
+  ok(u.reddit.indexOf('reddit.com/submit') >= 0, 'shareUrls.reddit is a reddit submit');
+  ok(u.copy.indexOf('I scored 42') === 0 && u.copy.indexOf('funyo.online/games/snake') >= 0, 'shareUrls.copy = message + newline + url');
+  ok(F.sound.isMuted() === false, 'sound starts unmuted');
+  F.sound.toggle();
+  ok(F.sound.isMuted() === true && store['funyo_muted'] === '1', 'toggle mutes + persists');
+  F.sound.play('anything'); // muted + no AudioContext → must not throw
+  F.sound.toggle();
+  ok(F.sound.isMuted() === false, 'toggle unmutes');
+  let threw = null;
+  try { F.nav({ mute: true }); F.shareRow(doc.getElementById('sr'), { slug: 'snake', message: () => 'x' }); F.pwa(); } catch (e) { threw = e.message; }
+  ok(threw === null, 'nav/shareRow/pwa run headless without throwing: ' + threw);
 }
 
 console.log('Running arcade tests…');
 testCatalogue();
 testTD();
 testLiveGames();
+testKit();
 console.log('\n----------------------------------------');
 console.log('PASS: ' + pass + '   FAIL: ' + fail);
 if (fail) { console.log('\nFailures:'); fails.forEach(f => console.log(' - ' + f)); process.exit(1); }
