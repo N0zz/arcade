@@ -143,7 +143,7 @@
   const PADDLE_H = 14, BALL_R = 7;
   const BRICK_ROWS = 10, BRICK_COLS = 18, BRICK_GAP = 3;
   const LIVES_START = 3;
-  const MIN_VY = 1.5;
+  const MIN_VY = 1.95;
   const ENDLESS_ROW_INTERVAL = 420;
   const SURVIVAL_DESCENT_RATE = 0.04;
 
@@ -224,7 +224,7 @@
   }
 
   function makeBall(x, y, speed) {
-    const spd = speed || (4.5 + level * 0.5);
+    const spd = speed || (5.85 + level * 0.65);
     const ang = -Math.PI / 2 + (Math.random() - 0.5) * 0.4;
     return { x, y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd };
   }
@@ -298,7 +298,7 @@
   function launch() {
     if (!ballStuck || state !== 'playing') return;
     ballStuck = false;
-    const spd = 4.5 + level * 0.5;
+    const spd = 5.85 + level * 0.65;
     balls[0].vx = (Math.random() - 0.5) * spd * 0.6;
     balls[0].vy = -spd;
     SND.play('launch');
@@ -807,7 +807,11 @@
   updateHud();
   loop2();
 })();
-  if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {} }
+  if ('serviceWorker' in navigator) {
+    var swReloaded = false, hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function () { if (swReloaded || !hadController) return; swReloaded = true; location.reload(); });
+    window.addEventListener('load', function () { try { navigator.serviceWorker.register('sw.js').then(function (reg) { reg.update(); setInterval(function () { reg.update(); }, 3600000); }).catch(function () {}); } catch (e) {} });
+  }
 </script>
 </body>
 </html>
