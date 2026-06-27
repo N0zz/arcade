@@ -132,6 +132,13 @@ now **parked**).
   switch to a thin relay (serverless fn, rate-limited). Discord limits are per-webhook ~30/min, so it
   silently drops under heavy concurrency — fine for now. Polls/vote-on-next-game live in Discord.)*
 - **Optional next:** a "recent scores" ticker on the site; opt-in toggle for the auto-post.
+- **Idea: only post *player-facing* changes to the Discord changelog** — the Action currently posts
+  **every** push (incl. `chore`/`ci`/`docs`), which is noisy and doesn't match the website changelog.
+  Options: (a) a commit **marker/trailer** the Action greps for (e.g. `Changelog: <text>` or `[cl]`) and
+  posts only those — ideally the marker's clean text, not the raw commit; (b) **conventional-commit
+  filter** — post `feat`/`fix`, skip `chore`/`ci`/`docs`/`refactor`/`test`; (c) **best — mirror the
+  in-page `CHANGELOG`**: when a push adds a `CHANGELOG` entry in `index.html`, post *that* entry, so
+  Discord == the website changelog exactly. Rec: (c), or (a) as a lightweight stopgap.
 
 **High-priority trio (do before more games): Daily Challenges · score-card share · embeddable games.**
 They reinforce each other — challenges give a daily reason to return, score cards + challenge-beaten
