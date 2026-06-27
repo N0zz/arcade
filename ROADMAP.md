@@ -4,9 +4,6 @@ Working notes for what to build / improve next. Open items only — not a promis
 
 ## Per-game polish (feel / balance)
 
-- **Keep Defender** — real balance pass: tougher/scaling enemies, armor/resistances so tower choice
-  matters, tighter economy, harsher leak penalty; more maps; visual polish (range rings, health
-  bars, nicer terrain/towers).
 - **Stack** — speed up the base loop; on landscape, narrow/center the play column so the block
   doesn't crawl across the full width.
 - **Brick Breaker** — denser bricks, more/earlier power-ups (pairs with the "faster from start" fix).
@@ -73,6 +70,15 @@ tiles). More ideas: Sumo Arena, Spacewar Duel, Joust-lite, Snake Battle, Button-
 - **Genre filter chips** — single row (`All · Arcade · Puzzle · Reflex · Logic…`) filtering the grid.
 - **Search box** — defer until ~20 games.
 - **"New" badge auto-applied** to recently-added tiles (the badge system exists; drive it by date).
+
+### Cross-device / data
+
+- **Export / import player data** — let a player export a JSON of everything funyo keeps in
+  localStorage (all per-game bests/top scores, favorites, unlocked birds, cash, settings, consent)
+  and paste it on another device to import. No account/server needed. Likely a small modal on the
+  catalogue: "Export" (copy/download the JSON blob) + "Import" (paste → validate → write keys back →
+  reload). Namespacing is easy (our keys are already `arcade_favs`, `funyo_*`, `<slug>_*`). Consider
+  a version field + merge-vs-replace choice, and guard against pasting junk.
 
 ### Distribution
 
