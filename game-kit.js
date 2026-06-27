@@ -121,7 +121,8 @@
     try {
       if (typeof fetch !== 'function' || typeof FormData === 'undefined') return;
       var fd = new FormData();
-      fd.append('payload_json', JSON.stringify({ username: player(), content: text }));
+      // fixed username (no impersonation via override) + no pings (player name/text can't @everyone)
+      fd.append('payload_json', JSON.stringify({ username: 'Komyo Games', content: String(text).slice(0, 1800), allowed_mentions: { parse: [] } }));
       fetch(DISCORD_WEBHOOK, { method: 'POST', body: fd })['catch'](function () {}); // multipart = no CORS preflight; fire-and-forget
     } catch (e) {}
   }
@@ -230,7 +231,8 @@
     });
     var discordBtn = q('[data-act="discord"]');
     if (discordBtn) discordBtn.addEventListener('click', function () {
-      postDiscord(getMsg() + '\n' + url);
+      var who = (player() || 'anonymous').replace(/[@`]/g, '').slice(0, 24) || 'anonymous';
+      postDiscord('**' + who + '** — ' + getMsg() + '\n' + url);
       try { discordBtn.disabled = true; } catch (e) {}      // one post per end-screen (don't let a click-spammer flood the channel)
       if (discordBtn.classList) discordBtn.classList.add('ok');
       discordBtn.title = 'Posted to Discord ✓';
