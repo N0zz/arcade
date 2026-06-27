@@ -50,6 +50,20 @@
   }
   #overlay .mode-btn.active-day  { background:linear-gradient(180deg,#ffe066,#f0a020); border-color:#c07010; color:#3a2a17; }
   #overlay .mode-btn.active-night { background:linear-gradient(180deg,#5060c0,#303080); border-color:#8090ff; color:#e8eeff; }
+  #overlay .menu-stats { font-size:14px; color:#5a4030; letter-spacing:1px; margin-top:2px; }
+  #overlay.night .menu-stats { color:#c0cce8; }
+  #overlay .bird-picker { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:360px; margin-top:2px; }
+  #overlay .bird-cell { position:relative; width:62px; padding:6px 4px 4px; border-radius:12px; cursor:pointer;
+    background:rgba(253,246,227,0.55); border:2px solid rgba(58,42,23,0.18); text-align:center;
+    transition: border-color 0.15s, background 0.15s; }
+  #overlay.night .bird-cell { background:rgba(40,52,90,0.45); border-color:rgba(200,210,235,0.2); }
+  #overlay .bird-cell .be { font-size:26px; line-height:1.1; display:block; }
+  #overlay .bird-cell .bc { font-size:10px; letter-spacing:0.5px; color:#7a6050; }
+  #overlay.night .bird-cell .bc { color:#aab4d0; }
+  #overlay .bird-cell.locked { opacity:0.5; cursor:not-allowed; }
+  #overlay .bird-cell.locked .be { filter:grayscale(1); }
+  #overlay .bird-cell.selected { border-color:#4a9020; background:rgba(180,235,140,0.6); }
+  #overlay.night .bird-cell.selected { border-color:#7080ff; background:rgba(80,96,200,0.4); }
   #overlay button.play-btn { font-family:inherit; cursor:pointer; font-size:16px; letter-spacing:1px; padding:11px 28px;
     border-radius:12px; color:#fdf6e3; background:linear-gradient(180deg,#6ec040,#4a9020); border:2px solid #2e6010; }
   #overlay.night button.play-btn { background:linear-gradient(180deg,#5060d0,#2a3090); border-color:#7080ff; }
@@ -90,6 +104,10 @@
     <button class="mode-btn active-day" id="modeDay">☀️ Day</button>
     <button class="mode-btn" id="modeNight">🌙 Night</button>
   </div>
+  <div class="menu-stats">
+    <span id="menuBest">BEST 0</span> · <span id="menuCash">💰 0</span>
+  </div>
+  <div class="bird-picker" id="birdPicker"></div>
   <button class="play-btn" id="playBtn">Fly!</button>
 </div>
 <div id="goScreen" class="hidden">
@@ -150,7 +168,9 @@
   const OBS_SPEED_DAY   = 1.9;   // gentle scroll
   const OBS_SPEED_NIGHT = 2.2;   // night: slightly faster for variety
   const OBS_W       = 62;
-  const GAP_H       = 240;    // generous gap — forgiving
+  const GAP_H       = 240;    // generous gap — forgiving (the default; difficulty shrinks toward GAP_H*0.5)
+  const GAP_MIN     = GAP_H * 0.5;  // progressive-difficulty floor: never tighter than half the default gap
+  const GAP_RAMP    = 14;     // points to approach the tightest gap (smooth ramp)
   const OBS_INTERVAL= 300;    // breathing room between obstacles
   const MAX_GAP_STEP= 150;    // cap vertical change between consecutive gaps so a pair is always reachable
   const BIRD_X      = 90;
@@ -179,8 +199,8 @@
   }
 
   if ($('modeDay')) {
-    $('modeDay').addEventListener('click', () => { mode = 'day'; applyModeUI(); updateHud(); });
-    $('modeNight').addEventListener('click', () => { mode = 'night'; applyModeUI(); updateHud(); });
+    $('modeDay').addEventListener('click', () => { mode = 'day'; applyModeUI(); updateHud(); refreshMenu(); });
+    $('modeNight').addEventListener('click', () => { mode = 'night'; applyModeUI(); updateHud(); refreshMenu(); });
   }
 
   // ---- RNG (seedable) ----
@@ -194,13 +214,59 @@
   let score = 0;
   let obsSpeed = OBS_SPEED_DAY;
 
-  function bestKey() { return 'flappy_best_' + mode; }
-  function getBest() { return parseInt(localStorage.getItem(bestKey()) || '0', 10); }
-  function saveBest(v) { localStorage.setItem(bestKey(), v); }
+  // ---- Best (shared across modes) ----
+  // One key for both Day & Night. Migrate/merge any legacy per-mode bests into it once.
+  const BEST_KEY = 'flappy_best';
+  function migrateBest() {
+    const legacy = ['flappy_best_day', 'flappy_best_night'];
+    let merged = parseInt(localStorage.getItem(BEST_KEY) || '0', 10);
+    let found = false;
+    for (const k of legacy) {
+      const v = localStorage.getItem(k);
+      if (v !== null) { found = true; merged = Math.max(merged, parseInt(v || '0', 10)); }
+    }
+    if (found) {
+      localStorage.setItem(BEST_KEY, merged);
+      for (const k of legacy) localStorage.removeItem(k);
+    }
+  }
+  migrateBest();
+  function getBest() { return parseInt(localStorage.getItem(BEST_KEY) || '0', 10); }
+  function saveBest(v) { localStorage.setItem(BEST_KEY, v); }
   let best = getBest();
+
+  // ---- Cash + bird unlocks ----
+  // Score is treated as cash the player banks across runs; cash unlocks more birds.
+  const CASH_KEY = 'flappy_cash';
+  function getCash() { return parseInt(localStorage.getItem(CASH_KEY) || '0', 10); }
+  function addCash(n) { localStorage.setItem(CASH_KEY, getCash() + n); }
+
+  // Each bird: a body colour + emoji label, locked until enough TOTAL banked cash.
+  const BIRDS = [
+    { id: 'bee',     emoji: '🐝', body: '#f9e040', wing: '#f0c828', cost: 0 },
+    { id: 'robin',   emoji: '🐦', body: '#e07850', wing: '#c45e3a', cost: 25 },
+    { id: 'bluebird',emoji: '🐤', body: '#5fa8e8', wing: '#3f86c8', cost: 60 },
+    { id: 'parrot',  emoji: '🦜', body: '#5fd07a', wing: '#3aa858', cost: 120 },
+    { id: 'flamingo',emoji: '🦩', body: '#f57fb0', wing: '#e05f95', cost: 220 },
+    { id: 'phoenix', emoji: '🔥', body: '#ff8a3a', wing: '#e85a1a', cost: 400 },
+  ];
+  const SEL_KEY = 'flappy_bird';
+  function birdUnlocked(b) { return getCash() >= b.cost; }
+  function getSelectedBird() {
+    const id = localStorage.getItem(SEL_KEY) || 'bee';
+    const b = BIRDS.find(x => x.id === id) || BIRDS[0];
+    return birdUnlocked(b) ? b : BIRDS[0];
+  }
+  function selectBird(id) {
+    const b = BIRDS.find(x => x.id === id);
+    if (b && birdUnlocked(b)) { localStorage.setItem(SEL_KEY, id); return true; }
+    return false;
+  }
+  let selectedBird = getSelectedBird();
 
   let bird = { x: BIRD_X, y: 0, vy: 0, flapAnim: 0, wobble: 0 };
   let obstacles = [];   // { x, gapY, passed }
+  let collectibles = []; // { x, y, r, emoji, val, taken }
   let particles = [];   // { x, y, vx, vy, life, col }
   let stars = [];       // night mode stars
   let fireflies = [];   // night mode fireflies
@@ -242,11 +308,13 @@
     bird.flapAnim = 0;
     bird.wobble = 0;
     obstacles = [];
+    collectibles = [];
     particles = [];
     pendingGapY = null;
     lastGapY = null;
     obsSpeed = mode === 'night' ? OBS_SPEED_NIGHT : OBS_SPEED_DAY;
     best = getBest();
+    selectedBird = getSelectedBird();
     seedRng(Date.now());
     updateHud();
   }
@@ -302,10 +370,44 @@
     $('bestEl').textContent = 'BEST ' + getBest();
   }
 
+  // ---- Menu: best, cash, bird picker (refreshed on return) ----
+  function refreshMenu() {
+    selectedBird = getSelectedBird();
+    if ($('menuBest')) $('menuBest').textContent = 'BEST ' + getBest();
+    if ($('menuCash')) $('menuCash').textContent = '💰 ' + getCash();
+    renderPicker();
+  }
+
+  function renderPicker() {
+    const wrap = $('birdPicker');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    const cash = getCash();
+    for (const b of BIRDS) {
+      const unlocked = cash >= b.cost;
+      const cell = document.createElement('div');
+      cell.className = 'bird-cell' + (unlocked ? '' : ' locked') + (unlocked && b.id === selectedBird.id ? ' selected' : '');
+      cell.innerHTML = '<span class="be">' + b.emoji + '</span>'
+        + '<span class="bc">' + (unlocked ? (b.id === selectedBird.id ? 'Flying' : 'Tap') : '🔒 ' + b.cost) + '</span>';
+      cell.addEventListener('click', () => {
+        if (selectBird(b.id)) { selectedBird = getSelectedBird(); renderPicker(); }
+      });
+      wrap.appendChild(cell);
+    }
+  }
+
+  // Progressive difficulty: gap shrinks smoothly with the current run's score, clamped at
+  // GAP_MIN (= 0.5× the default GAP_H). Reaches the floor around GAP_RAMP points.
+  function currentGap() {
+    const t = Math.min(1, score / GAP_RAMP);
+    return GAP_H - (GAP_H - GAP_MIN) * t;
+  }
+
   // ---- Spawn obstacle ----
   function spawnObstacle() {
+    const gap = currentGap();
     const margin = H * 0.12;
-    const lo = margin, hi = H - margin - GAP_H;
+    const lo = margin, hi = H - margin - gap;
     let gapY;
     if (pendingGapY !== null) { gapY = pendingGapY; }
     else {
@@ -316,7 +418,37 @@
     }
     pendingGapY = null;
     lastGapY = gapY;
-    obstacles.push({ x: W + OBS_W, gapY, passed: false });
+    obstacles.push({ x: W + OBS_W, gapY, gap, passed: false });
+    maybeSpawnCollectible(gapY, gap);
+  }
+
+  // ---- Collectibles (coins / fruit between pipes) ----
+  const COLLECTIBLES = [
+    { emoji: '🪙', val: 2 },
+    { emoji: '🍒', val: 3 },
+    { emoji: '🍓', val: 3 },
+    { emoji: '⭐', val: 5 },
+  ];
+  function maybeSpawnCollectible(gapY, gap) {
+    if (rng() > 0.55) return; // only some gaps carry a treat
+    const c = COLLECTIBLES[(rng() * COLLECTIBLES.length) | 0];
+    // place it between this pipe and the next, vertically within the gap
+    const y = gapY + 18 + rng() * Math.max(10, gap - 36);
+    collectibles.push({ x: W + OBS_W + OBS_INTERVAL * 0.5, y, r: 14, emoji: c.emoji, val: c.val, taken: false });
+  }
+  function collectAt(idx) {
+    const c = collectibles[idx];
+    if (!c || c.taken) return;
+    c.taken = true;
+    score += c.val;
+    addCash(c.val);
+    const cur = getBest();
+    if (score > cur) saveBest(score);
+    best = getBest();
+    updateHud();
+    SND.play('score');
+    spawnPass(c.x, c.y);
+    collectibles.splice(idx, 1);
   }
 
   // ---- Particles ----
@@ -357,12 +489,13 @@
       const bx = bird.x, by = bird.y, br = BIRD_R - HITBOX_SHRINK;
       const stemX = o.x + 6, stemW = OBS_W - 12;
       const inX = bx + br > stemX && bx - br < stemX + stemW;
-      const inGap = by - br > o.gapY && by + br < o.gapY + GAP_H;
+      const inGap = by - br > o.gapY && by + br < o.gapY + o.gap;
       if (inX && !inGap) { gameOver(); return; }
 
       if (!o.passed && o.x + OBS_W < bird.x - BIRD_R) {
         o.passed = true;
         score++;
+        addCash(1);
         const cur = getBest();
         if (score > cur) saveBest(score);
         best = getBest();
@@ -370,6 +503,15 @@
         SND.play('score');
         spawnPass(bird.x + 20, bird.y);
       }
+    }
+
+    // collectibles: move, collect on overlap, cull off-screen
+    for (let i = collectibles.length - 1; i >= 0; i--) {
+      const c = collectibles[i];
+      c.x -= obsSpeed;
+      if (c.x + c.r < 0) { collectibles.splice(i, 1); continue; }
+      const dx = c.x - bird.x, dy = c.y - bird.y;
+      if (dx * dx + dy * dy < (c.r + BIRD_R) * (c.r + BIRD_R)) { collectAt(i); }
     }
 
     // particles
@@ -429,7 +571,7 @@
 
   function drawObstacle(o) {
     const topH = o.gapY;
-    const botY = o.gapY + GAP_H;
+    const botY = o.gapY + (o.gap || GAP_H);
     const botH = H - botY;
 
     let grad, petalCol, centerCol;
@@ -479,9 +621,9 @@
     ctx.translate(x, y);
     ctx.rotate(angle);
 
-    ctx.fillStyle = '#f9e040';
+    ctx.fillStyle = selectedBird.body;
     ctx.beginPath(); ctx.ellipse(0, 0, BIRD_R, BIRD_R * 0.8, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#f0c828';
+    ctx.fillStyle = selectedBird.wing;
     ctx.beginPath(); ctx.ellipse(-4, -flapOff - 4, 10, 6, -0.4, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(-4,  flapOff + 4, 10, 6,  0.4, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#3a2a17';
@@ -562,6 +704,21 @@
       for (const o of obstacles) drawObstacle(o);
     }
 
+    // collectibles (both modes) — emoji-as-text with a soft glow
+    if (collectibles.length) {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '24px serif';
+      for (const c of collectibles) {
+        const pulse = 1 + 0.08 * Math.sin(frame * 0.12 + c.x * 0.05);
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = mode === 'night' ? '#fff7c0' : '#fff3b0';
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 1.4 * pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillText(c.emoji, c.x, c.y);
+      }
+    }
+
     // particles (both modes)
     for (const p of particles) {
       ctx.globalAlpha = Math.max(0, p.life);
@@ -627,14 +784,20 @@
   window.__test = {
     get state() { return state; },
     get score() { return score; },
-    get bird()  { return { y: bird.y, vy: bird.vy }; },
+    get bird()  { return { x: bird.x, y: bird.y, vy: bird.vy }; },
     get nextGap() { return obstacles.length > 0 ? obstacles.find(o => !o.passed) : null; },
     get obstacles() { return obstacles; },
     get best() { return getBest(); },
     get mode() { return mode; },
     get GAP_H() { return GAP_H; },
+    get GAP_MIN() { return GAP_MIN; },
     get GRAVITY() { return GRAVITY; },
     get OBS_INTERVAL() { return OBS_INTERVAL; },
+    get cash() { return getCash(); },
+    get collectibles() { return collectibles; },
+    get birds() { return BIRDS.map(b => ({ id: b.id, cost: b.cost, unlocked: birdUnlocked(b) })); },
+    get selectedBird() { return getSelectedBird().id; },
+    currentGap() { return currentGap(); },
     start() { mode = 'day'; applyModeUI(); startGame(); },
     startMode(m) { mode = (m === 'night' ? 'night' : 'day'); applyModeUI(); startGame(); },
     flap: () => { if (state === 'playing') { bird.vy = FLAP_VY; bird.flapAnim = 1; } },
@@ -642,12 +805,17 @@
     seed: seedRng,
     spawnGapAt(y) { pendingGapY = y; },
     setBest(v) { saveBest(v); best = v; },
+    setCash(v) { localStorage.setItem(CASH_KEY, String(v)); refreshMenu(); },
+    selectBird(id) { const r = selectBird(id); selectedBird = getSelectedBird(); refreshMenu(); return r; },
+    // Drop a collectible directly in front of the bird for headless collect tests.
+    spawnCollectibleAt(x, y, val) { collectibles.push({ x: x, y: y, r: 14, emoji: '🪙', val: val || 2, taken: false }); },
+    setScore(v) { score = v; updateHud(); },
   };
 
   document.getElementById('menuBtn').addEventListener('click', () => { try { location.reload(); } catch (e) {} });
 
   applyModeUI();
-  resize(); updateHud(); loop();
+  resize(); updateHud(); refreshMenu(); loop();
 })();
   if ('serviceWorker' in navigator) {
     var swReloaded = false, hadController = !!navigator.serviceWorker.controller;

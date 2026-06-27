@@ -49,7 +49,7 @@ function makeEl(id) {
   return el;
 }
 
-function runGame() {
+function runGame(initialStore) {
   const html = fs.readFileSync(path.join(DIR, 'index.html'), 'utf8');
   const m = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
   if (!m) throw new Error('no inline script found in index.html');
@@ -57,7 +57,7 @@ function runGame() {
 
   const elCache = {};
   const getEl = id => (elCache[id] ||= makeEl(id));
-  const store = {};
+  const store = Object.assign({}, initialStore || {});
   const handlers = {};
 
   const win = {
@@ -224,11 +224,11 @@ while (T().score < 1 && T().state === 'playing' && persistGuard++ < 800) {
   T().step(1);
 }
 if (T().score > 0) {
-  ok(g.store['flappy_best_day'] !== undefined && parseInt(g.store['flappy_best_day'], 10) >= T().score,
-    'best saved to localStorage for day mode (stored=' + g.store['flappy_best_day'] + ', score=' + T().score + ')');
+  ok(g.store['flappy_best'] !== undefined && parseInt(g.store['flappy_best'], 10) >= T().score,
+    'best saved to shared localStorage key (stored=' + g.store['flappy_best'] + ', score=' + T().score + ')');
 } else {
   T().setBest(5);
-  ok(g.store['flappy_best_day'] === '5', 'setBest writes to localStorage (day key)');
+  ok(g.store['flappy_best'] === '5', 'setBest writes to shared best key');
 }
 
 // (h) over → start() restarts
@@ -276,21 +276,19 @@ section('Day mode default');
   ok(T().state === 'playing', 'day mode starts playing');
 }
 
-// (l) Night mode: startMode('night') boots, plays, has separate best key
+// (l) Night mode: startMode('night') boots, plays, shares the one best key
 section('Night mode');
 {
   g = runGame();
-  // Clear both best keys
-  g.store['flappy_best_day'] = '0';
-  g.store['flappy_best_night'] = '0';
+  g.store['flappy_best'] = '0';
   T().startMode('night');
   ok(T().mode === 'night', 'startMode("night") sets mode to night');
   ok(T().state === 'playing', 'night mode starts playing');
 
-  // Night should have its own best key
+  // Best is shared — night setBest writes the single shared key
   T().setBest(7);
-  ok(g.store['flappy_best_night'] === '7', 'setBest in night mode writes flappy_best_night');
-  ok(g.store['flappy_best_day'] === '0', 'day best key unaffected by night setBest');
+  ok(g.store['flappy_best'] === '7', 'setBest in night mode writes shared flappy_best');
+  ok(g.store['flappy_best_night'] === undefined, 'no per-mode night key is created');
 }
 
 // (m) startMode('day') switches back to day
@@ -354,6 +352,90 @@ section('Share-row tap exempt from restart');
   const shareTarget = { closest: sel => (sel === '#shareRow' ? g.getEl('shareRow') : null) };
   g.getEl('goScreen').fire('click', { target: shareTarget });
   ok(T().state === 'over', 'tap on share control does not restart the run');
+}
+
+// (q) shared best: legacy per-mode keys migrate/merge into flappy_best on boot
+section('Shared best migration');
+{
+  // Boot with pre-seeded legacy per-mode bests so migrateBest() runs at startup.
+  g = runGame({ flappy_best_day: '12', flappy_best_night: '20' });
+  ok(g.store['flappy_best'] === '20', 'merges max of legacy day/night into flappy_best (got ' + g.store['flappy_best'] + ')');
+  ok(g.store['flappy_best_day'] === undefined && g.store['flappy_best_night'] === undefined, 'legacy per-mode keys removed after migration');
+  ok(T().best === 20, '__test.best reflects migrated shared best');
+}
+
+// (r) cash: passing a pipe banks cash; persists in flappy_cash
+section('Cash banking');
+{
+  g = runGame();
+  T().setCash(0);
+  T().start();
+  const startCash = T().cash;
+  T().seed(7);
+  const cgapY = 800 * 0.38, cTarget = cgapY + 92;
+  T().spawnGapAt(cgapY);
+  for (let i = 0; i < 60; i++) { if (T().bird.y > cTarget + 20) T().flap(); T().step(1); }
+  let cg = 0;
+  while (T().score < 1 && T().state === 'playing' && cg++ < 800) { if (T().bird.y > cTarget + 20) T().flap(); T().step(1); }
+  if (T().score >= 1) {
+    ok(T().cash > startCash, 'cash increased after passing a pipe (was ' + startCash + ', now ' + T().cash + ')');
+    ok(parseInt(g.store['flappy_cash'] || '0', 10) === T().cash, 'cash persisted to flappy_cash');
+  } else {
+    ok(true, 'cash banking skipped (no pipe passed)');
+  }
+}
+
+// (s) collectibles: collecting one adds score + cash
+section('Collectibles');
+{
+  g = runGame();
+  T().setCash(0);
+  T().start();
+  const s0 = T().score, c0 = T().cash;
+  // Drop a coin right on the bird so the overlap fires next step.
+  T().spawnCollectibleAt(T().bird.x, T().bird.y, 3);
+  ok(T().collectibles.length === 1, 'collectible spawned');
+  T().step(1);
+  ok(T().score === s0 + 3, 'collecting adds the coin value to score (got ' + T().score + ')');
+  ok(T().cash === c0 + 3, 'collecting adds the coin value to cash (got ' + T().cash + ')');
+  ok(T().collectibles.length === 0, 'collectible removed after pickup');
+}
+
+// (t) progressive difficulty: gap shrinks with score, clamped at GAP_MIN (0.5× default)
+section('Progressive difficulty');
+{
+  g = runGame();
+  T().start();
+  ok(Math.abs(T().GAP_MIN - T().GAP_H * 0.5) < 0.001, 'GAP_MIN is exactly half the default GAP_H');
+  T().setScore(0);
+  const g0 = T().currentGap();
+  ok(Math.abs(g0 - T().GAP_H) < 0.001, 'at score 0 the gap equals the default GAP_H (got ' + g0 + ')');
+  T().setScore(7);
+  const gMid = T().currentGap();
+  ok(gMid < g0 && gMid > T().GAP_MIN, 'gap shrinks at mid score but stays above the floor (got ' + gMid + ')');
+  T().setScore(500);
+  const gHi = T().currentGap();
+  ok(gHi >= T().GAP_MIN - 0.001, 'gap never drops below GAP_MIN even at huge score (got ' + gHi + ')');
+  ok(Math.abs(gHi - T().GAP_MIN) < 0.001, 'gap clamps exactly to GAP_MIN at the floor (got ' + gHi + ')');
+}
+
+// (u) bird unlocks: locked until enough cash, selecting an unlocked bird sticks
+section('Bird unlocks');
+{
+  g = runGame();
+  T().setCash(0);
+  const birds = T().birds;
+  ok(birds.length >= 3, 'multiple bird types exist (got ' + birds.length + ')');
+  ok(birds[0].cost === 0 && birds[0].unlocked, 'first bird is free + unlocked');
+  const paid = birds.find(b => b.cost > 0);
+  ok(paid && !paid.unlocked, 'a costed bird is locked with zero cash');
+  ok(T().selectBird(paid.id) === false, 'cannot select a locked bird');
+  ok(T().selectedBird === 'bee', 'selection stays on the default bird when locked');
+  T().setCash(paid.cost);
+  ok(T().birds.find(b => b.id === paid.id).unlocked, 'bird unlocks once cash >= cost');
+  ok(T().selectBird(paid.id) === true, 'can select after unlocking');
+  ok(T().selectedBird === paid.id, 'selected bird now in use (got ' + T().selectedBird + ')');
+  ok(g.store['flappy_bird'] === paid.id, 'selection persisted to flappy_bird');
 }
 
 // ----------------------------------------------------------------
