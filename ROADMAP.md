@@ -63,7 +63,7 @@ tiles). More ideas: Sumo Arena, Spacewar Duel, Joust-lite, Snake Battle, Button-
    target. No server, honor-system (fine for casual; no leaderboard). Completing one feeds the
    score-card share ("I beat today's komyo challenge 🔥"). *(Replaces the earlier seeded-run idea —
    a challenge list is simpler to build, legible, and works across the current games immediately.)*
-2. **Shareable score cards** **(HIGH PRIORITY)** *(text+link shipped; image card is the next build)* — upgrade
+2. **Shareable score cards** **(HIGH PRIORITY)** *(Level 1 text+link shipped & enriched — mode + stats per game, and the link deep-links the mode; Level 2 image card is the next build)* — upgrade
    the share to a per-result visual that proves the score and stops the scroll (a link just unfurls
    the same generic OG image for everyone). **Offer BOTH, not image-only:** keep the text/link share
    row (universal, clickable, works on desktop) AND add a "🖼️ Score card" button for the image;
@@ -97,6 +97,9 @@ now **parked**).
   Multiplayer · show-coming-soon · **Highlights** = NEW/UPDATED/POPULAR); search + filter state saved
   in the URL, so a filtered view is bookmarkable/shareable.)*
 - *(done: **Changelog** modal (date-grouped releases, lazy-load, searchable) + **About komyo** modal.)*
+- *(done: **deep-linkable game modes** — a shared link carries the mode (`?mode=…`, etc.) and the game
+  preselects it on load; + optional **display name** (menu prompt + ✏️, or "anonymous"), shown as a
+  cycling-language "Welcome, {name}".)*
 - *(done: auto **NEW**/**UPDATED** tile badges, date-driven from `added`/`updated`, 7-day window.)*
 - **Kit menu framework (v3)** *(idea — undecided; may keep what we have)* — promote the
   asteroids-style **mode tiles** + **option-group rows** into a reusable `gamekit.menu` the kit renders
@@ -121,13 +124,14 @@ now **parked**).
   newsletter feed off the same data can come later.)*
 - **Embeddable games (iframe snippet)** **(HIGH PRIORITY)** — "embed this game on your blog" → backlinks + free traffic.
 - **List on game portals** — itch.io, free-to-play indexes.
-- **komyo Discord server** — community hub: new-game announcements, polls (incl. **vote-on-next-game**), feedback, score-sharing,
-  giveaways. Pairs with the newsletter. Worth it once there's a small audience.
-  - **Auto-share scores to Discord** — on game over, post `player {name} finished {game} with score
-    {points/time}!`. Username = a one-time local prompt at first play (localStorage, **no account**),
-    reused across games; opt-in toggle; sanitize the name. A Discord **webhook** is the simplest
-    sink, but its URL can't be safely embedded in client JS (public → abuse) → needs a thin relay
-    (serverless fn / small bot), ideally rate-limited. Same payload could feed a "recent scores" ticker.
+- *(done: **komyo Discord server** created; a **GitHub Action** posts each push's full commit messages
+  to a changelog channel (fires on pushes + merges to main); on game-over the client **auto-posts the
+  score** (display name or "anonymous", with mode + stats + a deep-link) to a scores channel.)*
+- *(shipped pragmatically: the score post uses a **hardcoded public webhook** (no relay) — owner's
+  accepted risk; fixed username + `allowed_mentions:[]` so it can't impersonate/ping. If ever abused,
+  switch to a thin relay (serverless fn, rate-limited). Discord limits are per-webhook ~30/min, so it
+  silently drops under heavy concurrency — fine for now. Polls/vote-on-next-game live in Discord.)*
+- **Optional next:** a "recent scores" ticker on the site; opt-in toggle for the auto-post.
 
 **High-priority trio (do before more games): Daily Challenges · score-card share · embeddable games.**
 They reinforce each other — challenges give a daily reason to return, score cards + challenge-beaten
