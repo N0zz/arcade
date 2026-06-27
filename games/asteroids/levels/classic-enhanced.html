@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>Classic Asteroids — Enhanced</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="../../../funyo-kit.css">
-<script src="../../../funyo-kit.js"></script>
+<link rel="stylesheet" href="../../../game-kit.css">
+<script src="../../../game-kit.js"></script>
 <style>
   html, body { margin:0; padding:0; height:100%; background:#05060a; overflow:hidden; font-family:"Courier New",monospace; color:#cfe8ff; }
   #game { display:block; width:100vw; height:100vh; }
@@ -82,9 +82,9 @@
   if (SPEEDRUN){ timerEl.style.display='block'; timerGoal.textContent='GOAL: '+SR_TARGET_SCORE+' PTS'; modeHint.textContent='SPEEDRUN — reach '+SR_TARGET_SCORE+' points as fast as you can.'; const th=document.getElementById('topHud'); if(th) th.style.top='58px'; }
 
 
-  // ---- Audio: SFX go through the funyo-kit shared sound engine (site-wide SFX mute/volume);
+  // ---- Audio: SFX go through the game-kit shared sound engine (site-wide SFX mute/volume);
   //      music stays a local procedural engine whose master gain is driven by the kit's Music channel. ----
-  const KIT = (typeof window !== 'undefined' && window.funyo) ? window.funyo : null;
+  const KIT = (typeof window !== 'undefined' && window.gamekit) ? window.gamekit : null;
   if (KIT) KIT.sound.define({
     shoot:({tone})=>tone(660,0.07,'square',0.08), pop:({tone})=>tone(320,0.06,'square',0.06), explode:({noise})=>noise(0.3,0.35), hit:({tone})=>tone(170,0.12,'sawtooth',0.22),
     pickup:({tone})=>{tone(880,0.07);setTimeout(()=>tone(1320,0.1),55);}, level:({tone})=>[523,659,784].forEach((f,i)=>setTimeout(()=>tone(f,0.12,'triangle',0.18),i*70)),
@@ -144,7 +144,7 @@
   function quitToMenu(){ if(!SPEEDRUN && (state==='playing'||state==='paused')) saveBestScore(score); try{ if(window.parent && window.parent!==window) window.parent.postMessage('asteroids:menu','*'); }catch(e){} }
   function wireOverlay(){ const mb=document.getElementById('menuBtn'); if(mb) mb.addEventListener('click', quitToMenu); const rb=document.getElementById('resumeBtn'); if(rb) rb.addEventListener('click', resumeGame); }
   const MENU_BTN = '<button class="btn" id="menuBtn">QUIT TO MENU</button>';
-  // end-screen share row is built by the funyo-kit into this placeholder
+  // end-screen share row is built by the game-kit into this placeholder
   const SHARE_ROW = '<div id="shareRow"></div>';
   function wireShareRow(finalScore) {
     if (KIT) KIT.shareRow(document.getElementById('shareRow'), { slug: 'asteroids', title: 'Asteroids', message: () => 'I scored ' + finalScore + ' in Asteroids 🛸' });
@@ -253,7 +253,7 @@
   overlay.addEventListener('click',(e)=>{ if(e.target && e.target.closest && e.target.closest('button')) return; if(state==='menu'||state==='dead'||state==='won') startGame(); else if(HAS_PAUSE && state==='paused') resumeGame(); });
   if(isTouch){ document.body.classList.add('touch'); buildTouch(); }
 
-  // funyo-kit nav: top-left ‹ Menu (quits to the launcher) + top-right sound menu (SFX + Music + Reset)
+  // game-kit nav: top-left ‹ Menu (quits to the launcher) + top-right sound menu (SFX + Music + Reset)
   if (KIT) KIT.nav({ music: true, reset: 'asteroids_', home: '../../../', onMenu: () => { quitToMenu(); } });
 
   resize(); spawnWave(4); updateHud(); loop();

@@ -17,5 +17,5 @@ komyo is a hobby project. Each game is a single self-contained HTML/Canvas + van
 
 ## Optional
 
-- [Source on GitHub](https://github.com/N0zz/funyo.online): full source for the site and every game.
-- [License](https://github.com/N0zz/funyo.online/blob/main/LICENSE): PolyForm Noncommercial 1.0.0 — free for any noncommercial use; commercial use not permitted.
+- [Source on GitHub](https://github.com/N0zz/komyo.online): full source for the site and every game.
+- [License](https://github.com/N0zz/komyo.online/blob/main/LICENSE): PolyForm Noncommercial 1.0.0 — free for any noncommercial use; commercial use not permitted.

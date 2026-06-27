@@ -30,8 +30,8 @@
 <meta name="twitter:image" content="https://komyo.online/og-image.png?v=3">
 <!-- Analytics: GA4, loaded only after cookie consent (see analytics.js) -->
 <script src="analytics.js" defer></script>
-<link rel="stylesheet" href="funyo-kit.css">
-<script src="funyo-kit.js"></script>
+<link rel="stylesheet" href="game-kit.css">
+<script src="game-kit.js"></script>
 <style>
   :root {
     --bg:#0b0f17; --surface:#161c28; --surface-2:#1e2738; --border:#2a3446;
@@ -382,7 +382,7 @@
       </div>
       built for fun · no ads · no payments · plays offline &nbsp;·&nbsp;
       <a class="coffee" href="https://buymeacoffee.com/komyo.online">☕ Buy me a coffee</a> &nbsp;·&nbsp;
-      <a class="ghlink" href="https://github.com/N0zz/funyo.online" target="_blank" rel="noopener" aria-label="komyo on GitHub" title="View source on GitHub">
+      <a class="ghlink" href="https://github.com/N0zz/komyo.online" target="_blank" rel="noopener" aria-label="komyo on GitHub" title="View source on GitHub">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.04-.02-2.05-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.12-.31-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.01 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.87.12 3.18.77.84 1.24 1.92 1.24 3.23 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22 0 1.61-.01 2.9-.01 3.29 0 .32.21.7.82.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/></svg>
         GitHub</a>
     </footer>
@@ -409,8 +409,8 @@
         <div class="dl">More</div>
         <button class="ditem" id="aboutBtn" type="button"><span class="di">🦊</span> About komyo</button>
         <button class="ditem" id="changelogBtn" type="button"><span class="di">🗒️</span> Changelog</button>
-        <a class="ditem" href="https://github.com/N0zz/funyo.online" target="_blank" rel="noopener"><span class="di"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.04-.02-2.05-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.12-.31-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.01 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.87.12 3.18.77.84 1.24 1.92 1.24 3.23 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22 0 1.61-.01 2.9-.01 3.29 0 .32.21.7.82.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/></svg></span> GitHub</a>
-        <a class="ditem" href="https://github.com/N0zz/funyo.online/blob/main/LICENSE" target="_blank" rel="noopener"><span class="di">⚖️</span> License</a>
+        <a class="ditem" href="https://github.com/N0zz/komyo.online" target="_blank" rel="noopener"><span class="di"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.04-.02-2.05-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.12-.31-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.01 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.87.12 3.18.77.84 1.24 1.92 1.24 3.23 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22 0 1.61-.01 2.9-.01 3.29 0 .32.21.7.82.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/></svg></span> GitHub</a>
+        <a class="ditem" href="https://github.com/N0zz/komyo.online/blob/main/LICENSE" target="_blank" rel="noopener"><span class="di">⚖️</span> License</a>
       </div>
       <div class="dgrp">
         <div class="dl">Share</div>
@@ -523,7 +523,7 @@
       <ul class="about-list">
         <li><b>Free forever.</b> No ads, no payments, no subscriptions — ever.</li>
         <li><b>Plays anywhere.</b> Runs in any modern browser on any device — phone, tablet or desktop. Add it to your home screen and it even works offline.</li>
-        <li><b>Source-available.</b> Each game is a single self-contained page — free to read and tinker with for non-commercial use. The only analytics is Google Analytics, and only if you accept the cookie banner; decline and nothing is tracked. <a href="https://github.com/N0zz/funyo.online" target="_blank" rel="noopener">Browse the code on GitHub</a>.</li>
+        <li><b>Source-available.</b> Each game is a single self-contained page — free to read and tinker with for non-commercial use. The only analytics is Google Analytics, and only if you accept the cookie banner; decline and nothing is tracked. <a href="https://github.com/N0zz/komyo.online" target="_blank" rel="noopener">Browse the code on GitHub</a>.</li>
         <li><b>Yours to keep.</b> Your scores and progress stay on your device — nothing to sign up for.</li>
       </ul>
       <p class="about-foot">Made for fun. If you enjoy it, share it with a friend 💛</p>
@@ -764,7 +764,7 @@
         if (e.target.closest('[data-close]') || e.target.closest('.ditem')) close();
       }));
       // resizable + persisted widths (challenges defaults wider than the menu)
-      const DW = { menu: { key: 'funyo_dw_menu', def: 340 }, chal: { key: 'funyo_dw_chal', def: 440 } };
+      const DW = { menu: { key: 'gamekit_dw_menu', def: 340 }, chal: { key: 'gamekit_dw_chal', def: 440 } };
       const vw = () => (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1280;
       const clampW = w => Math.max(280, Math.min(w, vw() * 0.92));
       const getLS = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -932,11 +932,11 @@
     // ---- Cookie consent (gates the GA4 tag loaded by analytics.js) ----
     (function () {
       const banner = document.getElementById('cookieBanner');
-      let saved = null; try { saved = localStorage.getItem('funyo_consent'); } catch (e) {}
+      let saved = null; try { saved = localStorage.getItem('gamekit_consent'); } catch (e) {}
       if (!saved && banner) banner.hidden = false;
-      const decide = (v) => { try { localStorage.setItem('funyo_consent', v); } catch (e) {} if (banner) banner.hidden = true; };
+      const decide = (v) => { try { localStorage.setItem('gamekit_consent', v); } catch (e) {} if (banner) banner.hidden = true; };
       const a = document.getElementById('cbAccept'), d = document.getElementById('cbDecline');
-      if (a) a.addEventListener('click', () => { decide('granted'); if (window.funyoLoadGA) window.funyoLoadGA(); });
+      if (a) a.addEventListener('click', () => { decide('granted'); if (window.gamekitLoadGA) window.gamekitLoadGA(); });
       if (d) d.addEventListener('click', () => decide('denied'));
     })();
 
@@ -944,7 +944,7 @@
     (function () {
       const btn = document.getElementById('resetAll');
       if (!btn) return;
-      const KEEP = { funyo_consent: 1, funyo_sfx_muted: 1, funyo_sfx_vol: 1, funyo_music_muted: 1, funyo_music_vol: 1 };
+      const KEEP = { gamekit_consent: 1, gamekit_sfx_muted: 1, gamekit_sfx_vol: 1, gamekit_music_muted: 1, gamekit_music_vol: 1 };
       const wipe = () => {
         try {
           const keys = [];
@@ -956,7 +956,7 @@
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         const msg = 'Reset your saved scores, progress & favorites for ALL games? This cannot be undone.';
-        if (window.funyo && window.funyo.confirm) window.funyo.confirm(msg, wipe);
+        if (window.gamekit && window.gamekit.confirm) window.gamekit.confirm(msg, wipe);
         else if (typeof confirm !== 'function' || confirm(msg)) wipe();
       });
     })();

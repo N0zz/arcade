@@ -13,8 +13,8 @@
 <meta name="apple-mobile-web-app-title" content="Bubble Pop">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="../../analytics.js" defer></script>
-<link rel="stylesheet" href="../../funyo-kit.css">
-<script src="../../funyo-kit.js"></script>
+<link rel="stylesheet" href="../../game-kit.css">
+<script src="../../game-kit.js"></script>
 <style>
   :root {
     --aqua:#2ee8c8; --aqua2:#1bc4a8; --bg1:#0d1f2d; --bg2:#162840;
@@ -26,7 +26,7 @@
     color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; user-select:none; touch-action:none; }
   #game { display:block; width:100vw; height:100vh; }
 
-  /* Position/background/font come from the shared .funyo-hud (center-top pill).
+  /* Position/background/font come from the shared .gamekit-hud (center-top pill).
      Keep only the aqua value color. */
   #hud .val { color:var(--aqua); }
   #chargeMeter { position:fixed; right:10px; top:56px; bottom:auto; height:120px; z-index:5;
@@ -82,7 +82,7 @@
   #gameOver button.primary { border-color:var(--aqua2); color:#0d1f2d;
     background:linear-gradient(135deg,var(--aqua),var(--aqua2)); font-weight:700; }
 
-  #shareRow { --funyo-accent:#2ee8c8; }
+  #shareRow { --gamekit-accent:#2ee8c8; }
 
   #wonScreen { position:fixed; inset:0; z-index:8; display:flex; flex-direction:column;
     align-items:center; justify-content:center; text-align:center; gap:14px;
@@ -109,7 +109,7 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud" class="funyo-hud">
+<div id="hud" class="gamekit-hud">
   <div class="stat"><span class="lbl">Score</span><span class="val" id="scoreEl">0</span></div>
   <div class="stat"><span class="lbl">Best</span><span class="val" id="bestEl">0</span></div>
   <div class="stat"><span class="lbl">Level</span><span class="val" id="levelEl">1</span></div>
@@ -169,8 +169,8 @@
   const canvas = $('game');
   const ctx = canvas.getContext('2d');
 
-  // ---- Audio (funyo-kit shared engine + global mute) ----
-  const SND = window.funyo.sound;
+  // ---- Audio (game-kit shared engine + global mute) ----
+  const SND = window.gamekit.sound;
   SND.define({
     shoot: ({ tone }) => { tone(520, 0.06, 'triangle', 0.07); },
     pop:   ({ tone }) => { tone(880, 0.08, 'sine', 0.1); tone(1100, 0.05, 'sine', 0.06); },
@@ -191,7 +191,7 @@
 
   // ---- State ----
   let W, H;
-  // Headroom so the playfield/bubbles clear the shared center-top .funyo-hud pill.
+  // Headroom so the playfield/bubbles clear the shared center-top .gamekit-hud pill.
   // Landscape: pill at top:8px → ~48px. Portrait (≤560px): pill drops to top:50px → ~92px.
   let topMargin = 48;
   let state = 'ready'; // 'ready'|'playing'|'over'|'won'
@@ -1080,12 +1080,12 @@
   });
   $('wonNext').addEventListener('click', startGame);
 
-  // ---- Share row + top nav (funyo-kit) ----
-  window.funyo.shareRow(document.getElementById('shareRow'), {
+  // ---- Share row + top nav (game-kit) ----
+  window.gamekit.shareRow(document.getElementById('shareRow'), {
     slug: 'bubbles', title: 'Bubble Pop',
     message: () => 'I scored ' + score + ' in Bubble Pop 🫧',
   });
-  window.funyo.nav({ reset: 'bubbles_' });
+  window.gamekit.nav({ reset: 'bubbles_' });
 
   // ---- __test API ----
   window.__test = {
@@ -1151,7 +1151,7 @@
   refreshMenuBests();
   resize(); loop();
 })();
-  window.funyo.pwa();
+  window.gamekit.pwa();
 </script>
 </body>
 </html>

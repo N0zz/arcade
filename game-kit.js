@@ -1,8 +1,8 @@
-/* funyo-kit — shared shell for komyo games: audio (SFX + Music channels) with a top-right
+/* game-kit — shared shell for komyo games: audio (SFX + Music channels) with a top-right
    sound menu + per-channel mute & volume, top-left nav (‹ Menu · komyo ›), end-screen share
-   row, PWA auto-update, and a standard center-top HUD style (see funyo-kit.css).
-   Loaded via <script src="../../funyo-kit.js"></script> in <head> (before the game's inline
-   script). Exposes window.funyo / global `funyo`. Headless-safe: every browser API is guarded. */
+   row, PWA auto-update, and a standard center-top HUD style (see game-kit.css).
+   Loaded via <script src="../../game-kit.js"></script> in <head> (before the game's inline
+   script). Exposes window.gamekit / global `gamekit`. Headless-safe: every browser API is guarded. */
 (function () {
   'use strict';
 
@@ -12,7 +12,7 @@
   function clamp01(v, d) { v = parseFloat(v); return (typeof v === 'number' && isFinite(v)) ? Math.max(0, Math.min(1, v)) : d; }
 
   // ---------- audio state (two channels: SFX kit-played, Music settings-only) ----------
-  var SFX_M = 'funyo_sfx_muted', SFX_V = 'funyo_sfx_vol', MUS_M = 'funyo_music_muted', MUS_V = 'funyo_music_vol';
+  var SFX_M = 'gamekit_sfx_muted', SFX_V = 'gamekit_sfx_vol', MUS_M = 'gamekit_music_muted', MUS_V = 'gamekit_music_vol';
   var sfxMuted = lsGet(SFX_M) === '1';
   var musMuted = lsGet(MUS_M) === '1';
   var sfxVol = clamp01(lsGet(SFX_V), 0.8);
@@ -87,14 +87,14 @@
   // ---------- in-page confirm dialog (replaces the browser confirm()) ----------
   function confirmDialog(msg, onYes) {
     if (typeof document === 'undefined' || !document.body) { if (onYes) onYes(); return; }
-    var ov = document.createElement('div'); ov.className = 'funyo-confirm';
-    ov.innerHTML = '<div class="funyo-confirm-box"><p>' + msg + '</p><div class="funyo-confirm-btns">'
-      + '<button class="funyo-cf-no" type="button">Cancel</button>'
-      + '<button class="funyo-cf-yes" type="button">Reset</button></div></div>';
+    var ov = document.createElement('div'); ov.className = 'gamekit-confirm';
+    ov.innerHTML = '<div class="gamekit-confirm-box"><p>' + msg + '</p><div class="gamekit-confirm-btns">'
+      + '<button class="gamekit-cf-no" type="button">Cancel</button>'
+      + '<button class="gamekit-cf-yes" type="button">Reset</button></div></div>';
     document.body.appendChild(ov);
     var close = function () { try { if (ov.parentNode) ov.parentNode.removeChild(ov); } catch (e) {} };
-    var no = ov.querySelector ? ov.querySelector('.funyo-cf-no') : null;
-    var yes = ov.querySelector ? ov.querySelector('.funyo-cf-yes') : null;
+    var no = ov.querySelector ? ov.querySelector('.gamekit-cf-no') : null;
+    var yes = ov.querySelector ? ov.querySelector('.gamekit-cf-yes') : null;
     if (no) no.addEventListener('click', close);
     if (yes) yes.addEventListener('click', function () { close(); if (onYes) onYes(); });
     ov.addEventListener('click', function (e) { if (e && e.target === ov) close(); });
@@ -114,28 +114,28 @@
   function audioMenu(opts) {
     opts = opts || {};
     if (typeof document === 'undefined' || !document.body) return;
-    var wrap = document.createElement('div'); wrap.className = 'funyo-audio';
-    var rows = '<div class="funyo-au-row"><button class="funyo-au-toggle" id="funyoSfxM" type="button" aria-label="Mute sound effects">🔊</button>'
-      + '<input class="funyo-au-slider" id="funyoSfxV" type="range" min="0" max="100" aria-label="Sound effects volume"></div>';
-    if (opts.music) rows += '<div class="funyo-au-row"><button class="funyo-au-toggle" id="funyoMusM" type="button" aria-label="Mute music">🎵</button>'
-      + '<input class="funyo-au-slider" id="funyoMusV" type="range" min="0" max="100" aria-label="Music volume"></div>';
-    wrap.innerHTML = '<button class="funyo-au-btn" id="funyoAudioBtn" type="button" aria-label="Sound settings" title="Sound settings">🔊</button>'
-      + '<div class="funyo-au-panel" id="funyoAudioPanel">' + rows + '</div>'
-      + (opts.reset ? '<button class="funyo-au-resetbtn" id="funyoReset" type="button" aria-label="Reset scores" title="Reset scores">↺</button>' : '');
+    var wrap = document.createElement('div'); wrap.className = 'gamekit-audio';
+    var rows = '<div class="gamekit-au-row"><button class="gamekit-au-toggle" id="gamekitSfxM" type="button" aria-label="Mute sound effects">🔊</button>'
+      + '<input class="gamekit-au-slider" id="gamekitSfxV" type="range" min="0" max="100" aria-label="Sound effects volume"></div>';
+    if (opts.music) rows += '<div class="gamekit-au-row"><button class="gamekit-au-toggle" id="gamekitMusM" type="button" aria-label="Mute music">🎵</button>'
+      + '<input class="gamekit-au-slider" id="gamekitMusV" type="range" min="0" max="100" aria-label="Music volume"></div>';
+    wrap.innerHTML = '<button class="gamekit-au-btn" id="gamekitAudioBtn" type="button" aria-label="Sound settings" title="Sound settings">🔊</button>'
+      + '<div class="gamekit-au-panel" id="gamekitAudioPanel">' + rows + '</div>'
+      + (opts.reset ? '<button class="gamekit-au-resetbtn" id="gamekitReset" type="button" aria-label="Reset scores" title="Reset scores">↺</button>' : '');
     document.body.appendChild(wrap);
-    var btn = document.getElementById('funyoAudioBtn'), panel = document.getElementById('funyoAudioPanel');
+    var btn = document.getElementById('gamekitAudioBtn'), panel = document.getElementById('gamekitAudioPanel');
     if (btn && panel) btn.addEventListener('click', function () { if (panel.classList) panel.classList.toggle('open'); });
     var u = { mainBtn: btn };
-    u.sfxBtn = document.getElementById('funyoSfxM'); u.sfxSlider = document.getElementById('funyoSfxV');
+    u.sfxBtn = document.getElementById('gamekitSfxM'); u.sfxSlider = document.getElementById('gamekitSfxV');
     if (u.sfxBtn) u.sfxBtn.addEventListener('click', function () { sound.toggle(); });
     if (u.sfxSlider) u.sfxSlider.addEventListener('input', function (e) { var t = e && e.target; sound.volume(((t ? t.value : u.sfxSlider.value) || 0) / 100); });
     if (opts.music) {
-      u.musBtn = document.getElementById('funyoMusM'); u.musSlider = document.getElementById('funyoMusV');
+      u.musBtn = document.getElementById('gamekitMusM'); u.musSlider = document.getElementById('gamekitMusV');
       if (u.musBtn) u.musBtn.addEventListener('click', function () { music.toggle(); });
       if (u.musSlider) u.musSlider.addEventListener('input', function (e) { var t = e && e.target; music.volume(((t ? t.value : u.musSlider.value) || 0) / 100); });
     }
     if (opts.reset) {
-      var rb = document.getElementById('funyoReset');
+      var rb = document.getElementById('gamekitReset');
       if (rb) rb.addEventListener('click', function () {
         confirmDialog('Reset your saved scores for this game?', function () { resetScores(opts.reset); try { location.reload(); } catch (e) {} });
       });
@@ -147,11 +147,11 @@
   function nav(opts) {
     opts = opts || {};
     if (typeof document !== 'undefined' && document.body) {
-      var wrap = document.createElement('div'); wrap.className = 'funyo-nav';
-      wrap.innerHTML = '<button class="funyo-back" id="funyoMenu" type="button">&#x2039; Menu</button>'
-        + '<a class="funyo-back" id="funyoHome" target="_top" href="' + (opts.home || '../../') + '">komyo &#x203A;</a>';
+      var wrap = document.createElement('div'); wrap.className = 'gamekit-nav';
+      wrap.innerHTML = '<button class="gamekit-back" id="gamekitMenu" type="button">&#x2039; Menu</button>'
+        + '<a class="gamekit-back" id="gamekitHome" target="_top" href="' + (opts.home || '../../') + '">komyo &#x203A;</a>';
       document.body.appendChild(wrap);
-      var menu = document.getElementById('funyoMenu');
+      var menu = document.getElementById('gamekitMenu');
       if (menu) menu.addEventListener('click', function () {
         if (typeof opts.onMenu === 'function') { try { opts.onMenu(); } catch (e) {} }
         else { try { location.reload(); } catch (e) {} }
@@ -188,7 +188,7 @@
     var url = o.url || ('https://komyo.online/games/' + (o.slug || '') + '/');
     var title = o.title || 'komyo';
     var getMsg = (typeof o.message === 'function') ? o.message : function () { return o.message || ''; };
-    if (el.classList) el.classList.add('funyo-share');
+    if (el.classList) el.classList.add('gamekit-share');
     el.innerHTML =
       '<a class="sbtn" data-act="native" href="#" style="display:none" aria-label="Share" title="Share">' + SVG.native + '</a>' +
       '<a class="sbtn" data-act="x" target="_blank" rel="noopener" aria-label="Share on X" title="Share on X">' + SVG.x + '</a>' +
@@ -237,6 +237,6 @@
 
   var api = { sound: sound, music: music, nav: nav, audioMenu: audioMenu, resetScores: resetScores, confirm: confirmDialog, shareRow: shareRow, shareUrls: shareUrls, pwa: pwa };
   var g = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : this);
-  g.funyo = api;
-  if (typeof window !== 'undefined') window.funyo = api;
+  g.gamekit = api;
+  if (typeof window !== 'undefined') window.gamekit = api;
 })();

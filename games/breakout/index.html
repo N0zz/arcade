@@ -13,15 +13,15 @@
 <meta name="apple-mobile-web-app-title" content="Brick Breaker">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="../../analytics.js" defer></script>
-<link rel="stylesheet" href="../../funyo-kit.css">
-<script src="../../funyo-kit.js"></script>
+<link rel="stylesheet" href="../../game-kit.css">
+<script src="../../game-kit.js"></script>
 <style>
   :root { --mg:#ff00ff; --cy:#00ffff; --bg:#0a0010; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:#fff;
     font-family: 'Courier New', Courier, monospace; user-select:none; touch-action:none; }
   #game { display:block; width:100vw; height:100vh; }
-  /* Position/background/font come from the shared .funyo-hud (center-top pill). Keep only
+  /* Position/background/font come from the shared .gamekit-hud (center-top pill). Keep only
      the synthwave value colors. */
   #hud .val { color:var(--cy); text-shadow:0 0 8px var(--cy); }
   #hud .hrt { color:var(--mg); text-shadow:0 0 8px var(--mg); }
@@ -48,12 +48,12 @@
   #startBtn { font-family:inherit; cursor:pointer; font-size:15px; letter-spacing:3px; padding:11px 28px;
     border-radius:4px; color:#fff; background:transparent; border:2px solid var(--mg);
     text-shadow:0 0 8px var(--mg); box-shadow:0 0 16px rgba(255,0,255,0.4), inset 0 0 16px rgba(255,0,255,0.1); }
-  #shareRow { --funyo-accent:#ff5cc8; margin-top:4px; }
+  #shareRow { --gamekit-accent:#ff5cc8; margin-top:4px; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud" class="funyo-hud">
+<div id="hud" class="gamekit-hud">
   <div class="stat"><span class="lbl">SCORE</span><span class="val" id="scoreEl">0</span></div>
   <div class="stat"><span class="lbl">BEST</span><span class="val" id="bestEl">0</span></div>
   <div class="stat"><span class="lbl">LIVES</span><span class="hrt" id="livesEl">♥♥♥</span></div>
@@ -88,8 +88,8 @@
   const overlay = document.getElementById('overlay');
   const endOverlay = document.getElementById('endOverlay');
 
-  // ---- Audio (funyo-kit shared engine + global mute) ----
-  const SND = window.funyo.sound;
+  // ---- Audio (game-kit shared engine + global mute) ----
+  const SND = window.gamekit.sound;
   SND.define({
     bounce: ({ tone }) => tone(440, 0.05, 'square', 0.07),
     break: ({ tone }) => { tone(660, 0.08, 'sawtooth', 0.1); tone(880, 0.06, 'square', 0.05); },
@@ -138,7 +138,7 @@
   function resize() {
     W = canvas.width = window.innerWidth;
     H = canvas.height = window.innerHeight;
-    // Reserve headroom so the playfield clears the shared center-top .funyo-hud pill.
+    // Reserve headroom so the playfield clears the shared center-top .gamekit-hud pill.
     // Landscape: pill at top:8px → ~48px. Portrait (≤560px): pill drops to top:50px → ~92px.
     const portrait = H > W || W <= 560;
     topMargin = portrait ? 92 : 48;
@@ -680,12 +680,12 @@
   document.getElementById('startBtn').addEventListener('click', startGame);
   { const ab = document.getElementById('againBtn'); if (ab) ab.addEventListener('click', startGame); }
 
-  // ---- Share row + top nav (funyo-kit) ----
-  window.funyo.shareRow(document.getElementById('shareRow'), {
+  // ---- Share row + top nav (game-kit) ----
+  window.gamekit.shareRow(document.getElementById('shareRow'), {
     slug: 'breakout', title: 'Brick Breaker',
     message: () => 'I scored ' + score + ' in Brick Breaker 🧱',
   });
-  window.funyo.nav({ reset: 'breakout_' });
+  window.gamekit.nav({ reset: 'breakout_' });
 
   // Menu: per-mode best scores (refreshed when the menu is shown)
   function refreshMenuBests() {
@@ -784,7 +784,7 @@
   updateHud();
   loop2();
 })();
-  window.funyo.pwa();
+  window.gamekit.pwa();
 </script>
 </body>
 </html>

@@ -60,15 +60,15 @@ screen (its own icon, opens fullscreen, plays offline). Handy if you only want o
 ## Add a game
 
 1. Create `games/<slug>/index.html` — load the shared kit in `<head>`
-   (`funyo-kit.css` + `funyo-kit.js`) and use `funyo.nav()`, `funyo.sound`, `funyo.shareRow()`,
-   `funyo.pwa()` for the nav / sound + mute / share / PWA. Keep game logic inline with a
+   (`game-kit.css` + `game-kit.js`) and use `gamekit.nav()`, `gamekit.sound`, `gamekit.shareRow()`,
+   `gamekit.pwa()` for the nav / sound + mute / share / PWA. Keep game logic inline with a
    `window.__test` hook and the menu → play → scoreboard(+share) flow.
 2. Add one entry to **`games.js`**: `slug`, `title`, `blurb`, `icon`, `accent`, `tag`, and
    optionally `soon: true` (greyed coming-soon tile), `mp: true` + `players` (e.g. `"2–4P"`,
    Multiplayer section), `badges: ["new"]`/`["pick"]` (gold/purple tile badge).
-3. Add `games/<slug>/test.mjs` (dependency-free headless harness; **preload `../../funyo-kit.js`**
+3. Add `games/<slug>/test.mjs` (dependency-free headless harness; **preload `../../game-kit.js`**
    in the sandbox before the inline script) and keep it green.
-4. `sw.js` `SHELL` includes the HTML, icons, and `../../funyo-kit.js` + `../../funyo-kit.css` (offline).
+4. `sw.js` `SHELL` includes the HTML, icons, and `../../game-kit.js` + `../../game-kit.css` (offline).
 
 ## Testing
 
@@ -87,8 +87,8 @@ Dependency-free headless harnesses (mock the DOM/canvas, drive each game via a
 index.html        catalogue (tiles from games.js) + PWA install + share + feedback + newsletter
 games.js          catalogue manifest
 analytics.js      consent-gated GA4 loader
-funyo-kit.js      shared game shell (sound+mute, nav, share row, PWA auto-update)
-funyo-kit.css     shared shell styles
+game-kit.js      shared game shell (sound+mute, nav, share row, PWA auto-update)
+game-kit.css     shared shell styles
 favicon.svg       komyo icon
 manifest.json     PWA manifest      sw.js   service worker (offline)
 CNAME             custom domain (komyo.online)   .nojekyll   serve files as-is on GitHub Pages

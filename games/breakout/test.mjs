@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 
 const DIR = path.dirname(new URL(import.meta.url).pathname);
-const KIT = fs.readFileSync(path.join(DIR, '../../funyo-kit.js'), 'utf8'); // shared kit, loaded before the game
+const KIT = fs.readFileSync(path.join(DIR, '../../game-kit.js'), 'utf8'); // shared kit, loaded before the game
 let pass = 0, fail = 0;
 const fails = [];
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
@@ -87,7 +87,7 @@ function runGame() {
   const ctx = vm.createContext(sandbox);
 
   let bootErr = null;
-  try { vm.runInContext(KIT, ctx, { filename: 'funyo-kit.js' }); vm.runInContext(code, ctx, { filename: 'index.html' }); }
+  try { vm.runInContext(KIT, ctx, { filename: 'game-kit.js' }); vm.runInContext(code, ctx, { filename: 'index.html' }); }
   catch (e) { bootErr = e.stack; }
 
   return { getEl, win, store, bootErr, T: () => win.__test };
@@ -469,7 +469,7 @@ section('Breakout: menu best labels reflect stored per-mode bests');
     matchMedia: () => ({ matches: false }), URLSearchParams, Math, JSON, String, Number, Array, Object, parseInt, parseFloat, isFinite, isNaN, Date, console };
   sandbox.globalThis = sandbox;
   const seedCtx = vmmod.createContext(sandbox);
-  vmmod.runInContext(KIT, seedCtx, { filename: 'funyo-kit.js' });
+  vmmod.runInContext(KIT, seedCtx, { filename: 'game-kit.js' });
   vmmod.runInContext(code, seedCtx, { filename: 'index.html' });
   ok(getEl('bestClassic').textContent === 'best: 250', 'classic best label shows stored best (got ' + getEl('bestClassic').textContent + ')');
   ok(getEl('bestEndless').textContent === 'best: 99', 'endless best label shows stored best (got ' + getEl('bestEndless').textContent + ')');
@@ -507,7 +507,7 @@ section('Breakout: 2× speed pref restored at boot from storage');
     matchMedia: () => ({ matches: false }), URLSearchParams, Math, JSON, String, Number, Array, Object, parseInt, parseFloat, isFinite, isNaN, Date, console };
   sandbox.globalThis = sandbox;
   const seedCtx2 = vmmod.createContext(sandbox);
-  vmmod.runInContext(KIT, seedCtx2, { filename: 'funyo-kit.js' });
+  vmmod.runInContext(KIT, seedCtx2, { filename: 'game-kit.js' });
   vmmod.runInContext(code, seedCtx2, { filename: 'index.html' });
   ok(win.__test.speedMult === 2, 'speedMult restored to 2 from stored pref (got ' + win.__test.speedMult + ')');
   ok(mkEl('speed2x').checked === true, 'speed checkbox reflects restored pref');

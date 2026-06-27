@@ -13,15 +13,15 @@
 <meta name="apple-mobile-web-app-title" content="Meadow Flyer">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="../../analytics.js" defer></script>
-<link rel="stylesheet" href="../../funyo-kit.css">
-<script src="../../funyo-kit.js"></script>
+<link rel="stylesheet" href="../../game-kit.css">
+<script src="../../game-kit.js"></script>
 <style>
   :root { --sky:#b8e4f9; --grass:#7ec850; --stem:#5a9e30; --petal:#f9c0c0; --cream:#fdf6e3; --ink:#3a2a17; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { margin:0; height:100%; overflow:hidden; background:var(--sky); color:var(--ink);
     font-family: Georgia, "Times New Roman", serif; user-select:none; touch-action:none; }
   #game { display:block; width:100vw; height:100vh; }
-  /* HUD is positioned center-top by the shared kit (.funyo-hud), which is a DARK pill with
+  /* HUD is positioned center-top by the shared kit (.gamekit-hud), which is a DARK pill with
      light text. Keep the text light in BOTH day & night so it reads on that pill (no day/night
      colour overrides) — only size/weight live here so the kit owns layout & colour. */
   #hud .score { font-size:28px; font-weight:bold; text-shadow:0 1px 4px rgba(0,0,0,0.5); }
@@ -69,12 +69,12 @@
   #goScreen .goBest  { font-size:14px; color:#e0cca0; letter-spacing:1px; }
   #goScreen .goHint  { font-size:13px; color:rgba(253,246,227,0.6); margin-top:4px; }
   #goScreen { pointer-events:all; }
-  #shareRow { --funyo-accent:#8fd3a6; }
+  #shareRow { --gamekit-accent:#8fd3a6; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud" class="funyo-hud">
+<div id="hud" class="gamekit-hud">
   <div class="score" id="scoreEl">0</div>
   <div class="best"  id="bestEl">BEST 0</div>
 </div>
@@ -119,8 +119,8 @@
     };
   }
 
-  // ---- Audio (funyo-kit shared engine + global mute) ----
-  const SND = window.funyo.sound;
+  // ---- Audio (game-kit shared engine + global mute) ----
+  const SND = window.gamekit.sound;
   SND.define({
     flap: ({ tone }) => { tone(520, 0.06, 'sine', 0.07); tone(680, 0.04, 'sine', 0.04); },
     score: ({ tone }) => { [660, 880].forEach((f, i) => setTimeout(() => tone(f, 0.1, 'sine', 0.08), i * 60)); },
@@ -724,12 +724,12 @@
   goScreen.addEventListener('pointerdown', e => { if (fromShare(e)) return; tryRestart(); });
   goScreen.addEventListener('click', e => { if (fromShare(e)) return; tryRestart(); });
 
-  // ---- Share row + top nav (funyo-kit) ----
-  window.funyo.shareRow(document.getElementById('shareRow'), {
+  // ---- Share row + top nav (game-kit) ----
+  window.gamekit.shareRow(document.getElementById('shareRow'), {
     slug: 'flappy', title: 'Meadow Flyer',
     message: () => 'I flew to ' + score + ' in Meadow Flyer 🐤',
   });
-  window.funyo.nav({ reset: 'flappy_' });
+  window.gamekit.nav({ reset: 'flappy_' });
 
   // ---- Test hook ----
   window.__test = {
@@ -766,7 +766,7 @@
   applyModeUI();
   resize(); updateHud(); refreshMenu(); loop();
 })();
-  window.funyo.pwa();
+  window.gamekit.pwa();
 </script>
 </body>
 </html>

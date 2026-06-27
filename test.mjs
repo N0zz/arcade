@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 
 const DIR = path.dirname(new URL(import.meta.url).pathname);
-const KIT = fs.readFileSync(path.join(DIR, 'funyo-kit.js'), 'utf8'); // shared kit, preloaded for game pages
+const KIT = fs.readFileSync(path.join(DIR, 'game-kit.js'), 'utf8'); // shared kit, preloaded for game pages
 let pass = 0, fail = 0; const fails = [];
 const ok = (c, m) => { if (c) pass++; else { fail++; fails.push(m); console.log('  ✗ ' + m); } };
 const section = t => console.log('\n=== ' + t + ' ===');
@@ -133,9 +133,9 @@ function testLiveGames() {
   }
 }
 
-// ---------------- funyo-kit (shared shell) ----------------
+// ---------------- game-kit (shared shell) ----------------
 function testKit() {
-  section('funyo-kit (shared shell)');
+  section('game-kit (shared shell)');
   const store = {};
   const cl = () => { const s = new Set(); return { add: (...c) => c.forEach(x => s.add(x)), remove: (...c) => c.forEach(x => s.delete(x)), contains: c => s.has(c), toggle: () => {} }; };
   const mk = () => { const e = { textContent: '', style: {}, classList: cl(), _l: {}, addEventListener: (t, fn) => { (e._l[t] ||= []).push(fn); }, appendChild: c => c, querySelector: () => null, querySelectorAll: () => [] }; let h = ''; Object.defineProperty(e, 'innerHTML', { get: () => h, set: v => { h = String(v ?? ''); } }); return e; };
@@ -148,9 +148,9 @@ function testKit() {
   };
   sandbox.globalThis = sandbox;
   const ctx = vm.createContext(sandbox);
-  let err = null; try { vm.runInContext(KIT, ctx, { filename: 'funyo-kit.js' }); } catch (e) { err = e.stack; }
+  let err = null; try { vm.runInContext(KIT, ctx, { filename: 'game-kit.js' }); } catch (e) { err = e.stack; }
   ok(err === null, 'kit loads: ' + err);
-  const F = sandbox.funyo;
+  const F = sandbox.gamekit;
   ok(F && F.sound && F.music && F.nav && F.audioMenu && F.resetScores && F.shareRow && F.shareUrls && F.pwa,
     'kit exposes sound/music/nav/audioMenu/resetScores/shareRow/shareUrls/pwa');
   if (!F) return;
@@ -161,18 +161,18 @@ function testKit() {
   // SFX channel
   ok(F.sound.isMuted() === false, 'SFX starts unmuted');
   F.sound.toggle();
-  ok(F.sound.isMuted() === true && store['funyo_sfx_muted'] === '1', 'SFX toggle mutes + persists');
+  ok(F.sound.isMuted() === true && store['gamekit_sfx_muted'] === '1', 'SFX toggle mutes + persists');
   F.sound.play('anything'); // muted + no AudioContext → must not throw
   F.sound.toggle();
   F.sound.volume(0.5);
-  ok(store['funyo_sfx_vol'] === '0.5', 'SFX volume persists (' + store['funyo_sfx_vol'] + ')');
+  ok(store['gamekit_sfx_vol'] === '0.5', 'SFX volume persists (' + store['gamekit_sfx_vol'] + ')');
   // Music channel
   let musState = null; F.music.subscribe(s => { musState = s; });
   ok(musState && musState.muted === false, 'music.subscribe fires with initial state');
   F.music.setMuted(true);
-  ok(F.music.isMuted() === true && store['funyo_music_muted'] === '1' && F.music.gain() === 0, 'music mute persists + gain 0 when muted');
+  ok(F.music.isMuted() === true && store['gamekit_music_muted'] === '1' && F.music.gain() === 0, 'music mute persists + gain 0 when muted');
   F.music.setMuted(false); F.music.volume(0.4);
-  ok(F.music.gain() === 0.4 && store['funyo_music_vol'] === '0.4', 'music volume = gain when unmuted');
+  ok(F.music.gain() === 0.4 && store['gamekit_music_vol'] === '0.4', 'music volume = gain when unmuted');
   // headless-safe (incl. the audio menu + reset + music flag)
   let threw = null;
   try { F.nav({ music: true, reset: 'snake_' }); F.shareRow(doc.getElementById('sr'), { slug: 'snake', message: () => 'x' }); F.pwa(); F.resetScores('snake_'); } catch (e) { threw = e.message; }

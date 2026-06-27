@@ -13,8 +13,8 @@
 <meta name="apple-mobile-web-app-title" content="Neon Snake">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="../../analytics.js" defer></script>
-<link rel="stylesheet" href="../../funyo-kit.css">
-<script src="../../funyo-kit.js"></script>
+<link rel="stylesheet" href="../../game-kit.css">
+<script src="../../game-kit.js"></script>
 <style>
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { margin:0; height:100%; overflow:hidden; background:#050a0f; color:#b0f0ff;
@@ -45,7 +45,7 @@
   #goBest.newbest { color:#0ff; opacity:1; text-shadow:0 0 14px #0ff; }
   .screen { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; width:100%; }
   .screen.hidden { display:none; }
-  #shareRow { --funyo-accent:#0ff; }
+  #shareRow { --gamekit-accent:#0ff; }
   .opts { display:flex; flex-direction:column; gap:11px; width:100%; max-width:380px; }
   .opt-row { display:grid; grid-template-columns:54px 1fr; align-items:center; gap:12px; }
   .opt-label { font-size:11px; letter-spacing:2px; opacity:0.55; text-align:left; }
@@ -134,8 +134,8 @@
   const bestEl = document.getElementById('bestEl');
   const lenEl = document.getElementById('lenEl');
 
-  // ---- Audio (funyo-kit shared engine + global mute) ----
-  const SND = window.funyo.sound;
+  // ---- Audio (game-kit shared engine + global mute) ----
+  const SND = window.gamekit.sound;
   SND.define({
     eat: ({ tone }) => { tone(660, 0.06, 'square', 0.12); tone(880, 0.08, 'sine', 0.07); },
     turn: ({ tone }) => tone(220, 0.03, 'triangle', 0.04),
@@ -558,12 +558,12 @@
   const restartBtn = document.getElementById('restartBtn');
   if (restartBtn) restartBtn.addEventListener('click', startGame);
 
-  // ---- Share row + top nav (funyo-kit) ----
-  window.funyo.shareRow(document.getElementById('shareRow'), {
+  // ---- Share row + top nav (game-kit) ----
+  window.gamekit.shareRow(document.getElementById('shareRow'), {
     slug: 'snake', title: 'Neon Snake',
     message: () => 'I scored ' + score + ' in Neon Snake 🐍',
   });
-  window.funyo.nav({ reset: 'snake_' });
+  window.gamekit.nav({ reset: 'snake_' });
 
   loadOpts();
   applyGridSize();
@@ -576,7 +576,7 @@
   reset();
   requestAnimationFrame(loop);
 })();
-  window.funyo.pwa();
+  window.gamekit.pwa();
 </script>
 </body>
 </html>

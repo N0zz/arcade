@@ -1,6 +1,6 @@
 // Arcade service worker — installable + offline. Network-first so updates show up
 // online; the cache is the offline fallback. Game sub-pages get cached as you visit.
-const CACHE = 'funyo-v1';
+const CACHE = 'gamekit-v1';
 const SHELL = ['./', './index.html', './games.js', './favicon.svg', './manifest.json'];
 
 self.addEventListener('install', e => {

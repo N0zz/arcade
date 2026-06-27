@@ -13,8 +13,8 @@
 <meta name="apple-mobile-web-app-title" content="Stack">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="../../analytics.js" defer></script>
-<link rel="stylesheet" href="../../funyo-kit.css">
-<script src="../../funyo-kit.js"></script>
+<link rel="stylesheet" href="../../game-kit.css">
+<script src="../../game-kit.js"></script>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #b8d4f0; font-family: system-ui, -apple-system, sans-serif; user-select: none; touch-action: none; }
@@ -48,7 +48,7 @@
   .mode-desc { font-size: 12px; color: #7a5aaa; opacity: 0.75; min-height: 18px; }
   .mode-btn .mbest { display: block; font-size: 10px; font-weight: 600; letter-spacing: 1px;
     opacity: 0.7; margin-top: 3px; }
-  #shareRow { --funyo-accent: #a064f0; }
+  #shareRow { --gamekit-accent: #a064f0; }
 
   /* Portrait: kit HUD drops to top:50px — push the combo banner below it */
   @media (max-width: 560px) {
@@ -58,7 +58,7 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud" class="funyo-hud">
+<div id="hud" class="gamekit-hud">
   <div class="stat"><span class="lbl">SCORE</span> <b id="score">0</b></div>
   <div class="stat"><span class="lbl">BEST</span> <b id="best">0</b></div>
   <div class="stat"><span class="lbl">HEIGHT</span> <b id="height">0</b></div>
@@ -92,8 +92,8 @@
   const timerStat = document.getElementById('timer-stat');
   const timerEl = document.getElementById('timer');
 
-  // ---- Audio (funyo-kit shared engine + global mute) ----
-  const SND = window.funyo.sound;
+  // ---- Audio (game-kit shared engine + global mute) ----
+  const SND = window.gamekit.sound;
   SND.define({
     place: ({ tone }) => tone(440, 0.08, 'triangle', 0.1),
     perfect: ({ tone }) => [523, 659, 784].forEach((f, i) => setTimeout(() => tone(f, 0.18, 'sine', 0.1), i * 40)),
@@ -300,7 +300,7 @@
         <div id="shareRow"></div>`;
       document.getElementById('restartBtn').addEventListener('click', () => startGameMode(mode));
       const finalScore = score;
-      window.funyo.shareRow(document.getElementById('shareRow'), {
+      window.gamekit.shareRow(document.getElementById('shareRow'), {
         slug: 'stacker', title: 'Stack',
         message: () => 'I stacked ' + finalScore + ' high in Stack 🧊',
       });
@@ -575,13 +575,13 @@
     menuBest(m) { const el = document.getElementById('mbest-' + m); return el ? el.textContent : null; },
   };
 
-  window.funyo.nav({ reset: 'stacker_' });
+  window.gamekit.nav({ reset: 'stacker_' });
 
   resize();
   updateHud();
   loop();
 })();
-  window.funyo.pwa();
+  window.gamekit.pwa();
 </script>
 </body>
 </html>

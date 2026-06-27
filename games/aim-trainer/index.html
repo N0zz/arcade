@@ -13,15 +13,15 @@
 <meta name="apple-mobile-web-app-title" content="Range">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="../../analytics.js" defer></script>
-<link rel="stylesheet" href="../../funyo-kit.css">
-<script src="../../funyo-kit.js"></script>
+<link rel="stylesheet" href="../../game-kit.css">
+<script src="../../game-kit.js"></script>
 <style>
   :root { --bg:#0d1117; --grid:#1a2030; --accent:#ff7a3c; --fg:#e0e8f0; --dim:#6a7a8a; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--fg);
     font-family:'Courier New',Courier,monospace; user-select:none; touch-action:none; }
   #game { display:block; width:100vw; height:100vh; cursor:none; }
-  /* .funyo-hud (shared kit) provides center-top placement, pill, wrap + font; keep only item colors. */
+  /* .gamekit-hud (shared kit) provides center-top placement, pill, wrap + font; keep only item colors. */
   #hud .stat b { color:var(--accent); }
   #hud #hTime.warn { color:#ff3c3c; }
   #overlay { position:fixed; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -60,12 +60,12 @@
   #endScreen .srow b { color:var(--accent); font-size:16px; display:block; }
   #endScreen button#restartBtn { font-family:inherit; cursor:pointer; font-size:13px; letter-spacing:2px; padding:9px 24px;
     border-radius:6px; color:var(--fg); background:var(--accent); border:none; }
-  #shareRow { --funyo-accent:#ff7a3c; }
+  #shareRow { --gamekit-accent:#ff7a3c; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud" class="funyo-hud">
+<div id="hud" class="gamekit-hud">
   <div class="stat"><span class="lbl" id="hScoreLbl">SCORE</span><b id="hScore">0</b></div>
   <div class="stat"><span class="lbl">ACC</span><b id="hAcc">--%</b></div>
   <div class="stat"><span id="hTimeLbl" class="lbl">TIME</span><b id="hTime">30</b></div>
@@ -113,7 +113,7 @@
   const $ = id => document.getElementById(id);
   const canvas = $('game'), ctx = canvas.getContext('2d');
   const overlay = $('overlay'), endScreen = $('endScreen');
-  // Top headroom the playfield must reserve for the kit's center-top .funyo-hud pill.
+  // Top headroom the playfield must reserve for the kit's center-top .gamekit-hud pill.
   // Landscape: pill at top:8px → clears ~48px. Portrait (≤560px): pill drops to top:50px
   // below the nav → clears ~92px.
   const HUD_LANDSCAPE = 48, HUD_PORTRAIT = 92;
@@ -123,8 +123,8 @@
   function hudBottom() { return isPortrait() ? HUD_PORTRAIT : HUD_LANDSCAPE; }
   let HUD_H = hudBottom();
 
-  // ---- Audio (funyo-kit shared engine + global mute) ----
-  const SND = window.funyo.sound;
+  // ---- Audio (game-kit shared engine + global mute) ----
+  const SND = window.gamekit.sound;
   SND.define({
     hit: ({ tone }) => { tone(880, 0.06, 'square', 0.08); tone(1200, 0.04, 'sine', 0.05); },
     miss: ({ noise }) => noise(0.08, 0.06),
@@ -641,12 +641,12 @@
     renderBestPanel();
   });
 
-  // ---- Share row + top nav (funyo-kit) ----
-  window.funyo.shareRow(document.getElementById('shareRow'), {
+  // ---- Share row + top nav (game-kit) ----
+  window.gamekit.shareRow(document.getElementById('shareRow'), {
     slug: 'aim-trainer', title: 'Range',
     message: () => 'I scored ' + score + ' on the Range 🎯',
   });
-  window.funyo.nav({ reset: 'aim-trainer_' });
+  window.gamekit.nav({ reset: 'aim-trainer_' });
 
   // ---- Test hook ----
   window.__test = {
@@ -691,7 +691,7 @@
   updateHud();
   loop();
 })();
-  window.funyo.pwa();
+  window.gamekit.pwa();
 </script>
 </body>
 </html>

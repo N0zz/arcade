@@ -59,7 +59,7 @@ tiles). More ideas: Sumo Arena, Spacewar Duel, Joust-lite, Snake Battle, Button-
    the catalogue lists today's + this week's with progress and a ✅ when done, tracked in the player's
    space (localStorage). Track a **streak** (consecutive days completed) — the real return hook
    (= the "Wordle loop": once-a-day, same for everyone, shareable). All client-side: games write their
-   last result to a shared key (`funyo_result_<slug>` = {mode,score,time}); the panel checks it vs the
+   last result to a shared key (`gamekit_result_<slug>` = {mode,score,time}); the panel checks it vs the
    target. No server, honor-system (fine for casual; no leaderboard). Completing one feeds the
    score-card share ("I beat today's komyo challenge 🔥"). *(Replaces the earlier seeded-run idea —
    a challenge list is simpler to build, legible, and works across the current games immediately.)*
@@ -99,7 +99,7 @@ now **parked**).
 - *(done: **Changelog** modal (date-grouped releases, lazy-load, searchable) + **About komyo** modal.)*
 - *(done: auto **NEW**/**UPDATED** tile badges, date-driven from `added`/`updated`, 7-day window.)*
 - **Kit menu framework (v3)** *(idea — undecided; may keep what we have)* — promote the
-  asteroids-style **mode tiles** + **option-group rows** into a reusable `funyo.menu` the kit renders
+  asteroids-style **mode tiles** + **option-group rows** into a reusable `gamekit.menu` the kit renders
   (declarative config → consistent menus everywhere, less per-game markup). Trade-off: more kit
   surface/abstraction vs. each game's current hand-rolled menu, which already works. Only worth it if
   the per-game menu boilerplate starts to hurt as games scale. Decide before the next batch of games.
@@ -112,7 +112,7 @@ now **parked**).
   catalogue: "Export" (copy/download a **base64-encoded** blob) + "Import" (paste → base64-decode →
   validate → write keys back → reload). Base64 is light obfuscation so non-tech players can't trivially
   edit their scores — *not* real security. Namespacing is easy (keys are already `arcade_favs`,
-  `funyo_*`, `<slug>_*`, `funyo_result_*`). Add a version field + merge-vs-replace choice, and guard
+  `gamekit_*`, `<slug>_*`, `gamekit_result_*`). Add a version field + merge-vs-replace choice, and guard
   against pasting junk.
 
 ### Distribution

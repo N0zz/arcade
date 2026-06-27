@@ -12,8 +12,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Asteroids">
 <link rel="apple-touch-icon" href="favicon.svg">
-<link rel="stylesheet" href="../../funyo-kit.css">
-<script src="../../funyo-kit.js"></script>
+<link rel="stylesheet" href="../../game-kit.css">
+<script src="../../game-kit.js"></script>
 <script src="../../analytics.js" defer></script>
 <style>
   html, body {
@@ -146,8 +146,8 @@
     }
     resizeSky(); drawSky();
 
-    // ---- menu music (procedural; master gain driven by the funyo-kit Music channel) ----
-    const KIT = (typeof window !== 'undefined' && window.funyo) ? window.funyo : null;
+    // ---- menu music (procedural; master gain driven by the game-kit Music channel) ----
+    const KIT = (typeof window !== 'undefined' && window.gamekit) ? window.gamekit : null;
     const SND = (() => {
       let ac, master, musG, mt=null;
       function ensure(){ if(ac!==undefined) return; const AC=window.AudioContext||window.webkitAudioContext; if(!AC){ ac=null; return; }
@@ -257,7 +257,7 @@
 
     setMode(false);
 
-    // funyo-kit shell: top-left nav (Menu reloads the launcher) + top-right sound menu
+    // game-kit shell: top-left nav (Menu reloads the launcher) + top-right sound menu
     // (SFX + Music rows + a Reset-scores entry that clears asteroids_* bests) + PWA auto-update.
     if (KIT) { KIT.nav({ music: true, reset: 'asteroids_' }); KIT.pwa(); }
   </script>

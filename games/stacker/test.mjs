@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 
 const DIR = path.dirname(new URL(import.meta.url).pathname);
-const KIT = fs.readFileSync(path.join(DIR, '../../funyo-kit.js'), 'utf8'); // shared kit, loaded before the game
+const KIT = fs.readFileSync(path.join(DIR, '../../game-kit.js'), 'utf8'); // shared kit, loaded before the game
 let pass = 0, fail = 0;
 const fails = [];
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
@@ -107,7 +107,7 @@ function runStacker() {
   const ctx = vm.createContext(sandbox);
 
   let bootErr = null;
-  try { vm.runInContext(KIT, ctx, { filename: 'funyo-kit.js' }); vm.runInContext(code, ctx, { filename: 'stacker/index.html' }); }
+  try { vm.runInContext(KIT, ctx, { filename: 'game-kit.js' }); vm.runInContext(code, ctx, { filename: 'stacker/index.html' }); }
   catch (e) { bootErr = e.stack || e.message; }
 
   return {

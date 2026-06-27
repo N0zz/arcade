@@ -95,8 +95,8 @@ function runGame(file, { search = '' } = {}) {
   sandbox.globalThis = sandbox;
   const ctx = vm.createContext(sandbox);
 
-  // preload the shared funyo-kit so window.funyo exists before the game's inline script (mirrors the <head> load order)
-  try { vm.runInContext(fs.readFileSync(path.join(DIR, '..', '..', 'funyo-kit.js'), 'utf8'), ctx, { filename: 'funyo-kit.js' }); }
+  // preload the shared game-kit so window.gamekit exists before the game's inline script (mirrors the <head> load order)
+  try { vm.runInContext(fs.readFileSync(path.join(DIR, '..', '..', 'game-kit.js'), 'utf8'), ctx, { filename: 'game-kit.js' }); }
   catch (e) { errors.push('kit boot: ' + e.message); }
 
   try { vm.runInContext(code, ctx, { filename: file }); }
@@ -494,7 +494,7 @@ function testLauncher() {
   const ctx = vm.createContext(sandbox);
   let bootErr = null;
   try {
-    vm.runInContext(fs.readFileSync(path.join(DIR, '..', '..', 'funyo-kit.js'), 'utf8'), ctx, { filename: 'funyo-kit.js' });
+    vm.runInContext(fs.readFileSync(path.join(DIR, '..', '..', 'game-kit.js'), 'utf8'), ctx, { filename: 'game-kit.js' });
     vm.runInContext(verCode, ctx, { filename: 'levels.js' }); vm.runInContext(m[1], ctx, { filename: 'index.html' });
   }
   catch (e) { bootErr = e.message; }
@@ -524,14 +524,14 @@ function testLauncher() {
   (winHandlers['message'] || []).forEach(fn => fn({ data: 'asteroids:menu' }));
   ok(frame.src === 'about:blank', 'in-game Quit-to-menu clears the iframe');
   ok(getEl('select').style.display === 'flex', 'in-game Quit-to-menu returns to menu');
-  // reset best scores: the bespoke reset button is gone — the launcher wires the funyo-kit
-  // sound menu's Reset entry via funyo.nav({ reset: 'asteroids_' }), which clears asteroids_* keys.
+  // reset best scores: the bespoke reset button is gone — the launcher wires the game-kit
+  // sound menu's Reset entry via gamekit.nav({ reset: 'asteroids_' }), which clears asteroids_* keys.
   const fb = (win.LEVELS[0].file).split('/').pop();
   store['asteroids_score_' + fb] = '1234';
   store['asteroids_best_' + fb] = '9999';
   store['unrelated_key'] = 'keep';
-  ok(typeof win.funyo === 'object' && typeof win.funyo.resetScores === 'function', 'funyo-kit loaded with resetScores');
-  win.funyo.resetScores('asteroids_');
+  ok(typeof win.gamekit === 'object' && typeof win.gamekit.resetScores === 'function', 'game-kit loaded with resetScores');
+  win.gamekit.resetScores('asteroids_');
   ok(store['asteroids_score_' + fb] == null && store['asteroids_best_' + fb] == null, 'kit resetScores clears saved asteroids_ bests');
   ok(store['unrelated_key'] === 'keep', 'kit resetScores leaves unrelated keys');
 }

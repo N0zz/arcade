@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 
 const DIR = path.dirname(new URL(import.meta.url).pathname);
-const KIT = fs.readFileSync(path.join(DIR, '../../funyo-kit.js'), 'utf8'); // shared kit, loaded before the game
+const KIT = fs.readFileSync(path.join(DIR, '../../game-kit.js'), 'utf8'); // shared kit, loaded before the game
 let pass = 0, fail = 0;
 const fails = [];
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
@@ -114,7 +114,7 @@ function runGame(file, dims) {
 
   const ctx = vm.createContext(sandbox);
   let bootErr = null;
-  try { vm.runInContext(KIT, ctx, { filename: 'funyo-kit.js' }); vm.runInContext(code, ctx, { filename: file }); }
+  try { vm.runInContext(KIT, ctx, { filename: 'game-kit.js' }); vm.runInContext(code, ctx, { filename: file }); }
   catch (e) { bootErr = e.stack; }
 
   return { getEl, win, store, bootErr, test: () => win.__test };
@@ -329,7 +329,7 @@ const g4 = (() => {
   };
   sandbox.globalThis = sandbox;
   const ctx = vm.createContext(sandbox);
-  try { vm.runInContext(KIT, ctx, { filename: 'funyo-kit.js' }); vm.runInContext(m[1], ctx, { filename: 'index.html' }); } catch (e) {}
+  try { vm.runInContext(KIT, ctx, { filename: 'game-kit.js' }); vm.runInContext(m[1], ctx, { filename: 'index.html' }); } catch (e) {}
   return { test: () => win.__test };
 })();
 g4.test().start(); // start timed 30s so bestScore reads aim-trainer_best_30
@@ -431,7 +431,7 @@ section('moving targets: toggle persists to localStorage');
     };
     sandbox.globalThis = sandbox;
     const ctx = vm.createContext(sandbox);
-    try { vm.runInContext(KIT, ctx, { filename: 'funyo-kit.js' }); vm.runInContext(m[1], ctx, { filename: 'index.html' }); } catch (e) {}
+    try { vm.runInContext(KIT, ctx, { filename: 'game-kit.js' }); vm.runInContext(m[1], ctx, { filename: 'index.html' }); } catch (e) {}
     return { test: () => win.__test };
   })();
   ok(gm3.test().movingTargets === true, 'persisted moving=1 loaded on fresh boot');

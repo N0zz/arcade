@@ -13,8 +13,8 @@
 <meta name="apple-mobile-web-app-title" content="Keep Defender">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="../../analytics.js" defer></script>
-<link rel="stylesheet" href="../../funyo-kit.css">
-<script src="../../funyo-kit.js"></script>
+<link rel="stylesheet" href="../../game-kit.css">
+<script src="../../game-kit.js"></script>
 <style>
   :root { --wood:#4a3220; --wood2:#5e4026; --parch:#e7d6ad; --ink:#3a2a17; --gold:#e0b25a; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -24,7 +24,7 @@
 
   .panel { background:linear-gradient(180deg,var(--wood2),var(--wood)); border:2px solid #2c1d10;
     box-shadow: inset 0 1px 0 rgba(255,220,150,0.15), 0 3px 8px rgba(0,0,0,0.4); }
-  /* HUD: center-top via the shared .funyo-hud (kit centers it + wraps when busy). Keep only the
+  /* HUD: center-top via the shared .gamekit-hud (kit centers it + wraps when busy). Keep only the
      parchment value colors + THREAT logic; the kit owns position/background/font. */
   #top .stat b { color:var(--gold); }
 
@@ -97,13 +97,13 @@
     .map-picker { grid-template-columns:repeat(2, 1fr); }
   }
 
-  #shareRow { --funyo-accent:#e0b25a; }
+  #shareRow { --gamekit-accent:#e0b25a; }
   #waveAnnounce { position:fixed; top:62px; left:50%; transform:translateX(-50%); z-index:7; pointer-events:none;
     font-size:22px; font-weight:bold; color:var(--gold); text-shadow:0 2px 4px rgba(0,0,0,0.7);
     letter-spacing:2px; opacity:0; transition:opacity 0.3s; }
   #waveAnnounce.show { opacity:1; }
 
-  /* Portrait: the kit drops .funyo-hud to its own row (top:50px) under the nav; nudge the wave
+  /* Portrait: the kit drops .gamekit-hud to its own row (top:50px) under the nav; nudge the wave
      announce below the (possibly 2-row) HUD so it never overlaps. */
   @media (orientation: portrait) {
     #waveAnnounce { top:108px; }
@@ -112,7 +112,7 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="top" class="funyo-hud">
+<div id="top" class="gamekit-hud">
   <div class="stat"><span class="lbl">GOLD</span> <b id="gold">0</b></div>
   <div class="stat"><span class="lbl">KEEP</span> <b id="hp">0</b></div>
   <div class="stat"><span class="lbl">WAVE</span> <b id="wave">0</b></div>
@@ -155,8 +155,8 @@
   const canvas = $('game'), ctx = canvas.getContext('2d');
   const overlay = $('overlay');
 
-  // ---- Audio (funyo-kit shared engine + global mute) ----
-  const SND = window.funyo.sound;
+  // ---- Audio (game-kit shared engine + global mute) ----
+  const SND = window.gamekit.sound;
   SND.define({
     place: ({ tone }) => tone(180, 0.12, 'square', 0.12),
     shoot: ({ tone }) => tone(520, 0.05, 'triangle', 0.06),
@@ -1015,7 +1015,7 @@
       '<div id="shareRow"></div>';
     overlay.classList.remove('hidden');
     const ab = $('againBtn'); if (ab) ab.addEventListener('click', startGame);
-    window.funyo.shareRow($('shareRow'), {
+    window.gamekit.shareRow($('shareRow'), {
       slug: 'tower-defense', title: 'Keep Defender',
       message: () => 'I survived ' + wave + ' waves in Keep Defender 🏰',
     });
@@ -1438,7 +1438,7 @@
   $('startGameBtn').addEventListener('click', startGame);
   const spdBtn = $('speedBtn');
   if (spdBtn) spdBtn.addEventListener('click', () => { gameSpeed = gameSpeed === 1 ? 2 : 1; refreshToolbar(); });
-  window.funyo.nav({ reset: 'tower-defense_' });
+  window.gamekit.nav({ reset: 'tower-defense_' });
   const autoBtn = $('autoBtn');
   if (autoBtn) autoBtn.addEventListener('click', () => {
     autoWave = !autoWave;
@@ -1505,7 +1505,7 @@
 
   resize(); loadBest(); buildMapPicker(); applyMap(mapIndex); updateHud(); loop();
 })();
-  window.funyo.pwa();
+  window.gamekit.pwa();
 </script>
 </body>
 </html>
