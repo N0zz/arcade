@@ -158,6 +158,13 @@
       });
     }
     audioMenu({ music: !!opts.music, reset: opts.reset });
+    // block the browser context menu on game canvases (no "save image…" popping mid-play)
+    if (typeof document !== 'undefined' && document.querySelectorAll) {
+      try {
+        var cvs = document.querySelectorAll('canvas');
+        for (var i = 0; i < cvs.length; i++) cvs[i].addEventListener('contextmenu', function (e) { if (e && e.preventDefault) e.preventDefault(); });
+      } catch (e) {}
+    }
   }
 
   // ---------- end-screen share row ----------
