@@ -20,14 +20,14 @@
 <meta property="og:title" content="Komyo Games — free browser games">
 <meta property="og:description" content="A little catalogue of free, self-contained browser games. No ads, no payments, plays offline.">
 <meta property="og:url" content="https://komyo.online/">
-<meta property="og:image" content="https://komyo.online/og-image.png?v=3">
+<meta property="og:image" content="https://komyo.online/og-image.png?v=4">
 <meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="604">
+<meta property="og:image:height" content="593">
 <meta property="og:image:alt" content="Komyo Games — self-contained browser games">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Komyo Games — free browser games">
 <meta name="twitter:description" content="A little catalogue of free, self-contained browser games. No ads, plays offline.">
-<meta name="twitter:image" content="https://komyo.online/og-image.png?v=3">
+<meta name="twitter:image" content="https://komyo.online/og-image.png?v=4">
 <!-- Analytics: GA4, loaded only after cookie consent (see analytics.js) -->
 <script src="analytics.js" defer></script>
 <link rel="stylesheet" href="game-kit.css">
@@ -276,9 +276,9 @@
   .dhelp { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; margin-left:5px; vertical-align:middle;
     border:1px solid var(--border); border-radius:50%; background:none; color:var(--faint); font-family:var(--mono); font-size:9px; line-height:1; cursor:pointer; padding:0; }
   .dhelp:hover { color:#9fe8ff; border-color:#9fe8ff; }
-  .dnote { margin:4px 6px 8px; padding:9px 11px; font-size:11.5px; line-height:1.55; color:var(--muted); text-align:left;
+  .dnote { display:none; margin:4px 6px 8px; padding:9px 11px; font-size:11.5px; line-height:1.55; color:var(--muted); text-align:left;
     background:var(--surface-2); border:1px solid var(--border); border-radius:9px; }
-  .dnote[hidden] { display:none; }
+  .dnote.show { display:block; }
   .dnote b { color:var(--text); }
   .ditem.reset { color:#ff7a7a; }
   .ditem.reset:hover { background:rgba(255,90,90,0.10); }
@@ -443,7 +443,7 @@
     </div>
     <div class="ddata">
       <div class="dl">Your data <button class="dhelp" id="dataHelp" type="button" aria-label="What is this?" aria-expanded="false">?</button></div>
-      <div class="dnote" id="dataNote" hidden>Your scores, progress, favorites &amp; settings are saved <b>only on this device</b>. <b>Export</b> turns them into a code you can <b>Import</b> on another device — to carry your records between phone &amp; desktop, or keep a backup. Nothing is sent to a server.</div>
+      <div class="dnote" id="dataNote">Your scores, progress, favorites &amp; settings are saved <b>only on this device</b>. <b>Export</b> turns them into a code you can <b>Import</b> on another device — to carry your records between phone &amp; desktop, or keep a backup. Nothing is sent to a server.</div>
       <button class="ditem" id="exportBtn" type="button"><span class="di">⬆️</span> Export <span class="mock">SOON</span></button>
       <button class="ditem" id="importBtn" type="button"><span class="di">⬇️</span> Import <span class="mock">SOON</span></button>
       <a class="ditem reset" id="resetAll" href="#" title="Clear all saved scores &amp; progress for every game"><span class="di">↺</span> Reset all data</a>
@@ -1060,7 +1060,7 @@
     (function () {
       const dh = document.getElementById('dataHelp'), dn = document.getElementById('dataNote');
       if (!dh || !dn) return;
-      dh.addEventListener('click', () => { const show = dn.hidden; dn.hidden = !show; dh.setAttribute('aria-expanded', String(show)); });
+      dh.addEventListener('click', (e) => { e.stopPropagation(); const on = dn.classList.toggle('show'); dh.setAttribute('aria-expanded', on ? 'true' : 'false'); });
     })();
 
     // ---- welcome banner + display name (first-visit prompt · ✏️ edit · cycling-language greeting) ----
