@@ -561,7 +561,12 @@
   // ---- Share row + top nav (game-kit) ----
   window.gamekit.shareRow(document.getElementById('shareRow'), {
     slug: 'snake', title: 'Neon Snake',
-    message: () => 'I scored ' + score + ' in Neon Snake 🐍',
+    message: () => {
+      const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+      const m = [cap(opts.speed), opts.walls === 'wrap' ? 'Wrap' : 'Walls'];
+      if (opts.size !== 'medium') m.push(cap(opts.size));
+      return window.gamekit.shareText({ score: score, game: 'Neon Snake', emoji: '🐍', mode: m.join(' · '), extra: ['length ' + (snake ? snake.length : 0)] });
+    },
   });
   window.gamekit.nav({ reset: 'snake_' });
 

@@ -644,7 +644,12 @@
   // ---- Share row + top nav (game-kit) ----
   window.gamekit.shareRow(document.getElementById('shareRow'), {
     slug: 'aim-trainer', title: 'Range',
-    message: () => 'I scored ' + score + ' on the Range 🎯',
+    message: () => {
+      const acc = hits + misses > 0 ? Math.round(hits / (hits + misses) * 100) : 0;
+      return mode === 'sprint'
+        ? window.gamekit.shareText({ verb: 'I sped through', score: '100 targets', game: 'Range', emoji: '🎯', mode: 'Sprint', extra: [(elapsedFrames / 60).toFixed(1) + 's', acc + '% accuracy'] })
+        : window.gamekit.shareText({ score: score, game: 'Range', emoji: '🎯', mode: sessionSeconds + 's Timed', extra: [acc + '% accuracy'] });
+    },
   });
   window.gamekit.nav({ reset: 'aim-trainer_' });
 

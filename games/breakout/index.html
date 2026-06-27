@@ -683,7 +683,7 @@
   // ---- Share row + top nav (game-kit) ----
   window.gamekit.shareRow(document.getElementById('shareRow'), {
     slug: 'breakout', title: 'Brick Breaker',
-    message: () => 'I scored ' + score + ' in Brick Breaker 🧱',
+    message: () => window.gamekit.shareText({ score: score, game: 'Brick Breaker', emoji: '🧱', mode: gameMode.charAt(0).toUpperCase() + gameMode.slice(1), extra: ['level ' + level] }),
   });
   window.gamekit.nav({ reset: 'breakout_' });
 

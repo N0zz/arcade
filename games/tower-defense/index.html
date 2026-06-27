@@ -1017,7 +1017,7 @@
     const ab = $('againBtn'); if (ab) ab.addEventListener('click', startGame);
     window.gamekit.shareRow($('shareRow'), {
       slug: 'tower-defense', title: 'Keep Defender',
-      message: () => 'I survived ' + wave + ' waves in Keep Defender 🏰',
+      message: () => window.gamekit.shareText({ verb: 'I survived', score: wave, unit: 'waves', game: 'Keep Defender', emoji: '🏰', mode: MAPS[mapIndex].name }),
     });
   }
 

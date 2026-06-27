@@ -727,7 +727,7 @@
   // ---- Share row + top nav (game-kit) ----
   window.gamekit.shareRow(document.getElementById('shareRow'), {
     slug: 'flappy', title: 'Meadow Flyer',
-    message: () => 'I flew to ' + score + ' in Meadow Flyer 🐤',
+    message: () => window.gamekit.shareText({ verb: 'I flew to', score: score, game: 'Meadow Flyer', emoji: '🐤', mode: selectedBird.emoji + ' ' + (selectedBird.id.charAt(0).toUpperCase() + selectedBird.id.slice(1)) }),
   });
   window.gamekit.nav({ reset: 'flappy_' });
 

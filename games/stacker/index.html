@@ -302,7 +302,7 @@
       const finalScore = score;
       window.gamekit.shareRow(document.getElementById('shareRow'), {
         slug: 'stacker', title: 'Stack',
-        message: () => 'I stacked ' + finalScore + ' high in Stack 🧊',
+        message: () => window.gamekit.shareText({ verb: 'I stacked', score: finalScore, unit: 'high', game: 'Stack', emoji: '🧊', mode: MODES[mode].label }),
       });
     }
   }

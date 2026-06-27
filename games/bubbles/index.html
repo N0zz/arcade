@@ -1083,7 +1083,7 @@
   // ---- Share row + top nav (game-kit) ----
   window.gamekit.shareRow(document.getElementById('shareRow'), {
     slug: 'bubbles', title: 'Bubble Pop',
-    message: () => 'I scored ' + score + ' in Bubble Pop 🫧',
+    message: () => window.gamekit.shareText({ score: score, game: 'Bubble Pop', emoji: '🫧', mode: mode.charAt(0).toUpperCase() + mode.slice(1), extra: ['level ' + level] }),
   });
   window.gamekit.nav({ reset: 'bubbles_' });
 

@@ -270,7 +270,7 @@
   // end-screen share row is built by the game-kit into this placeholder
   const SHARE_ROW = '<div id="shareRow"></div>';
   function wireShareRow(finalScore) {
-    if (KIT) KIT.shareRow($('shareRow'), { slug: 'asteroids', title: 'Asteroids', message: () => 'I scored ' + finalScore + ' in Asteroids 🛸' });
+    if (KIT) KIT.shareRow($('shareRow'), { slug: 'asteroids', title: 'Asteroids', message: () => KIT.shareText({ score: finalScore, game: 'Asteroids', emoji: '🛸', mode: (SPEEDRUN ? 'Speedrun' : 'Roguelite · ' + ({ levelup: 'Level-up', milestones: 'Milestones', shop: 'Wave shop' }[PROGRESSION] || 'Roguelite')), extra: ['wave ' + wave] }) });
   }
 
   // ---- Spawning / waves ----
