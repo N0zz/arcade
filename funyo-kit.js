@@ -103,9 +103,9 @@
       + '<input class="funyo-au-slider" id="funyoSfxV" type="range" min="0" max="100" aria-label="Sound effects volume"></div>';
     if (opts.music) rows += '<div class="funyo-au-row"><button class="funyo-au-toggle" id="funyoMusM" type="button" aria-label="Mute music">🎵</button>'
       + '<input class="funyo-au-slider" id="funyoMusV" type="range" min="0" max="100" aria-label="Music volume"></div>';
-    if (opts.reset) rows += '<button class="funyo-au-reset" id="funyoReset" type="button">↺ Reset scores</button>';
     wrap.innerHTML = '<button class="funyo-au-btn" id="funyoAudioBtn" type="button" aria-label="Sound settings" title="Sound settings">🔊</button>'
-      + '<div class="funyo-au-panel" id="funyoAudioPanel">' + rows + '</div>';
+      + '<div class="funyo-au-panel" id="funyoAudioPanel">' + rows + '</div>'
+      + (opts.reset ? '<button class="funyo-au-resetbtn" id="funyoReset" type="button" aria-label="Reset scores" title="Reset scores">↺</button>' : '');
     document.body.appendChild(wrap);
     var btn = document.getElementById('funyoAudioBtn'), panel = document.getElementById('funyoAudioPanel');
     if (btn && panel) btn.addEventListener('click', function () { if (panel.classList) panel.classList.toggle('open'); });

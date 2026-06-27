@@ -23,9 +23,11 @@
   background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
 .funyo-au-toggle:hover { border-color: #9fe8ff; }
 .funyo-au-slider { flex: 1; min-width: 92px; accent-color: #9fe8ff; cursor: pointer; }
-.funyo-au-reset { font: 600 11px/1 ui-monospace, monospace; letter-spacing: 1px; cursor: pointer; padding: 8px 10px; margin-top: 2px;
-  color: #ffb4b4; background: rgba(255, 90, 90, 0.08); border: 1px solid rgba(255, 120, 120, 0.4); border-radius: 7px; }
-.funyo-au-reset:hover { color: #fff; background: rgba(255, 90, 90, 0.25); border-color: #ff8a8a; }
+/* reset-scores is its own button (top-right, below the sound button) — NOT part of the sound panel */
+.funyo-au-resetbtn { font-size: 15px; line-height: 0; width: 38px; height: 34px; cursor: pointer; color: #ffb4b4;
+  background: rgba(8, 12, 20, 0.66); border: 1px solid rgba(255, 120, 120, 0.4); border-radius: 8px;
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); display: inline-flex; align-items: center; justify-content: center; }
+.funyo-au-resetbtn:hover { color: #fff; background: rgba(255, 90, 90, 0.25); border-color: #ff8a8a; }
 
 /* standard center-top HUD — clears the left nav and the right sound menu; wraps when busy */
 .funyo-hud { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 5;
