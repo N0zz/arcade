@@ -62,3 +62,5 @@
 .gamekit-share .sbtn svg { width: 18px !important; height: 18px !important; fill: currentColor !important; display: block !important; }
 .gamekit-share .sbtn:hover { color: #fff !important; border-color: var(--gamekit-accent) !important; background: rgba(8, 12, 20, 0.8) !important; }
 .gamekit-share .sbtn.ok { color: #7fe0a0 !important; border-color: #7fe0a0 !important; }
+.gamekit-share .sbtn[data-act="discord"]:hover { color: #fff !important; border-color: #5865F2 !important; background: #5865F2 !important; }
+.gamekit-share .sbtn:disabled { opacity: 0.55 !important; cursor: default !important; }
