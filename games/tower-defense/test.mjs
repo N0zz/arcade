@@ -169,6 +169,78 @@ function run() {
   ok(P().state === 'over', 'ran a map-1 game to game over');
   ok('tower-defense_best_1' in g6.store, 'per-map best key written for map 1');
 
+  section('tower icons + tooltips (TASK 1/2)');
+  const g7 = runInline('index.html'); const I = () => g7.test();
+  // build toolbar buttons carry an icon glyph + name (checked against raw html)
+  const rawHtml = fs.readFileSync(path.join(DIR, 'index.html'), 'utf8');
+  ok(/data-t="archer"[\s\S]*?🏹/.test(rawHtml), 'archer build button shows its icon');
+  ok(/data-t="cannon"[\s\S]*?💣/.test(rawHtml), 'cannon build button shows its icon');
+  ok(/data-t="frost"[\s\S]*?❄️/.test(rawHtml), 'frost build button shows its icon');
+  // tooltip html for a build button reports stats + special
+  I().start();
+  const tip = I().tipHtml('cannon');
+  ok(/Cannon/.test(tip) && /Damage/.test(tip) && /Rate/.test(tip) && /Range/.test(tip) && /Cost/.test(tip), 'build tooltip lists damage/rate/range/cost');
+  ok(/[Ss]plash/.test(tip) && /armor/i.test(tip), 'cannon tooltip notes its special (splash / armor-pierce)');
+  // placed tower info (mobile select panel) reports live stats
+  function freeCell2(T) { for (let c=0;c<T.cols;c++) for (let r=0;r<T.rows;r++) if(!T.roadAt(c,r)) return {c,r}; }
+  const fc = freeCell2(I()); I().place('archer', fc.c, fc.r);
+  const info = I().towerInfo(0);
+  ok(/Dmg/.test(info) && /Range/.test(info), 'placed-tower info reports dmg + range');
+
+  section('effective range == drawn ring (TASK 3)');
+  const g8 = runInline('index.html'); const R = () => g8.test();
+  R().selectMap(0); R().start(); R().addGold(500);
+  function twoAdj(T){ for(let c=0;c<T.cols-1;c++) for(let r=0;r<T.rows;r++) if(!T.roadAt(c,r)&&!T.roadAt(c+1,r)) return [{c,r},{c:c+1,r}]; }
+  const [pa, pb] = twoAdj(R());
+  R().place('archer', pa.c, pa.r);
+  const baseRange = R().towerRange(0);
+  R().place('bard', pb.c, pb.r);
+  const buffedRange = R().towerRange(0);
+  ok(buffedRange > baseRange, 'bard buff raises the EFFECTIVE range the ring draws (' + baseRange.toFixed(2) + ' -> ' + buffedRange.toFixed(2) + ')');
+
+  section('map mechanics (TASK 5)');
+  const g9 = runInline('index.html'); const Mp = () => g9.test();
+  Mp().selectMap(1); // Ice
+  ok(Mp().surface > 1, 'Ice surface speeds enemies up (' + Mp().surface + ')');
+  ok(Mp().towerMapMod('frost') > 1, 'Frost is stronger on Ice');
+  ok(Mp().mapEvent === 'freeze', 'Ice signature event is freeze');
+  Mp().selectMap(5); // Marsh
+  ok(Mp().surface < 1, 'Marsh mud slows enemies (' + Mp().surface + ')');
+  ok(Mp().towerMapMod('cannon') !== undefined, 'towerMapMod returns a value');
+  Mp().selectMap(2); // Lava
+  ok(Mp().towerMapMod('frost') < 1 && Mp().towerMapMod('cannon') > 1, 'Lava weakens Frost, boosts Cannon');
+  // map event drop spawns and is collectible
+  Mp().selectMap(2); Mp().start();
+  Mp().spawnMapEvent();
+  ok(Mp().drops === 1, 'map event drop spawned');
+  const goldB = Mp().gold;
+  ok(Mp().collectDrop(0) === true, 'map event collected');
+  ok(Mp().gold > goldB, 'meteor event awards gold (' + goldB + ' -> ' + Mp().gold + ')');
+  // Marsh bog event rouses an extra enemy
+  const g9b = runInline('index.html'); const Mq = () => g9b.test();
+  Mq().selectMap(5); Mq().start();
+  Mq().spawnMapEvent();
+  const enemB = Mq().enemies;
+  Mq().collectDrop(0);
+  ok(Mq().enemies > enemB, 'Marsh bog event spawns a mud-beast (' + enemB + ' -> ' + Mq().enemies + ')');
+
+  section('dynamic difficulty (TASK 4)');
+  const g10 = runInline('index.html'); const Df = () => g10.test();
+  Df().selectMap(0); Df().start();
+  ok(Df().difficulty === 1, 'difficulty starts at 1');
+  ok(Df().checkpoints.length >= 3, 'path checkpoints exposed (' + Df().checkpoints.length + ')');
+  // strong build: blanket the board with towers, run a wave; threat should ramp as the path stays clear
+  Df().addGold(100000);
+  for (let c=0;c<Df().cols;c++) for (let r=0;r<Df().rows;r++) if(!Df().roadAt(c,r)) Df().place('mage', c, r);
+  Df().startWave();
+  for (let i=0;i<1200;i++) Df().step(1);
+  ok(Df().difficulty > 1, 'threat multiplier ramped up against an over-powered build (' + Df().difficulty.toFixed(2) + ')');
+  // undefended still ends the run despite doubled baseline
+  const g11 = runInline('index.html'); const Un = () => g11.test();
+  Un().selectMap(0); Un().start();
+  let gu = 0; while (Un().hp > 0 && gu++ < 60000) { if (Un().state === 'build') Un().startWave(); Un().step(1); }
+  ok(Un().state === 'over' && Un().difficulty === 1, 'undefended run still ends; threat stays 1 (enemies reach checkpoints)');
+
   console.log('\n----------------------------------------');
   console.log('PASS: ' + pass + '   FAIL: ' + fail);
   if (fail) { console.log('FAILURES:'); fails.forEach(f => console.log('  - ' + f)); process.exit(1); }
