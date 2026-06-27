@@ -227,7 +227,7 @@
       try {
         var p = (typeof o.params === 'function') ? o.params() : o.params;
         var qs = (typeof URLSearchParams !== 'undefined') ? new URLSearchParams(p || {}).toString() : '';
-        return qs ? base + (base.indexOf('?') < 0 ? '?' : '&') + qs : base;
+        return qs ? base.replace(/\/+$/, '') + '?' + qs : base; // drop trailing slash before query for a cleaner link
       } catch (e) { return base; }
     }
     var title = o.title || 'Komyo Games';
