@@ -96,7 +96,6 @@
   <h2>Oh no!</h2>
   <div class="goScore" id="goScoreEl">Score: 0</div>
   <div class="goBest"  id="goBestEl">BEST 0</div>
-  <button class="play-btn" id="againBtn" type="button">Play again</button>
   <div class="share" id="shareRow">
     <span class="lbl">Share</span>
     <a class="sbtn" id="shareNative" href="#" style="display:none" aria-label="Share…" title="Share…">
@@ -588,13 +587,12 @@
     }
   });
   $('playBtn').addEventListener('click', startGame);
-  $('againBtn').addEventListener('click', e => { e.preventDefault(); tryRestart(); });
   // End screen accepts tap (touchstart/pointerdown) AND mouse click to restart, debounced
   // so the death-tap doesn't bounce straight into a new run. Don't restart when a share
   // control was the target.
   function fromShare(ev) { const t = ev && ev.target; return t && typeof t.closest === 'function' && t.closest('#shareRow'); }
-  goScreen.addEventListener('pointerdown', e => { if (fromShare(e) || e.target === $('againBtn')) return; tryRestart(); });
-  goScreen.addEventListener('click', e => { if (fromShare(e) || e.target === $('againBtn')) return; tryRestart(); });
+  goScreen.addEventListener('pointerdown', e => { if (fromShare(e)) return; tryRestart(); });
+  goScreen.addEventListener('click', e => { if (fromShare(e)) return; tryRestart(); });
 
   // ---- Share (end screen) — reuses the catalogue footer's icons + wiring ----
   function shareText() { return 'I flew to ' + score + ' in Meadow Flyer 🐤'; }
@@ -651,7 +649,11 @@
   applyModeUI();
   resize(); updateHud(); loop();
 })();
-  if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {} }
+  if ('serviceWorker' in navigator) {
+    var swReloaded = false, hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function () { if (swReloaded || !hadController) return; swReloaded = true; location.reload(); });
+    window.addEventListener('load', function () { try { navigator.serviceWorker.register('sw.js').then(function (reg) { reg.update(); setInterval(function () { reg.update(); }, 3600000); }).catch(function () {}); } catch (e) {} });
+  }
 </script>
 </body>
 </html>

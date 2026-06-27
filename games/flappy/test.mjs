@@ -344,15 +344,16 @@ section('End-screen restart inputs');
   ok(T().bird.vy < 0, 'Space restart gives upward impulse, got ' + T().bird.vy);
 }
 
-// (p) "Play again" button restarts (debounced, so guard against the death-tap via a later step)
-section('Play again button');
+// (p) end-screen tap on the share row does NOT restart (share controls are exempt)
+section('Share-row tap exempt from restart');
 {
   g = runGame(); T().start();
   while (T().state === 'playing') T().step(1);
-  ok(T().state === 'over', 'play-again: game ended');
-  // againBtn click is also debounced against the death-tap; click then is a no-op immediately.
-  g.getEl('againBtn').fire('click', { target: g.getEl('againBtn') });
-  ok(T().state === 'over', 'play-again click is debounced immediately after death');
+  ok(T().state === 'over', 'share-exempt: game ended');
+  // A tap whose target is inside #shareRow must not trigger a restart, even past the debounce.
+  const shareTarget = { closest: sel => (sel === '#shareRow' ? g.getEl('shareRow') : null) };
+  g.getEl('goScreen').fire('click', { target: shareTarget });
+  ok(T().state === 'over', 'tap on share control does not restart the run');
 }
 
 // ----------------------------------------------------------------
