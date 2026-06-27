@@ -15,12 +15,16 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Post commit to Discord
+      - name: Post commits to Discord
         env:
           WEBHOOK: ${{ secrets.DISCORD_CHANGELOG_WEBHOOK }}
-          MSG: ${{ github.event.head_commit.message }}
+          COMMITS: ${{ toJSON(github.event.commits) }}
         run: |
           if [ -z "$WEBHOOK" ]; then echo "DISCORD_CHANGELOG_WEBHOOK not set — skipping."; exit 0; fi
-          payload=$(jq -Rn --arg t "📝 **Komyo Games** update" --arg m "$MSG" \
-            '{username:"Komyo Games", content: ($t + "\n```\n" + $m + "\n```"), allowed_mentions:{parse:[]}}')
+          # All commits in this push (covers batched pushes AND merges to main), newest last.
+          # One bullet per commit = its summary line; cap at 20 so a big push can't overflow Discord.
+          lines=$(printf '%s' "$COMMITS" | jq -r '(. // []) | .[0:20][] | "• " + (.message | split("\n")[0])')
+          [ -z "$lines" ] && { echo "no commits to post"; exit 0; }
+          payload=$(jq -Rn --arg t "📝 **Komyo Games** update" --arg m "$lines" \
+            '{username:"Komyo Games", content: (($t + "\n" + $m)[0:1900]), allowed_mentions:{parse:[]}}')
           curl -sS -H "Content-Type: application/json" -d "$payload" "$WEBHOOK"
