@@ -20,14 +20,14 @@
 <meta property="og:title" content="funyo — free browser games">
 <meta property="og:description" content="A little catalogue of free, self-contained browser games. No ads, no payments, plays offline.">
 <meta property="og:url" content="https://funyo.online/">
-<meta property="og:image" content="https://funyo.online/og-image.png?v=2">
+<meta property="og:image" content="https://funyo.online/og-image.png?v=3">
 <meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image:height" content="604">
 <meta property="og:image:alt" content="funyo — self-contained browser games">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="funyo — free browser games">
 <meta name="twitter:description" content="A little catalogue of free, self-contained browser games. No ads, plays offline.">
-<meta name="twitter:image" content="https://funyo.online/og-image.png?v=2">
+<meta name="twitter:image" content="https://funyo.online/og-image.png?v=3">
 <!-- Analytics: GA4, loaded only after cookie consent (see analytics.js) -->
 <script src="analytics.js" defer></script>
 <link rel="stylesheet" href="funyo-kit.css">
@@ -349,6 +349,12 @@
               <button type="button" data-type="single">Single</button>
               <button type="button" data-type="mp">Multi</button>
             </div>
+            <div class="fh">Highlights</div>
+            <div id="badgeList">
+              <label class="fchk"><input type="checkbox" data-badge="new"> <span class="gtag" style="color:#ffd24d">NEW</span></label>
+              <label class="fchk"><input type="checkbox" data-badge="updated"> <span class="gtag" style="color:#4db6ff">UPDATED</span></label>
+              <label class="fchk"><input type="checkbox" data-badge="pick"> <span class="gtag" style="color:#b98cff">POPULAR</span></label>
+            </div>
             <div class="fh">Genre</div>
             <div id="genreList"></div>
             <label class="fchk"><input type="checkbox" id="showSoon" checked> Show coming soon</label>
@@ -549,19 +555,24 @@
     };
     // badges stack (vertical, top-left). Auto NEW/UPDATED from dates (≤7 days) sit on top;
     // manual badges (e.g. "pick") follow. NEW wins over UPDATED; duplicates are de-duped.
-    function badgesHtml(g, soon) {
-      if (soon) return '';
+    // the badge keys a game currently shows (date-driven NEW/UPDATED + manual) — single source
+    // of truth shared by the tile badges and the Highlights filter
+    function badgeKeys(g) {
+      if (g.soon) return [];
       const keys = Array.isArray(g.badges) ? g.badges.slice() : [];
       const daysSince = d => { const t = d ? Date.parse(d) : NaN; return isFinite(t) ? (Date.now() - t) / 86400000 : Infinity; };
       if (daysSince(g.added) <= 7) keys.push('new');
       else if (daysSince(g.updated) <= 7) keys.push('updated');
       // priority order; de-dupe; hard-cap at 3 so the stack can never crowd the tile
       const ORDER = ['new', 'updated', 'pick'], seen = {};
-      const shown = keys
+      return keys
         .filter(k => BADGES[k] && !seen[k] && (seen[k] = 1))
         .sort((a, b) => ((ORDER.indexOf(a) + 1 || 99) - (ORDER.indexOf(b) + 1 || 99)))
         .slice(0, 3);
-      const items = shown.map(k => BADGES[k]).map(b =>
+    }
+    function badgesHtml(g, soon) {
+      if (soon) return '';
+      const items = badgeKeys(g).map(k => BADGES[k]).map(b =>
         '<span class="badge ' + b.cls + '"><b>' + b.label + '</b><i class="spk"></i><i class="spk"></i><i class="spk"></i></span>').join('');
       return items ? '<span class="badges">' + items + '</span>' : '';
     }
@@ -596,10 +607,11 @@
     }
 
     // live filter state, driven by the search box + the Filter ▾ dropdown
-    const FILTER = { q: '', genres: new Set(), type: 'all', showSoon: true };
+    const FILTER = { q: '', genres: new Set(), badges: new Set(), type: 'all', showSoon: true };
     function passes(g) {
       if (!FILTER.showSoon && g.soon) return false;
       if (FILTER.genres.size && !FILTER.genres.has(g.tag)) return false;
+      if (FILTER.badges.size) { const bk = badgeKeys(g); if (!bk.some(k => FILTER.badges.has(k))) return false; }
       if (FILTER.type === 'single' && g.mp) return false;
       if (FILTER.type === 'mp' && !g.mp) return false;
       if (FILTER.q) {
@@ -615,6 +627,7 @@
         const p = new URLSearchParams((typeof location !== 'undefined' && location.search) || '');
         const q = p.get('q'); if (q) FILTER.q = q.toLowerCase();
         const g = p.get('genre'); if (g) g.split(',').forEach(t => { if (t) FILTER.genres.add(t); });
+        const bd = p.get('badge'); if (bd) bd.split(',').forEach(k => { if (k) FILTER.badges.add(k); });
         const ty = p.get('type'); if (ty === 'single' || ty === 'mp') FILTER.type = ty;
         if (p.get('soon') === '0') FILTER.showSoon = false;
       } catch (e) {}
@@ -625,6 +638,7 @@
         const p = new URLSearchParams();
         if (FILTER.q) p.set('q', FILTER.q);
         if (FILTER.genres.size) p.set('genre', [...FILTER.genres].join(','));
+        if (FILTER.badges.size) p.set('badge', [...FILTER.badges].join(','));
         if (FILTER.type !== 'all') p.set('type', FILTER.type);
         if (!FILTER.showSoon) p.set('soon', '0');
         const qs = p.toString();
@@ -666,14 +680,14 @@
     }
 
     function fcountUpdate() {
-      const n = FILTER.genres.size + (FILTER.type !== 'all' ? 1 : 0) + (FILTER.showSoon ? 0 : 1);
+      const n = FILTER.genres.size + FILTER.badges.size + (FILTER.type !== 'all' ? 1 : 0) + (FILTER.showSoon ? 0 : 1);
       const b = document.getElementById('fcount');
       if (b) { if (n) { b.textContent = n; b.hidden = false; } else { b.hidden = true; } }
     }
     function clearFilters() {
-      FILTER.q = ''; FILTER.genres.clear(); FILTER.type = 'all'; FILTER.showSoon = true;
+      FILTER.q = ''; FILTER.genres.clear(); FILTER.badges.clear(); FILTER.type = 'all'; FILTER.showSoon = true;
       const s = document.getElementById('search'); if (s) s.value = '';
-      document.querySelectorAll('#genreList input').forEach(i => { i.checked = false; });
+      document.querySelectorAll('#genreList input, #badgeList input').forEach(i => { i.checked = false; });
       document.querySelectorAll('#typeSeg button').forEach(b => b.classList.toggle('on', b.dataset.type === 'all'));
       const ss = document.getElementById('showSoon'); if (ss) ss.checked = true;
       fcountUpdate(); render();
@@ -698,6 +712,12 @@
         const v = e.target.value; if (e.target.checked) FILTER.genres.add(v); else FILTER.genres.delete(v);
         fcountUpdate(); render();
       });
+      const badgeList = document.getElementById('badgeList');
+      if (badgeList) badgeList.addEventListener('change', e => {
+        const v = e.target.dataset.badge; if (!v) return;
+        if (e.target.checked) FILTER.badges.add(v); else FILTER.badges.delete(v);
+        fcountUpdate(); render();
+      });
       const seg = document.getElementById('typeSeg');
       if (seg) seg.addEventListener('click', e => {
         const b = e.target.closest('button[data-type]'); if (!b) return;
@@ -713,6 +733,7 @@
       document.addEventListener('click', e => { if (!(e.target.closest && e.target.closest('.filter-wrap'))) pop.classList.remove('show'); });
       // reflect any URL-loaded filter state into the controls
       genreList.querySelectorAll('input').forEach(i => { i.checked = FILTER.genres.has(i.value); });
+      if (badgeList) badgeList.querySelectorAll('input').forEach(i => { i.checked = FILTER.badges.has(i.dataset.badge); });
       if (seg) seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.type === FILTER.type));
       if (ss) ss.checked = FILTER.showSoon;
       fcountUpdate();
