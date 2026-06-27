@@ -116,6 +116,59 @@ function run() {
   ok(/id="shareX"/.test(ov.innerHTML) && /id="shareReddit"/.test(ov.innerHTML) && /id="shareCopy"/.test(ov.innerHTML), 'share row has X / Reddit / Copy buttons');
   ok(/funyo\.online(%2F|\/)games(%2F|\/)tower-defense/.test(ov.innerHTML), 'share links point at the game URL');
 
+  section('maps (≥5 distinct layouts)');
+  const g3 = runInline('index.html'); const M = () => g3.test();
+  // every map index 0..4 must select and produce a working road grid
+  const layouts = [];
+  for (let i = 0; i < 5; i++) {
+    M().selectMap(i);
+    ok(M().mapIdx === i, 'selectMap(' + i + ') sticks');
+    let roadCells = 0, sig = '';
+    for (let c = 0; c < M().cols; c++) for (let r = 0; r < M().rows; r++) if (M().roadAt(c, r)) { roadCells++; sig += c + ',' + r + ';'; }
+    ok(roadCells > 0, 'map ' + i + ' has a road');
+    layouts.push(sig);
+  }
+  ok(new Set(layouts).size === 5, 'all 5 map layouts are distinct (got ' + new Set(layouts).size + ')');
+  M().selectMap(0);
+
+  section('buff tower (Bard aura)');
+  const g4 = runInline('index.html'); const B = () => g4.test();
+  B().selectMap(0); B().start(); B().addGold(500);
+  // find two adjacent free cells
+  function twoFree(T) {
+    for (let c = 0; c < T.cols - 1; c++) for (let r = 0; r < T.rows; r++)
+      if (!T.roadAt(c, r) && !T.roadAt(c + 1, r)) return [{ c, r }, { c: c + 1, r }];
+    return null;
+  }
+  const [a, b] = twoFree(B());
+  ok(B().place('archer', a.c, a.r), 'placed archer');
+  const dmgBefore = B().towerDmg(0);
+  ok(B().place('bard', b.c, b.r), 'placed bard next to it');
+  const dmgAfter = B().towerDmg(0);
+  ok(dmgAfter > dmgBefore, 'bard aura boosts neighbour damage (' + dmgBefore + ' -> ' + dmgAfter + ')');
+  ok(B().towers === 2, 'both towers stand');
+
+  section('map drops (clickable bonus)');
+  const g5 = runInline('index.html'); const D = () => g5.test();
+  D().start();
+  const gd = D().spawnDrop('gold');
+  ok(D().drops === 1, 'gold drop spawned');
+  const goldBefore = D().gold;
+  ok(D().collectDrop(0) === true, 'collectDrop succeeds');
+  ok(D().gold > goldBefore, 'gold drop awards gold (' + goldBefore + ' -> ' + D().gold + ')');
+  ok(D().drops === 0, 'drop removed after collect');
+  D().spawnDrop('haste');
+  D().collectDrop(0);
+  ok(D().haste > 0, 'haste drop grants a temporary buff');
+
+  section('per-map best persists');
+  // game-over on map 0 writes a per-map record; the menu should read it back
+  const g6 = runInline('index.html'); const P = () => g6.test();
+  P().selectMap(1); P().start();
+  let guard6 = 0; while (P().hp > 0 && guard6++ < 60000) { if (P().state === 'build') P().startWave(); P().step(1); }
+  ok(P().state === 'over', 'ran a map-1 game to game over');
+  ok('tower-defense_best_1' in g6.store, 'per-map best key written for map 1');
+
   console.log('\n----------------------------------------');
   console.log('PASS: ' + pass + '   FAIL: ' + fail);
   if (fail) { console.log('FAILURES:'); fails.forEach(f => console.log('  - ' + f)); process.exit(1); }
