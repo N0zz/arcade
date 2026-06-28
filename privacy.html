@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy Policy — Komyo Games</title>
-<meta name="description" content="Komyo Games privacy policy: no accounts, no server, your game data stays on your device; the only third party is Google Analytics, loaded only if you accept cookies.">
+<meta name="description" content="Komyo Games privacy policy: no accounts, no server storing your data; your game data stays on your device; the only third-party tracking is Google Analytics, loaded only if you accept cookies.">
 <link rel="icon" href="favicon.svg">
 <style>
   :root { --bg:#0a0f17; --surface:#121a28; --text:#eaf2fb; --muted:#9fb2c8; --faint:#6b7892; --accent:#9fe8ff; --border:rgba(255,255,255,0.12); }
@@ -23,6 +23,7 @@
   .tldr p { margin:6px 0; }
   ul { padding-left:20px; }
   li { margin:5px 0; }
+  .note { font-size:13.5px; color:var(--faint); border-left:2px solid var(--border); padding-left:12px; }
   .back { display:inline-block; margin-top:30px; font-family:ui-monospace,monospace; font-size:13px; letter-spacing:1px; text-decoration:none;
     color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:9px 16px; }
   .back:hover { border-color:var(--accent); }
@@ -40,14 +41,20 @@
       and only if you tap <b>Accept</b> on the cookie banner — decline and nothing about you is collected.</p>
     </div>
 
-    <h2>1. No accounts, no server</h2>
-    <p>Komyo Games is a static website — a catalogue of self-contained browser games. There are no logins or
-      user accounts, and we don't run a database or server that stores your personal information.</p>
+    <p class="note">This is a plain-language summary of how Komyo Games handles data. It's written to be honest and
+      readable rather than exhaustive legalese.</p>
+
+    <h2>1. Who we are &amp; how the site is hosted</h2>
+    <p>Komyo Games (<a href="https://komyo.online">komyo.online</a>) is a small, independent catalogue of
+      self-contained browser games. There are no logins or accounts, and we don't run a database or server that
+      stores your personal information. The site is served by <b>GitHub Pages</b> and its content-delivery network
+      (<b>Fastly</b>); like any web host, they process basic technical request data — such as your IP address — in
+      order to deliver the pages to you. That is standard hosting, not data that Komyo collects or keeps.</p>
 
     <h2>2. What's stored on your device</h2>
     <p>Your game scores, progress, favorites, display name, and settings are saved in your browser's
       <b>local storage</b>, on your device only. We never receive or see this data. It stays until you clear your
-      browser data, use <b>Reset all data</b> in the menu, or (where available) export/import it yourself.</p>
+      browser data, use <b>Reset all data</b> in the menu, or replace it via <b>Export / import data</b>.</p>
 
     <h2>3. Analytics (Google Analytics 4)</h2>
     <p>We use Google Analytics to understand which games are popular and how the site is used. It loads
@@ -55,7 +62,7 @@
       cookies are set.</p>
     <p>When enabled, Google Analytics collects standard usage data (pages viewed, approximate location from your
       IP address, device and browser type, and similar) and processes it on Google's servers as our data
-      processor. We use it only in aggregate; we don't sell data and there are no ads. See
+      processor. We use it only in aggregate, we don't sell data, and there are no ads. See
       <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.
       You can opt out by declining the banner, clearing cookies, using your browser's privacy controls, or the
       <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">Google Analytics opt-out add-on</a>.</p>
@@ -67,34 +74,50 @@
     <h2>5. Scores shared to Discord</h2>
     <p>When you finish a game, your score — together with your <b>display name</b>, or "anonymous" if you haven't
       set one — is posted to our <b>public Komyo Games Discord</b> so players can see recent runs. If you'd rather
-      stay anonymous, simply don't set a display name. (An opt-out toggle is planned.)</p>
+      stay anonymous, simply don't set a display name. (An opt-out toggle is planned.) See
+      <a href="https://discord.com/privacy" target="_blank" rel="noopener">Discord's Privacy Policy</a>.</p>
 
-    <h2>6. Newsletter</h2>
-    <p>If you choose to subscribe, the email address you enter is sent to our email provider
-      (<a href="https://kit.com" target="_blank" rel="noopener">Kit</a>) to deliver occasional updates. We don't
-      use it for anything else, and every email has an unsubscribe link.</p>
+    <h2>6. Things you choose to send us</h2>
+    <ul>
+      <li><b>Newsletter:</b> if you subscribe, the email address you enter is sent to our email provider
+        (<a href="https://kit.com" target="_blank" rel="noopener">Kit</a>) to deliver occasional updates. Every
+        email has an unsubscribe link, and we don't use your address for anything else.</li>
+      <li><b>Feedback:</b> the feedback form is handled by
+        <a href="https://web3forms.com" target="_blank" rel="noopener">Web3Forms</a>, which forwards your message
+        (and any contact details you include) to our inbox so we can read and reply. We use it only to respond.</li>
+    </ul>
 
-    <h2>7. External links &amp; services</h2>
-    <p>The site links out to services with their own privacy policies — including Discord, GitHub, and
-      Buy Me a Coffee. We're not responsible for their practices.</p>
+    <h2>7. Other services &amp; links</h2>
+    <p>The site links out to services that have their own privacy policies and that we don't control — including
+      <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub</a>
+      (hosting &amp; source), Discord, and Buy Me a Coffee (optional donations).</p>
 
-    <h2>8. Children</h2>
-    <p>Komyo Games is family-friendly: no ads, no chat, no payments, and no sign-ups. We don't knowingly collect
-      personal information from children. Since there are no accounts and nothing is stored on our servers, there
-      is no personal data for us to hold about a child.</p>
+    <h2>8. Where your data is processed, and for how long</h2>
+    <p>The providers above (Google, Kit, Web3Forms, Discord, GitHub) are based in the <b>United States</b>, so when
+      a feature uses one of them your data may be processed there, under their standard data-protection terms.
+      Analytics is retained only for a limited period and in aggregate; newsletter emails are kept until you
+      unsubscribe; feedback is kept as long as needed to respond; and the data on your device stays until you
+      clear it.</p>
 
-    <h2>9. Your choices</h2>
-    <p>You can decline analytics on the cookie banner, clear or reset your on-device data at any time, and
-      unsubscribe from the newsletter whenever you like. If you're in a region with data-protection laws
-      (e.g. GDPR or CCPA), the practical effect is the same: we hold no account or server-side personal data
-      about you, and analytics is opt-in.</p>
+    <h2>9. Children</h2>
+    <p>Some Komyo games are made for younger players, and the site is family-friendly: no ads, no chat, no
+      payments, and no sign-ups. We don't knowingly collect personal information from children. Because analytics
+      is optional, a parent can simply <b>decline the cookie banner</b> so no analytics runs at all. If you believe
+      a child has sent us personal information (for example, an email to the newsletter), contact us and we'll
+      remove it.</p>
 
-    <h2>10. Contact</h2>
+    <h2>10. Your choices</h2>
+    <p>You can decline analytics on the cookie banner, clear or reset your on-device data at any time, export it
+      for your own backup, and unsubscribe from the newsletter whenever you like. If you're in a region with
+      data-protection laws (such as GDPR or CCPA), the practical effect is the same: we hold no account or
+      server-side personal data about you, and analytics is opt-in.</p>
+
+    <h2>11. Contact</h2>
     <p>Questions? Use the <b>Feedback</b> option in the menu, email
       <a href="mailto:news@komyo.online">news@komyo.online</a>, or open an issue on
       <a href="https://github.com/N0zz/komyo.online" target="_blank" rel="noopener">GitHub</a>.</p>
 
-    <h2>11. Changes</h2>
+    <h2>12. Changes</h2>
     <p>We may update this policy as the site evolves; the date at the top reflects the latest version.</p>
 
     <a class="back" href="./">‹ Back to the games</a>
