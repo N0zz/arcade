@@ -3,6 +3,19 @@
 Working notes for what to build / improve next. Open items only — not a promise of order.
 Per-game feel/balance polish is **continuous** and not tracked here.
 
+## 🔴 Critical (fix before more games)
+
+- **Mobile layouts + screen rotation break the UI in most games** — games largely assume one
+  orientation; on rotate (and on narrow portrait) the layout overflows/misplaces controls. Need a
+  **proper per-orientation layout** (distinct landscape vs portrait arrangement) and a **re-layout +
+  redraw on every orientation/resize change** (listen for `orientationchange`/`resize`, recompute
+  playfield + HUD + control positions, re-render). This is a cross-cutting pass over every game, not a
+  one-off. Likely a shared `gamekit` helper (orientation state + a `onLayout(cb)` hook) so games
+  don't each hand-roll it.
+- **Review the new gamedev design skills** — <https://github.com/gamedev-skills/awesome-gamedev-agent-skills/tree/main/skills/genres>
+  — go through the per-genre skills, decide which are worth adopting for our games (mechanics, feel,
+  balance patterns), and fold the useful ones into how we build/polish games.
+
 ## Coming-soon games (queue)
 
 Effort tiers: trivial / low / med / high — each a self-contained single file with a `__test` hook.
@@ -23,6 +36,10 @@ batches or one at a time (not a dump of shallow POCs).
 | Icy Tower | high | momentum + variable jump + wall-bounce + combos + rising floor |
 | Pulse Dash (rhythm) | high | obstacles authored to a beat + generate/sync a track |
 | **Balloon Slinger** | med | bottom-center slingshot — **drag back to aim & set power, release to fire** at floating balloons; projectile **physics with gravity + shifting wind**, ricochets and multi-pop combos; levels add balloon patterns/movers and limited ammo. 🎈 · `SKILL` (a physics-aim game — distinct from the kids tap-only *Pop the Balloons*) |
+| **Fill the Tank** | trivial–low | petrol-pump game: hold to pump, **stop at exactly $20.00** (or a target). Fast-flowing meter + momentum/overrun, scored by how close you land; rounds raise the target / speed up the flow. Simple, satisfying, very mobile-friendly. ⛽ · `SKILL` |
+| **Spot & Recall** | med | observation/memory: random items/animals cross the screen for ~10–30s, then you **answer questions about what you saw** ("how many ducks?") — plus **trick questions** about things never mentioned (the background color, an item that wasn't there). Tests attention; replayable with new scenes. 👁️ · `LOGIC` |
+| **Parking / Racing (simple)** | med | a small driving lane: **simple races, parking-space challenges**, time trials. Top-down car + basic steering/physics; modes = race vs. park-it. Could grow into a small driving set. 🚗 · `SKILL` |
+| **Pipe Layer** | med | **lay & fix pipes** to connect source→drain before the water reaches the end (rotate tiles / drag segments); leak-plugging variant. Classic puzzle, scales with grid size + timer. 🚰 · `LOGIC` |
 
 ### Kids-first (ages 6–10)
 
@@ -45,6 +62,20 @@ section/filter** (tag the cute-simple existing games — Stack, Bubble Pop, Snak
 One self-contained file, shared input on one device. Desktop = split keyboard; mobile = each player
 owns a screen half. **Favorites: Light Cycles, Air Hockey, Slime Volleyball** (already coming-soon
 tiles). More ideas: Sumo Arena, Spacewar Duel, Joust-lite, Snake Battle, Button-Mash Race.
+
+### Persistent / long-running games (saved-state lane) — *idea worth pursuing*
+
+Today every game is **hop-on, play 10 min, leave; next visit you start fresh** (same levels). Worth
+adding a **second category: games with saved progress** that resume where you left off — e.g. a
+**cookie-clicker / idle** where you return to your 1M cookies + unlocks, an incremental/management
+sim, a base/garden you grow over days. **Why:** strong **retention + total playtime** lever — a reason
+to come back daily that the current arcade games don't give, and it pairs naturally with Daily
+Challenges and the Discord loop. Fits our model: all state is **localStorage** (no server), so the
+Export/Import data feature becomes more valuable (don't lose your save when switching devices).
+Caveats to design for: localStorage is per-device/per-browser (clearing it wipes progress — flag
+this, lean on Export/Import), and offline/idle accrual needs a timestamp-based "what happened while
+you were away" calc, not a live timer. **Verdict: yes — pick one (idle/clicker is the cheapest, most
+proven entry) and prototype it as the first persistent game.**
 
 ## Product & growth (the return loop)
 
@@ -106,6 +137,19 @@ now **parked**).
   (declarative config → consistent menus everywhere, less per-game markup). Trade-off: more kit
   surface/abstraction vs. each game's current hand-rolled menu, which already works. Only worth it if
   the per-game menu boilerplate starts to hurt as games scale. Decide before the next batch of games.
+- **Hamburger drawer cleanup** *(small)* — (1) **integrate "Your data"** into the other sections
+  rather than its own pinned block at the bottom; (2) **move the "Share" row to the bottom** of the
+  drawer; (3) the **"Welcome, {name}" cycling languages should be in random order each time**, not the
+  same fixed sequence every load.
+
+### Known bugs / polish
+
+- **Tower Defense (mobile): tower-placement tooltip blocks the map** — after selecting a tower from the
+  menu, the tooltip covers part of the map, so you can't place the tower on the tiles underneath it.
+  Reposition/dismiss the tooltip during placement (or make it non-blocking) so the whole map is
+  reachable.
+- *(saved earlier: Tower Defense — grey out the upgrade button when you can't afford it, pop it in when
+  you can.)*
 
 ### Cross-device / data **(IMPORTANT)**
 

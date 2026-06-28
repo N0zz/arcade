@@ -82,6 +82,17 @@ generated levels; SFX via `gamekit.sound`, music gain via `gamekit.music.subscri
 
 ## Adding / changing a game
 
+**Development process (the minimum bar — a single-prompt game is almost never good enough):**
+
+1. **Design + mock** — discuss the concept, mechanics, and a rough layout *before* coding.
+2. **POC** — build the core mechanic only; confirm it actually works / is fun. If it isn't, stop here.
+3. **MVP** — add the first real feature and *play it for a while* to feel it.
+4. **2–3 iterations** — each adds a feature and fixes the bugs the playthrough surfaced.
+
+Don't ship a game straight from one prompt; treat the above as the floor for every new game.
+
+### Build steps
+
 1. `games/<slug>/index.html` — load game-kit in `<head>`; use `gamekit.nav`/`gamekit.sound`/`gamekit.shareRow`/
    `gamekit.pwa` for the shell; keep game logic inline with the `__test` hook.
 2. `games/<slug>/test.mjs` — dependency-free harness; **preload the kit** (read `../../game-kit.js`,
