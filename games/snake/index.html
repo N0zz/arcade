@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>Neon Snake</title>
-<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#7fffb0">
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -32,6 +32,19 @@
   #overlay { position:fixed; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center;
     text-align:center; gap:16px; background:rgba(0,5,12,0.88); padding:24px; }
   #overlay.hidden { display:none; }
+  /* on-screen D-pad (touch only): tap to turn instead of swiping */
+  #dpad { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); z-index:7; display:none;
+    grid-template-columns:repeat(3,54px); grid-template-rows:repeat(3,54px); gap:6px; touch-action:none; user-select:none; }
+  #dpad button { border-radius:12px; border:1px solid rgba(127,255,176,0.5); background:rgba(10,22,16,0.6);
+    color:#7fffb0; font:600 22px/1 system-ui,sans-serif; display:flex; align-items:center; justify-content:center;
+    -webkit-tap-highlight-color:transparent; touch-action:manipulation; cursor:pointer; }
+  #dpad button:active { background:rgba(127,255,176,0.28); }
+  #dpad button.dim { opacity:0.3; }
+  #dpad .u{grid-area:1/2} #dpad .l{grid-area:2/1} #dpad .r{grid-area:2/3} #dpad .d{grid-area:3/2}
+  /* center cell = drag handle (move the pad anywhere; position is remembered) */
+  #dpad .c { grid-area:2/2; display:flex; align-items:center; justify-content:center; cursor:move; touch-action:none; }
+  #dpad .c i { width:16px; height:16px; border-radius:50%; background:rgba(127,255,176,0.7); box-shadow:0 0 8px rgba(127,255,176,0.6); border:2px solid rgba(127,255,176,0.4); }
+  #dpad.dragging { opacity:0.85; }
   #overlay h1 { margin:0; font-size:52px; letter-spacing:6px; color:#0ff; text-shadow:0 0 30px #0ff,0 0 60px #0af; }
   #overlay p { margin:4px; font-size:14px; opacity:0.8; letter-spacing:1px; }
   #overlay .sub { opacity:0.5; font-size:12px; letter-spacing:1px; }
@@ -278,7 +291,7 @@
     // Apply pending direction (no 180° reversal)
     const nd = nextDir;
     if (!(nd.x === -dir.x && nd.y === -dir.y)) {
-      if (nd.x !== dir.x || nd.y !== dir.y) { dir = nd; SND.play('turn'); }
+      if (nd.x !== dir.x || nd.y !== dir.y) { dir = nd; SND.play('turn'); dimDpad(); }
     }
 
     const head = snake[0];
@@ -324,6 +337,7 @@
     if (menuScreen) menuScreen.classList.add('hidden');
     if (endScreen) endScreen.classList.remove('hidden');
     overlay.classList.remove('hidden');
+    showDpad(false);
   }
 
   function startGame() {
@@ -332,6 +346,7 @@
     if (endScreen) endScreen.classList.add('hidden');
     if (menuScreen) menuScreen.classList.remove('hidden');
     overlay.classList.add('hidden');
+    showDpad(true);
   }
 
   // ---- Tick timing ----
@@ -525,6 +540,45 @@
     if (Math.abs(dx) > Math.abs(dy)) nextDir = dx > 0 ? DIR_MAP.right : DIR_MAP.left;
     else nextDir = dy > 0 ? DIR_MAP.down : DIR_MAP.up;
   }, { passive: true });
+
+  // On-screen D-pad (touch only): tap an arrow to turn — no swiping required.
+  const isTouch = (typeof matchMedia !== 'undefined' && matchMedia('(pointer:coarse)').matches) || (typeof window !== 'undefined' && 'ontouchstart' in window);
+  let dpadEl = null, dpadBtns = null;
+  const DPAD_POS_KEY = 'snake_dpad_pos';
+  function dirClass() { return dir ? (dir.x === 1 ? 'r' : dir.x === -1 ? 'l' : dir.y === 1 ? 'd' : 'u') : null; }
+  function dimDpad() { if (!dpadBtns) return; const cur = dirClass(); ['u', 'l', 'r', 'd'].forEach(c => { if (dpadBtns[c]) dpadBtns[c].classList.toggle('dim', c === cur); }); }
+  function buildDpad() {
+    if (dpadEl || typeof document === 'undefined' || !document.body || !document.createElement) return;
+    dpadEl = document.createElement('div'); dpadEl.id = 'dpad'; dpadBtns = {};
+    [['u', '▲', 'up'], ['l', '◀', 'left'], ['r', '▶', 'right'], ['d', '▼', 'down']].forEach(([cls, glyph, d]) => {
+      const b = document.createElement('button'); b.className = cls; b.type = 'button'; b.textContent = glyph; b.setAttribute('aria-label', d);
+      const turn = (e) => { if (e && e.preventDefault) e.preventDefault(); if (state === 'playing') nextDir = DIR_MAP[d]; };
+      b.addEventListener('touchstart', turn, { passive: false });
+      b.addEventListener('click', turn);
+      dpadBtns[cls] = b; dpadEl.appendChild(b);
+    });
+    // center cell: drag handle (move the pad; remembered across sessions)
+    const handle = document.createElement('div'); handle.className = 'c'; handle.setAttribute('aria-label', 'Move controls');
+    handle.innerHTML = '<i></i>'; dpadEl.appendChild(handle);
+    document.body.appendChild(dpadEl);
+    const place = (x, y) => {
+      const w = dpadEl.offsetWidth || 174, h = dpadEl.offsetHeight || 174;
+      x = Math.max(4, Math.min((window.innerWidth || 360) - w - 4, x));
+      y = Math.max(4, Math.min((window.innerHeight || 640) - h - 4, y));
+      dpadEl.style.left = x + 'px'; dpadEl.style.top = y + 'px'; dpadEl.style.bottom = 'auto'; dpadEl.style.transform = 'none';
+    };
+    let saved = null; try { saved = JSON.parse(localStorage.getItem(DPAD_POS_KEY) || 'null'); } catch (_) {}
+    if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') place(saved.x, saved.y);
+    let drag = false, offX = 0, offY = 0;
+    handle.addEventListener('pointerdown', (e) => {
+      drag = true; const r = dpadEl.getBoundingClientRect(); offX = e.clientX - r.left; offY = e.clientY - r.top;
+      dpadEl.classList.add('dragging'); try { handle.setPointerCapture(e.pointerId); } catch (_) {} if (e.preventDefault) e.preventDefault();
+    });
+    handle.addEventListener('pointermove', (e) => { if (drag) place(e.clientX - offX, e.clientY - offY); });
+    const end = () => { if (!drag) return; drag = false; dpadEl.classList.remove('dragging'); try { localStorage.setItem(DPAD_POS_KEY, JSON.stringify({ x: parseInt(dpadEl.style.left, 10) || 0, y: parseInt(dpadEl.style.top, 10) || 0 })); } catch (_) {} };
+    handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end);
+  }
+  function showDpad(v) { if (!isTouch) return; if (v) buildDpad(); if (dpadEl) dpadEl.style.display = v ? 'grid' : 'none'; if (v) dimDpad(); }
 
   const startBtn = document.getElementById('startBtn');
   if (startBtn) startBtn.addEventListener('click', startGame);
