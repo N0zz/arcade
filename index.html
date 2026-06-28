@@ -99,8 +99,9 @@
   .meta { padding: 16px 18px 18px; display:flex; flex-direction:column; gap:8px; flex:1; }
   .row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .meta h2 { margin:0; font-size: 19px; font-weight: 700; letter-spacing:0.3px; color:var(--text); }
+  .tags { display:flex; flex-wrap:wrap; gap:5px; }
   .tag { font-family:var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 3px 9px; border-radius: 6px;
-         color: var(--accent); background: rgba(0,0,0,0.28); border:1px solid color-mix(in srgb, var(--accent) 50%, transparent); white-space:nowrap; }
+         color: var(--tc, var(--accent)); background: rgba(0,0,0,0.28); border:1px solid color-mix(in srgb, var(--tc, var(--accent)) 50%, transparent); white-space:nowrap; }
   .meta p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--muted); }
   .play { margin-top: auto; font-family:var(--mono); font-size: 12px; letter-spacing: 1.5px; color: var(--accent); font-weight:700; }
 
@@ -115,7 +116,7 @@
   .grid.compact .meta { padding: 5px 8px 9px; gap: 2px; align-items: center; text-align: center; }
   .grid.compact .meta .row { justify-content: center; }
   .grid.compact .meta h2 { font-size: 12px; line-height: 1.2; }
-  .grid.compact .meta p, .grid.compact .tag, .grid.compact .play, .grid.compact .players { display: none; }
+  .grid.compact .meta p, .grid.compact .tags, .grid.compact .play, .grid.compact .players { display: none; }
   .grid.compact .fav { width: 24px; height: 24px; font-size: 12px; top: 5px; right: 5px; }
   .grid.compact .badges { top: 5px; left: 6px; }
   .grid.compact .badge b { font-size: 9px; letter-spacing: 1px; }
@@ -670,6 +671,19 @@
     function favs() { try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch (e) { return []; } }
     function setFavs(a) { try { localStorage.setItem(FAV_KEY, JSON.stringify(a)); } catch (e) {} }
     function toggleFav(slug) { const a = favs(), i = a.indexOf(slug); if (i >= 0) a.splice(i, 1); else a.push(slug); setFavs(a); render(); }
+    // canonical genre colors — ONE color per tag, shared by tile pills + the genre filter
+    // (NOT the per-game `accent`). Add a genre = one entry here; games carry 1–3 in `tags`.
+    const TAG_COLORS = {
+      ARCADE: '#58ccff', SHOOTER: '#5fe07a', ROGUELIKE: '#b98cff', STRATEGY: '#e0b25a',
+      PUZZLE: '#2ee8c8', CASUAL: '#8fd3a6', REFLEX: '#ff9aa2', LOGIC: '#7c9cff',
+      PLATFORMER: '#ffac5a', RHYTHM: '#caff4d', SKILL: '#ff7a3c', ACTION: '#ff5c8a',
+      CLASSIC: '#7fffb0', SPORT: '#4d9bff', TYPING: '#6ad6ff', WORD: '#ffcf5c',
+      RACING: '#ff5a4d', KIDS: '#ff8fd0', IDLE: '#d0a878', PARTY: '#ffd24d',
+    };
+    const DEFAULT_TAG_COLOR = '#9fe8ff';
+    const tagsOf = g => Array.isArray(g.tags) ? g.tags : (g.tag ? [g.tag] : []);
+    const tagColorOf = t => TAG_COLORS[t] || DEFAULT_TAG_COLOR;
+
     // tile badges — add a type here (label + css class) and reference it from a game's `badges: [...]`
     const BADGES = {
       new:     { label: 'NEW',     cls: 'badge-new' },
@@ -714,7 +728,9 @@
           '<span class="glyph">' + (g.icon || '🎮') + '</span>' +
         '</div>' +
         '<div class="meta">' +
-          '<div class="row"><h2>' + g.title + '</h2><span class="tag">' + (g.tag || 'GAME') + '</span></div>' +
+          '<div class="row"><h2>' + g.title + '</h2></div>' +
+          '<div class="tags">' + (tagsOf(g).length ? tagsOf(g) : ['GAME']).map(t =>
+            '<span class="tag" style="--tc:' + tagColorOf(t) + '">' + t + '</span>').join('') + '</div>' +
           '<p>' + g.blurb + '</p>' +
           '<div class="play">' + (soon ? 'COMING SOON' : 'PLAY ▸') + '</div>' +
         '</div>';
@@ -733,12 +749,12 @@
     const FILTER = { q: '', genres: new Set(), badges: new Set(), type: 'all', showSoon: true };
     function passes(g) {
       if (!FILTER.showSoon && g.soon) return false;
-      if (FILTER.genres.size && !FILTER.genres.has(g.tag)) return false;
+      if (FILTER.genres.size && !tagsOf(g).some(t => FILTER.genres.has(t))) return false;
       if (FILTER.badges.size) { const bk = badgeKeys(g); if (!bk.some(k => FILTER.badges.has(k))) return false; }
       if (FILTER.type === 'single' && g.mp) return false;
       if (FILTER.type === 'mp' && !g.mp) return false;
       if (FILTER.q) {
-        const hay = ((g.title || '') + ' ' + (g.tag || '') + ' ' + (g.blurb || '')).toLowerCase();
+        const hay = ((g.title || '') + ' ' + tagsOf(g).join(' ') + ' ' + (g.blurb || '')).toLowerCase();
         if (!hay.includes(FILTER.q)) return false;
       }
       return true;
@@ -827,10 +843,8 @@
     (function () {
       const btn = document.getElementById('filterBtn'), pop = document.getElementById('filterPop'), genreList = document.getElementById('genreList');
       if (!btn || !pop || !genreList) return;
-      const tags = [...new Set((window.GAMES || []).map(g => g.tag).filter(Boolean))].sort();
-      const tagColor = {}; // each genre takes the accent of the first game carrying it (echoes the tile tag color)
-      (window.GAMES || []).forEach(g => { if (g.tag && !(g.tag in tagColor)) tagColor[g.tag] = g.accent || '#9fe8ff'; });
-      genreList.innerHTML = tags.map(t => '<label class="fchk"><input type="checkbox" value="' + t + '"> <span class="gtag" style="color:' + tagColor[t] + '">' + t + '</span></label>').join('');
+      const tags = [...new Set((window.GAMES || []).flatMap(tagsOf))].sort();
+      genreList.innerHTML = tags.map(t => '<label class="fchk"><input type="checkbox" value="' + t + '"> <span class="gtag" style="color:' + tagColorOf(t) + '">' + t + '</span></label>').join('');
       genreList.addEventListener('change', e => {
         const v = e.target.value; if (e.target.checked) FILTER.genres.add(v); else FILTER.genres.delete(v);
         fcountUpdate(); render();
@@ -1198,7 +1212,7 @@
       const todayEl = document.getElementById('chalToday'), weekEl = document.getElementById('chalWeek'), streakEl = document.getElementById('chalStreak');
       if (!K || !todayEl) return;
       const genreOf = {};
-      (window.GAMES || []).forEach(g => { if (g && g.slug) genreOf[g.slug] = g.tag || ''; });
+      (window.GAMES || []).forEach(g => { if (g && g.slug) genreOf[g.slug] = (tagsOf(g)[0]) || ''; });
       const WEEK_ANCHOR = Math.floor(Date.UTC(2026, 5, 22) / 86400000); // a Monday — week buckets
       const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
       // aggregate the per-day activity logs for the current UTC week (kit keeps ~8 days)
