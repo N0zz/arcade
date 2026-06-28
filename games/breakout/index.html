@@ -33,8 +33,9 @@
   #overlay p, #endOverlay p { margin:2px; font-size:14px; opacity:0.85; max-width:480px; line-height:1.6; letter-spacing:1px; }
   #overlay .hint, #endOverlay .hint { opacity:0.5; font-size:12px; letter-spacing:1px; }
   /* touch-only hint: which screen half moves the paddle (the canvas handles the actual input) */
-  #bkpad { position:fixed; left:0; right:0; bottom:13%; z-index:6; display:none; justify-content:space-between; padding:0 22px; pointer-events:none; user-select:none; }
-  #bkpad span { font-size:32px; line-height:1; color:rgba(0,255,255,0.3); text-shadow:0 0 12px rgba(0,255,255,0.45); }
+  /* fixed offset near the paddle so it's clear of the bricks in BOTH orientations (13% floated up over the bricks in portrait) */
+  #bkpad { position:fixed; left:0; right:0; bottom:64px; z-index:6; display:none; justify-content:space-between; padding:0 20px; pointer-events:none; user-select:none; }
+  #bkpad span { font-size:32px; line-height:1; color:rgba(0,255,255,0.42); text-shadow:0 0 12px rgba(0,255,255,0.5); }
   body.bktouch #bkpad { display:flex; }
   #againBtn { font-family:inherit; cursor:pointer; font-size:15px; letter-spacing:3px; padding:11px 28px;
     border-radius:4px; color:#fff; background:transparent; border:2px solid var(--mg);
@@ -385,10 +386,11 @@
       }
     }
 
-    // paddle
+    // paddle — pinned to center until the ball is launched, then follows input
     const pw = widePaddle > 0 ? paddleW * 1.6 : paddleW;
     const halfPW = pw / 2;
-    paddleX += (paddleTarget - paddleX) * 0.25;
+    if (ballStuck) paddleX = paddleTarget = W / 2;
+    else paddleX += (paddleTarget - paddleX) * 0.25;
     paddleX = Math.max(halfPW, Math.min(W - halfPW, paddleX));
 
     if (ballStuck) { snapBallToPaddle(); return; }
@@ -720,6 +722,7 @@
 
   // ---- Key hold polling ----
   function pollKeys() {
+    if (ballStuck) return; // paddle is pinned to center until launch
     const pw = widePaddle > 0 ? paddleW * 1.6 : paddleW;
     const speed = 14;
     let d = 0;
@@ -780,6 +783,15 @@
     },
     get endlessTimer() { return endlessTimer; },
     get speedMult() { return speedMult; },
+    // layout snapshot for on-screen / no-overlap tests (px in canvas space)
+    get layout() {
+      const pw = widePaddle > 0 ? paddleW * 1.6 : paddleW;
+      let bt = brickOffY, bb = brickOffY, bl = W, br = 0;
+      for (const b of bricks) { const r = brickRect(b); bt = Math.min(bt, r.y); bb = Math.max(bb, r.y + r.h); bl = Math.min(bl, r.x); br = Math.max(br, r.x + r.w); }
+      return { W, H, topMargin, brickOffY, brickTop: bt, brickBottom: bb,
+        brickLeft: bricks.length ? bl : W / 2, brickRight: bricks.length ? br : W / 2,
+        paddleY: paddleY(), paddleLeft: paddleX - pw / 2, paddleRight: paddleX + pw / 2 };
+    },
     start: startGame,
     startMode,
     launch,

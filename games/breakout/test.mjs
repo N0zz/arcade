@@ -90,7 +90,9 @@ function runGame() {
   try { vm.runInContext(KIT, ctx, { filename: 'game-kit.js' }); vm.runInContext(code, ctx, { filename: 'index.html' }); }
   catch (e) { bootErr = e.stack; }
 
-  return { getEl, win, store, bootErr, T: () => win.__test };
+  // drive a viewport change: the kit's __emit sets window dims + fires the layout callbacks synchronously
+  function resize(w, h) { if (win.gamekit && win.gamekit.layout && win.gamekit.layout.__emit) win.gamekit.layout.__emit(w, h); else { win.innerWidth = w; win.innerHeight = h; } }
+  return { getEl, win, store, bootErr, resize, T: () => win.__test };
 }
 
 // ---- Tests ----
@@ -511,6 +513,33 @@ section('Breakout: 2× speed pref restored at boot from storage');
   vmmod.runInContext(code, seedCtx2, { filename: 'index.html' });
   ok(win.__test.speedMult === 2, 'speedMult restored to 2 from stored pref (got ' + win.__test.speedMult + ')');
   ok(mkEl('speed2x').checked === true, 'speed checkbox reflects restored pref');
+}
+
+// ---- Layout: everything on-screen + no overlap with the HUD, in portrait / landscape / desktop ----
+section('Breakout: layout fits the screen (no off-screen / score-box overlap)');
+{
+  const VIEWPORTS = [
+    { name: 'portrait phone', w: 390, h: 780 },
+    { name: 'landscape phone', w: 780, h: 390 },
+    { name: 'desktop', w: 1280, h: 800 },
+  ];
+  for (const v of VIEWPORTS) {
+    const gl = runGame();
+    gl.T().start();
+    gl.resize(v.w, v.h);
+    gl.T().step(1); // one frame so the paddle re-centers/clamps to the new width (as it does live)
+    const L = gl.T().layout;
+    ok(L.W === v.w && L.H === v.h, v.name + ': canvas matches viewport (' + L.W + 'x' + L.H + ')');
+    // bricks clear the top HUD pill (this is the "score box overlap" class of bug)
+    ok(L.brickTop >= L.topMargin, v.name + ': top bricks clear the HUD (brickTop ' + L.brickTop + ' >= topMargin ' + L.topMargin + ')');
+    // bricks within the canvas horizontally
+    ok(L.brickLeft >= 0 && L.brickRight <= L.W, v.name + ': bricks within width (' + Math.round(L.brickLeft) + '..' + Math.round(L.brickRight) + ' in 0..' + L.W + ')');
+    // a reaction gap below the lowest brick (bricks above the paddle)
+    ok(L.brickBottom < L.paddleY, v.name + ': bricks sit above the paddle (' + Math.round(L.brickBottom) + ' < ' + L.paddleY + ')');
+    // paddle within the canvas and on-screen
+    ok(L.paddleLeft >= 0 && L.paddleRight <= L.W, v.name + ': paddle within width (' + Math.round(L.paddleLeft) + '..' + Math.round(L.paddleRight) + ')');
+    ok(L.paddleY > 0 && L.paddleY < L.H, v.name + ': paddle within height (paddleY ' + L.paddleY + ' in 0..' + L.H + ')');
+  }
 }
 
 // ---- Summary ----
