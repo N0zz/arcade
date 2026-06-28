@@ -13,6 +13,9 @@ the in-page changelog / git, not here.)
   **Full design + per-game fix table at `~/komyo-mobile-rotation-design.md`** — core solution = a
   shared `gamekit.layout` helper (orientation + debounced resize/orientationchange/visualViewport +
   unified HUD headroom + a rotation test hook); tower-defense is the reference pattern to copy.
+  **Don't force dual-orientation:** aim for both everywhere, but where a second orientation isn't
+  viable, **lock to the good one + show a "↻ rotate to play" hint + mark it on the tile/menu** (so
+  nobody reports "doesn't rotate") + enforce a **minimum playable size**.
 
 ## Coming-soon games (queue)
 
@@ -83,14 +86,18 @@ and prototype it as the first persistent game.**
 
 **🔴 HIGH PRIORITY right now: Daily Challenges · Score-card image · Embeddable games.**
 
-1. **Daily & weekly Challenges** 🏆 **(HIGH PRIORITY)** — a curated **list** of concrete challenges
-   ("Score 2,000 in Bubble Pop", "Survive 10 waves in Keep Defender", "Reach 30 in Meadow Flyer"),
-   one **daily** (same for everyone by date) + a bigger **weekly** (by week-number), with a
-   **Challenges panel** (the 🏆 right drawer) showing progress + ✅ + a **streak** — the "Wordle
-   loop" return hook. All client-side, honor-system; completing one feeds the score-card share.
-   **Full design at `~/komyo-challenges-design.md`** — per-game goal catalogue, a
-   `gamekit.recordResult`/`lastResult` prerequisite, a `challenges.js` (`window.CHALLENGES`) data
-   file, and a **UTC-date-driven deterministic** daily/weekly selection algo (same for everyone).
+1. **Daily & weekly Challenges** 🏆 **(HIGH PRIORITY)** — a curated mix of single-game goals
+   ("Score 2,000 in Bubble Pop") **and cross-game/meta goals** ("Play 3 different games today",
+   genres, total score, try-something-new). One **daily** (same for everyone by date) + a
+   **weekly** that's **more *work*, not harder** (volume/variety: "play 10 games this week", "5
+   dailies", "4 genres" — never just a 5× bigger number). **Challenges panel** (the 🏆 drawer)
+   shows progress + ✅ + a **friendly "🔥 N days" counter that NEVER resets** (missing a day just
+   doesn't increment — streak-breaking is predatory; we want it fun). All client-side, honor-
+   system; completing one feeds the score-card share; the Play button deep-links the game **in the
+   challenge's mode via `?mode=` URL args**. **Full design at `~/komyo-challenges-design.md`** —
+   goal catalogue (incl. `scope:'cross'` + a per-day activity log), `gamekit.recordResult`/
+   `lastResult` prerequisite, a `challenges.js` data file, and a **UTC-date-driven deterministic**
+   selection algo.
 2. **Shareable score card — image (Level 2)** **(HIGH PRIORITY)** — *(Level 1 text+link is already
    shipped & enriched; this item is the **image card only**.)* On game-over, draw a branded PNG on an
    offscreen canvas (accent bg, game icon, big score, title, mascot, `komyo.online`), then
@@ -119,6 +126,14 @@ posts spread it, embeds pull new players in.
   surface/abstraction vs. each game's current hand-rolled menu, which already works. Only worth it if
   the per-game menu boilerplate starts to hurt as games scale. Decide before the next batch of games.
 
+### Engineering / kit follow-ups
+
+- **Distill the genre design-knobs** (from `~/komyo-gamedev-skills-analysis.md`) into a repo file
+  `game-design-knobs.md`, referenced from CLAUDE.md via `@game-design-knobs.md` (keeps CLAUDE.md
+  lean). Apply per game as we build — Sudoku/Pipe **solvable-by-construction generation**, Icy Tower
+  **jump-feel** knobs, idle game **versioned save**, asteroids **per-run seed**. *(TD self-audit
+  deferred to the next tower-defense touch.)*
+
 ### TV & controller support (Android/Google TV · remote · gamepad)
 
 - **Make Komyo playable on TVs** (e.g. Sony Bravia / Google TV) with a **D-pad/remote** and an
@@ -126,11 +141,14 @@ posts spread it, embeds pull new players in.
   design at `~/komyo-tv-controller-design.md`. Findings: TV remotes arrive as **arrow keys + Enter** (so
   menus need real focus/spatial navigation — our biggest gap); the **Gamepad API works** in Android-TV
   Chromium over HTTPS (poll in the loop, needs a user gesture); **PWA install isn't supported on Android
-  TV** → target browser play, not an installed app. Plan: (1) keyboard **focus + spatial nav** for the
-  catalogue/menus (also an a11y win), (2) a kit **`gamekit.input`** layer normalizing keyboard+gamepad+
-  touch, (3) per-game **opt-in** via a `controls` flag (great fit: Snake, Asteroids, Stack, Flappy;
-  good: Breakout, TD, Bubbles; poor: Range — pointer-precision), (4) 10-foot polish (focus rings,
-  title-safe margins, bigger TV fonts).
+  TV** → target browser play, not an installed app. **Support all *viable* games** (the **a11y win**
+  alone justifies it — keyboard/focus nav, previously overlooked); games that can't (pointer-
+  precision) are **clearly marked Steam-style** (🎮/⌨️/📺 full/partial/none capability badges), not
+  forced. Plan: (1) keyboard **focus + spatial nav** for the catalogue/menus (a11y + remote), (2) a
+  kit **`gamekit.input`** layer normalizing keyboard+gamepad+touch, (3) per-game `controls`
+  capability map driving badges **+ catalogue filters** (🎮 Gamepad · 📺 TV-friendly · ⌨️ Keyboard,
+  reusing Filter ▾), rollout easiest-first (Snake/Stack/Flappy/Asteroids…; Range = partial), (4)
+  10-foot polish (focus rings, title-safe margins, bigger TV fonts).
 
 ### Cross-device / data **(IMPORTANT)**
 
