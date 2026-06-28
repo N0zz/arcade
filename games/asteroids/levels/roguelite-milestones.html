@@ -25,6 +25,7 @@
   @media (max-width:560px) { #topHud { top:50px; max-width:calc(100vw - 16px); gap:8px 20px; } }
   /* short screens (landscape phones): make the HUD a slim top bar instead of a tall box (~30% → ~10%) */
   @media (max-height:560px) {
+    body.touch #topHud { top:8px; } /* landscape: room beside the nav → sit flush at the very top */
     #topHud { padding:2px 12px; gap:14px; border-radius:8px; }
     #hudL { font-size:15px; letter-spacing:1px; }
     #hudL .label { font-size:8px; }
