@@ -1,7 +1,8 @@
 # komyo Roadmap
 
-Working notes for what to build / improve next. Open items only — not a promise of order.
-Per-game feel/balance polish is **continuous** and not tracked here.
+Working notes for what to build / improve next. **Open items only** — not a promise of order.
+Per-game feel/balance polish is **continuous** and not tracked here. (Shipped history lives in
+the in-page changelog / git, not here.)
 
 ## 🔴 Critical (fix before more games)
 
@@ -12,19 +13,13 @@ Per-game feel/balance polish is **continuous** and not tracked here.
   **Full design + per-game fix table at `~/komyo-mobile-rotation-design.md`** — core solution = a
   shared `gamekit.layout` helper (orientation + debounced resize/orientationchange/visualViewport +
   unified HUD headroom + a rotation test hook); tower-defense is the reference pattern to copy.
-- *(done: **reviewed the gamedev genre skills** — <https://github.com/gamedev-skills/awesome-gamedev-agent-skills>.
-  Verdict: **inspire, don't adopt wholesale** (no npm router / engine skills / templates — they assume an
-  engine; we're no-engine plain HTML/JS/CSS). All 9 genre skills read & distilled, with per-game
-  application, at `~/komyo-gamedev-skills-analysis.md`. Cheap cross-cutting wins banked: state/view
-  separation, versioned saves, seeded per-run RNG, dt-scaled updates; highest-value = solvable-by-
-  construction generation for the future Sudoku/Pipe games. To apply: fold a distilled "knobs we honor"
-  block into CLAUDE.md + a quick TD self-audit.)*
 
 ## Coming-soon games (queue)
 
 Effort tiers: trivial / low / med / high — each a self-contained single file with a `__test` hook.
 Aim: ship **lots** of games, but each one **polished with real depth** — added slowly, in small
-batches or one at a time (not a dump of shallow POCs).
+batches or one at a time (not a dump of shallow POCs). Every new game follows the dev-process gate
+in CLAUDE.md (design+mock → POC → MVP → 2–3 iterations).
 
 ### Single player
 
@@ -78,83 +73,51 @@ Challenges and the Discord loop. Fits our model: all state is **localStorage** (
 Export/Import data feature becomes more valuable (don't lose your save when switching devices).
 Caveats to design for: localStorage is per-device/per-browser (clearing it wipes progress — flag
 this, lean on Export/Import), and offline/idle accrual needs a timestamp-based "what happened while
-you were away" calc, not a live timer. **Verdict: yes — pick one (idle/clicker is the cheapest, most
-proven entry) and prototype it as the first persistent game.**
+you were away" calc, not a live timer. Bake in a **versioned save schema** from day one (from the
+genre-skills analysis). **Verdict: yes — pick one (idle/clicker is the cheapest, most proven entry)
+and prototype it as the first persistent game.**
 
 ## Product & growth (the return loop)
 
 ### Growth levers (highest impact)
 
-**🔴 HIGH PRIORITY right now: Daily Challenges · Score-card share · Embeddable games.**
+**🔴 HIGH PRIORITY right now: Daily Challenges · Score-card image · Embeddable games.**
 
 1. **Daily & weekly Challenges** 🏆 **(HIGH PRIORITY)** — a curated **list** of concrete challenges
-   ("Score 2,000 in Bubble Pop", "Survive 10 waves in Keep Defender", "Reach 30 in Meadow Flyer").
-   Pick **today's by date** (`index = dayNumber % list.length`) so everyone gets the same one; plus a
-   bigger **weekly** challenge picked by week-number (Mon–Sun). A collapsible **Challenges panel** on
-   the catalogue lists today's + this week's with progress and a ✅ when done, tracked in the player's
-   space (localStorage). Track a **streak** (consecutive days completed) — the real return hook
-   (= the "Wordle loop": once-a-day, same for everyone, shareable). All client-side: games write their
-   last result to a shared key (`gamekit_result_<slug>` = {mode,score,time}); the panel checks it vs the
-   target. No server, honor-system (fine for casual; no leaderboard). Completing one feeds the
-   score-card share ("I beat today's komyo challenge 🔥"). *(Replaces the earlier seeded-run idea —
-   a challenge list is simpler to build, legible, and works across the current games immediately.)*
+   ("Score 2,000 in Bubble Pop", "Survive 10 waves in Keep Defender", "Reach 30 in Meadow Flyer"),
+   one **daily** (same for everyone by date) + a bigger **weekly** (by week-number), with a
+   **Challenges panel** (the 🏆 right drawer) showing progress + ✅ + a **streak** — the "Wordle
+   loop" return hook. All client-side, honor-system; completing one feeds the score-card share.
    **Full design at `~/komyo-challenges-design.md`** — per-game goal catalogue, a
-   `gamekit.recordResult`/`lastResult` prerequisite, a `challenges.js` (`window.CHALLENGES`) data file,
-   and a **UTC-date-driven deterministic** daily/weekly selection algo (same for everyone) + streak.
-2. **Shareable score cards** **(HIGH PRIORITY)** *(Level 1 text+link shipped & enriched — mode + stats per game, and the link deep-links the mode; Level 2 image card is the next build)* — upgrade
-   the share to a per-result visual that proves the score and stops the scroll (a link just unfurls
-   the same generic OG image for everyone). **Offer BOTH, not image-only:** keep the text/link share
-   row (universal, clickable, works on desktop) AND add a "🖼️ Score card" button for the image;
-   smart-default per platform (image where `navigator.share({files})` works, text/link otherwise) —
-   image-only would break desktop file-sharing and drop the clickable link. Two levels of card:
-   - **Level 1 — "Wordle block" (text-only, structured):** a multi-line block that reads like a card
-     anywhere (X / Discord / WhatsApp / SMS), e.g. `🐍 komyo · Neon Snake` / `SCORE 4,210 · best 5,120`
-     / a 🟩🟩🟩⬜ progress bar / `▶ komyo.online/games/snake`. ~1h, universal, no image hosting.
-   - **Level 2 — rendered image card:** on game-over draw a branded PNG on an offscreen canvas (accent
-     bg, game icon, big score, title, mascot, `komyo.online`), then `canvas.toBlob()` → `File` →
-     `navigator.share({files})` on mobile (shares the actual image to IG/Snap/WhatsApp); desktop
-     fallback = copy-as-image (`ClipboardItem`) / download. Zero infra, fully self-contained — fits
-     the no-external-assets rule. Best done **after** the real mascot art exists.
-   - Distinct from the OG image (that's the static server-side link-unfurl preview); the score card is
-     a live, per-play image the user actively shares. Rec: ship Level 1 first, then Level 2.
+   `gamekit.recordResult`/`lastResult` prerequisite, a `challenges.js` (`window.CHALLENGES`) data
+   file, and a **UTC-date-driven deterministic** daily/weekly selection algo (same for everyone).
+2. **Shareable score card — image (Level 2)** **(HIGH PRIORITY)** — *(Level 1 text+link is already
+   shipped & enriched; this item is the **image card only**.)* On game-over, draw a branded PNG on an
+   offscreen canvas (accent bg, game icon, big score, title, mascot, `komyo.online`), then
+   `canvas.toBlob()` → `File` → `navigator.share({files})` on mobile (shares the actual image to
+   IG/Snap/WhatsApp); desktop fallback = copy-as-image (`ClipboardItem`) / download. **Keep the
+   existing text/link row alongside** — smart-default per platform (image where
+   `navigator.share({files})` works, text/link otherwise). Zero infra, fully self-contained (fits the
+   no-external-assets rule). Distinct from the OG image (that's the static link-unfurl preview); the
+   score card is a live, per-play image the user actively shares. **Best done after the real mascot
+   art exists.**
 3. **Real mascot art** *(in progress)* — the chibi fox-girl (Holo-ish, red/orange hair, fox ears)
    to replace the header placeholder; reuse on social, stickers, 404, newsletter, empty states.
 
-*(Dropped: "personal bests on the tiles" — every game has many modes, so there's no single best to
-show, and it would overcrowd the home page.)*
+*(Decision guard — don't re-propose: "personal bests on the tiles" is dropped; every game has many
+modes, so there's no single best to show, and it would overcrowd the home page.)*
+
+**High-priority trio (do before more games): Daily Challenges · score-card image · embeddable games.**
+They reinforce each other — challenges give a daily reason to return, score cards + challenge-beaten
+posts spread it, embeds pull new players in.
 
 ### Catalogue UX
 
-*Essentially **done*** — the only open thread is the undecided v3 menu idea below (user-facing sort is
-now **parked**).
-
-- *(done: **control layout redesign** — floating **☰ menu + 📱 Install** (top-left) and **🏆 Challenges**
-  (top-right) buttons opening full-height, drag-resizable drawers; slim footer. Replaced the earlier
-  top-bar idea. "Chrome" elsewhere = the Dino Jump game's visual style, not this.)*
-- *(done: **search + filters** — instant client-side search; a **Filter ▾** dropdown (genre · Single/
-  Multiplayer · show-coming-soon · **Highlights** = NEW/UPDATED/POPULAR); search + filter state saved
-  in the URL, so a filtered view is bookmarkable/shareable.)*
-- *(done: **Changelog** modal (date-grouped releases, lazy-load, searchable) + **About komyo** modal.)*
-- *(done: **deep-linkable game modes** — a shared link carries the mode (`?mode=…`, etc.) and the game
-  preselects it on load; + optional **display name** (menu prompt + ✏️, or "anonymous"), shown as a
-  cycling-language "Welcome, {name}".)*
-- *(done: auto **NEW**/**UPDATED** tile badges, date-driven from `added`/`updated`, 7-day window.)*
 - **Kit menu framework (v3)** *(idea — undecided; may keep what we have)* — promote the
   asteroids-style **mode tiles** + **option-group rows** into a reusable `gamekit.menu` the kit renders
   (declarative config → consistent menus everywhere, less per-game markup). Trade-off: more kit
   surface/abstraction vs. each game's current hand-rolled menu, which already works. Only worth it if
   the per-game menu boilerplate starts to hurt as games scale. Decide before the next batch of games.
-- **Hamburger drawer cleanup** *(small)* — (1) **integrate "Your data"** into the other sections
-  rather than its own pinned block at the bottom; (2) **move the "Share" row to the bottom** of the
-  drawer; (3) the **"Welcome, {name}" cycling languages should be in random order each time**, not the
-  same fixed sequence every load.
-
-### Known bugs / polish
-
-- *(done: **Tower Defense (mobile): tower-placement tooltip blocked the map** — the stats card popped on
-  touch and covered the build tiles; now skipped on no-hover/touch devices.)*
-- *(saved earlier: Tower Defense — grey out the upgrade button when you can't afford it, pop it in when
-  you can.)*
 
 ### TV & controller support (Android/Google TV · remote · gamepad)
 
@@ -177,44 +140,18 @@ now **parked**).
   catalogue: "Export" (copy/download a **base64-encoded** blob) + "Import" (paste → base64-decode →
   validate → write keys back → reload). Base64 is light obfuscation so non-tech players can't trivially
   edit their scores — *not* real security. Namespacing is easy (keys are already `arcade_favs`,
-  `gamekit_*`, `<slug>_*`, `gamekit_result_*`). Add a version field + merge-vs-replace choice, and guard
-  against pasting junk.
+  `gamekit_*`, `<slug>_*`, `gamekit_result_*`). Add a **version field + migration path** (genre-skills
+  takeaway) + merge-vs-replace choice, and guard against pasting junk.
+
+### Known bugs / polish
+
+- **Tower Defense — grey out the upgrade button when you can't afford it**, pop it in when you can.
 
 ### Distribution
 
-- *(done: **changelog** — in-page modal on the catalogue (date-grouped releases). A standalone page /
-  newsletter feed off the same data can come later.)*
 - **Embeddable games (iframe snippet)** **(HIGH PRIORITY)** — "embed this game on your blog" → backlinks + free traffic.
 - **List on game portals** — itch.io, free-to-play indexes.
-- *(done: **komyo Discord server** created; a **GitHub Action** posts each push's full commit messages
-  to a changelog channel (fires on pushes + merges to main); on game-over the client **auto-posts the
-  score** (display name or "anonymous", with mode + stats + a deep-link) to a scores channel.)*
-- *(shipped pragmatically: the score post uses a **hardcoded public webhook** (no relay) — owner's
-  accepted risk; fixed username + `allowed_mentions:[]` so it can't impersonate/ping. If ever abused,
-  switch to a thin relay (serverless fn, rate-limited). Discord limits are per-webhook ~30/min, so it
-  silently drops under heavy concurrency — fine for now. Polls/vote-on-next-game live in Discord.)*
-- **Optional next:** a "recent scores" ticker on the site; opt-in toggle for the auto-post.
-- **Idea: only post *player-facing* changes to the Discord changelog** — the Action currently posts
-  **every** push (incl. `chore`/`ci`/`docs`), which is noisy and doesn't match the website changelog.
-  Options: (a) a commit **marker/trailer** the Action greps for (e.g. `Changelog: <text>` or `[cl]`) and
-  posts only those — ideally the marker's clean text, not the raw commit; (b) **conventional-commit
-  filter** — post `feat`/`fix`, skip `chore`/`ci`/`docs`/`refactor`/`test`; (c) **best — mirror the
-  in-page `CHANGELOG`**: when a push adds a `CHANGELOG` entry in `index.html`, post *that* entry, so
-  Discord == the website changelog exactly. Rec: (c), or (a) as a lightweight stopgap.
-
-**High-priority trio (do before more games): Daily Challenges · score-card share · embeddable games.**
-They reinforce each other — challenges give a daily reason to return, score cards + challenge-beaten
-posts spread it, embeds pull new players in.
-
-### Site, legal & discoverability
-
-- *(done: **License** — PolyForm Noncommercial 1.0.0 (`LICENSE`, free for any noncommercial use, no
-  commercial use); README badge + section; About/site wording says **"source-available"**, not "open source".)*
-- *(done: **robots.txt + sitemap.xml + llms.txt** — all crawlers allowed (search engines + AI/LLM bots);
-  sitemap lists home + the 8 live games; llms.txt is a curated markdown map. New live games must be
-  added to both.)*
-- *(done: **OG image** refreshed (1200×604, `?v=3`); **favicon** now the komyo mascot.)*
-- *(done: sitemap submitted to Google Search Console; OG image re-scraped.)*
+- **Optional next:** a "recent scores" ticker on the site; opt-in toggle for the Discord score auto-post.
 
 ## Marketing experiments
 
