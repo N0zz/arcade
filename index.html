@@ -170,8 +170,8 @@
   #shareCopy.ok { color:#7fe0a0; border-color:#7fe0a0; }
 
   /* feedback modal */
-  #fbModal, #nlModal, #clModal, #aboutModal, #faqModal, #nameModal { border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:16px; padding:0; width:min(440px,92vw); box-shadow:0 20px 60px rgba(0,0,0,0.6); }
-  #fbModal::backdrop, #nlModal::backdrop, #clModal::backdrop, #aboutModal::backdrop, #faqModal::backdrop, #nameModal::backdrop { background:rgba(5,8,13,0.66); }
+  #fbModal, #nlModal, #clModal, #aboutModal, #faqModal, #legalModal, #dataModal, #nameModal { border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:16px; padding:0; width:min(440px,92vw); box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+  #fbModal::backdrop, #nlModal::backdrop, #clModal::backdrop, #aboutModal::backdrop, #faqModal::backdrop, #legalModal::backdrop, #dataModal::backdrop, #nameModal::backdrop { background:rgba(5,8,13,0.66); }
   /* about modal */
   #aboutModal { width:min(520px,94vw); }
   .about { padding:18px 20px 20px; display:flex; flex-direction:column; gap:12px; }
@@ -187,6 +187,20 @@
   .faq-q { font-weight:700; color:var(--text); font-size:15.5px; margin-top:6px; }
   .faq-a { margin:0; font-size:14.5px; line-height:1.62; color:var(--muted); }
   .faq-a b { color:var(--text); } .faq-a a { color:#9fe8ff; }
+  /* favicon image used in place of an emoji glyph in a menu item */
+  .ditem .di-img { width:18px; height:18px; border-radius:4px; display:block; margin:0 auto; }
+  /* export/import data modal */
+  #dataModal, #legalModal { width:min(520px,94vw); }
+  .data-ta { width:100%; box-sizing:border-box; resize:vertical; background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+    color:var(--text); font:12px/1.5 ui-monospace,monospace; padding:10px 12px; }
+  .data-btns { display:flex; gap:8px; flex-wrap:wrap; }
+  .data-btn { font-family:var(--mono); font-size:12px; letter-spacing:1px; cursor:pointer; padding:8px 14px; border-radius:9px;
+    color:var(--text); background:var(--surface-2); border:1px solid var(--border); }
+  .data-btn:hover { border-color:#9fe8ff; }
+  .data-btn.primary { color:#06121a; background:#9fe8ff; border-color:#9fe8ff; font-weight:700; }
+  .data-msg { font-size:13px; min-height:18px; color:var(--muted); }
+  .data-msg.ok { color:#7fe0a0; } .data-msg.err { color:#ff8a8a; }
+  .cookie-banner a { color:#9fe8ff; }
   /* changelog modal */
   #clModal { width:min(680px,94vw); }
   .cl { padding:18px 20px 20px; display:flex; flex-direction:column; gap:13px; }
@@ -437,22 +451,20 @@
         <div class="dl">Connect</div>
         <button class="ditem" id="feedback" type="button"><span class="di">💬</span> Feedback</button>
         <button class="ditem" id="newsletter" type="button"><span class="di">📬</span> Subscribe</button>
-        <a class="ditem" href="https://discord.gg/hz2fhpD5sz" target="_blank" rel="noopener"><span class="di">🎮</span> Discord</a>
+        <a class="ditem" href="https://discord.gg/hz2fhpD5sz" target="_blank" rel="noopener"><span class="di"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.369A19.79 19.79 0 0 0 16.558 3.2a.074.074 0 0 0-.079.037c-.34.6-.71 1.39-.97 2.01a18.3 18.3 0 0 0-5.02 0 12.6 12.6 0 0 0-.98-2.01.077.077 0 0 0-.079-.037A19.74 19.74 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C1.533 8.02.943 11.58 1.51 15.09a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.1 13.1 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.371-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.009c.12.099.245.198.372.292a.077.077 0 0 1-.006.127c-.598.349-1.225.645-1.873.892a.076.076 0 0 0-.04.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-4.06-.838-7.59-3.549-10.695a.06.06 0 0 0-.031-.028zM8.02 12.95c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.956 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.946 2.419-2.157 2.419z"/></svg></span> Discord</a>
         <button class="ditem" id="embedBtn" type="button"><span class="di">🔗</span> Embed a game</button>
       </div>
       <div class="dgrp">
         <div class="dl">About</div>
-        <button class="ditem" id="aboutBtn" type="button"><span class="di">🦊</span> About Komyo Games</button>
+        <button class="ditem" id="aboutBtn" type="button"><span class="di"><img src="favicon.svg" alt="" class="di-img"></span> About Komyo Games</button>
         <button class="ditem" id="faqBtn" type="button"><span class="di">❓</span> FAQ</button>
         <button class="ditem" id="changelogBtn" type="button"><span class="di">🗒️</span> Changelog</button>
-        <a class="ditem" href="https://github.com/N0zz/komyo.online" target="_blank" rel="noopener"><span class="di"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.04-.02-2.05-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.12-.31-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.01 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.87.12 3.18.77.84 1.24 1.92 1.24 3.23 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22 0 1.61-.01 2.9-.01 3.29 0 .32.21.7.82.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/></svg></span> GitHub</a>
-        <a class="ditem" href="https://github.com/N0zz/komyo.online/blob/main/LICENSE" target="_blank" rel="noopener"><span class="di">⚖️</span> License</a>
+        <button class="ditem" id="legalBtn" type="button"><span class="di">⚖️</span> License &amp; privacy</button>
       </div>
       <div class="dgrp ddata">
         <div class="dl">Your data <button class="dhelp" id="dataHelp" type="button" aria-label="What is this?" aria-expanded="false">?</button></div>
         <div class="dnote" id="dataNote">Your scores, progress, favorites &amp; settings are saved <b>only on this device</b>. <b>Export</b> turns them into a code you can <b>Import</b> on another device — to carry your records between phone &amp; desktop, or keep a backup. Nothing is sent to a server.</div>
-        <button class="ditem" id="exportBtn" type="button"><span class="di">⬆️</span> Export <span class="mock">SOON</span></button>
-        <button class="ditem" id="importBtn" type="button"><span class="di">⬇️</span> Import <span class="mock">SOON</span></button>
+        <button class="ditem" id="dataBtn" type="button"><span class="di">⇄</span> Export / import data</button>
         <a class="ditem reset" id="resetAll" href="#" title="Clear all saved scores &amp; progress for every game"><span class="di">↺</span> Reset all data</a>
       </div>
       <div class="dgrp">
@@ -585,12 +597,36 @@
       <div class="faq-q">Is it safe for kids?</div>
       <p class="faq-a">Yes — no ads, no chat, no payments, no sign-ups, and nothing about your child is stored on a server. Just games.</p>
       <div class="faq-q">How do I keep my progress or move it to another device?</div>
-      <p class="faq-a">Your progress is saved in this browser, on this device — so clearing your browser data clears it. We're adding <b>Export / Import</b> so you can carry it between phone and desktop. There's no cloud sync, because (see above) there are no accounts.</p>
+      <p class="faq-a">Your progress is saved in this browser, on this device — so clearing your browser data clears it. Use <b>Export / import data</b> in the menu to back it up or carry it between phone and desktop. There's no cloud sync, because (see above) there are no accounts.</p>
+    </div>
+  </dialog>
+
+  <dialog id="legalModal">
+    <div class="about">
+      <div class="cl-head"><h3>⚖️ License &amp; privacy</h3><button type="button" class="dx" id="legalClose" aria-label="Close">✕</button></div>
+      <div class="faq-q">License</div>
+      <p class="faq-a">Komyo Games is <b>source-available</b> under <b>PolyForm Noncommercial 1.0.0</b> — free to read, use and tinker with for any <b>non-commercial</b> purpose; commercial use isn't permitted. <a href="https://github.com/N0zz/komyo.online/blob/main/LICENSE" target="_blank" rel="noopener">Read the full license</a>.</p>
+      <div class="faq-q">Privacy</div>
+      <p class="faq-a">No accounts and no server storing your data — your game data stays on your device. The only third-party tracking is Google Analytics, loaded only if you accept cookies. <a href="privacy.html" target="_blank" rel="noopener">Read the full privacy policy</a>.</p>
+    </div>
+  </dialog>
+
+  <dialog id="dataModal">
+    <div class="about">
+      <div class="cl-head"><h3>⇄ Export / import data</h3><button type="button" class="dx" id="dataClose" aria-label="Close">✕</button></div>
+      <p class="faq-a">Your scores, progress and settings live only in this browser. Copy this code to back them up or move them to another device, then paste it there and import. <b>Importing replaces</b> this device's data.</p>
+      <div class="faq-q">Export</div>
+      <textarea id="dataExport" class="data-ta" readonly rows="4" aria-label="Your backup code"></textarea>
+      <div class="data-btns"><button class="data-btn" id="dataCopy" type="button">Copy</button><button class="data-btn" id="dataDownload" type="button">Download</button></div>
+      <div class="faq-q">Import</div>
+      <textarea id="dataImport" class="data-ta" rows="4" placeholder="Paste a backup code here…" aria-label="Paste backup code"></textarea>
+      <div class="data-btns"><button class="data-btn primary" id="dataImportBtn" type="button">Import &amp; reload</button></div>
+      <div class="data-msg" id="dataMsg"></div>
     </div>
   </dialog>
 
   <div id="cookieBanner" class="cookie-banner" hidden>
-    <span>We use Google Analytics to see which games are most played — no ads, no data selling.</span>
+    <span>We use Google Analytics to see which games are most played — no ads, no data selling. <a href="privacy.html">Privacy policy</a>.</span>
     <div class="cb-actions">
       <button id="cbDecline" class="cb-btn" type="button">Decline</button>
       <button id="cbAccept" class="cb-btn cb-accept" type="button">Accept</button>
@@ -1077,6 +1113,50 @@
       if (closeBtn) closeBtn.addEventListener('click', () => modal.close());
       modal.addEventListener('close', () => lock(false));
       modal.addEventListener('click', e => { if (e.target === modal) modal.close(); });
+    })();
+
+    // ---- Legal (License & privacy) modal ----
+    (function () {
+      const modal = document.getElementById('legalModal'), btn = document.getElementById('legalBtn'), closeBtn = document.getElementById('legalClose');
+      if (!modal || !modal.showModal) return;
+      const lock = v => { try { document.body.style.overflow = v ? 'hidden' : ''; } catch (e) {} };
+      if (btn) btn.addEventListener('click', () => { modal.showModal(); lock(true); });
+      if (closeBtn) closeBtn.addEventListener('click', () => modal.close());
+      modal.addEventListener('close', () => lock(false));
+      modal.addEventListener('click', e => { if (e.target === modal) modal.close(); });
+    })();
+
+    // ---- Export / import data (single modal, base64 of localStorage) ----
+    (function () {
+      const modal = document.getElementById('dataModal'), btn = document.getElementById('dataBtn'), closeBtn = document.getElementById('dataClose');
+      if (!modal || !modal.showModal) return;
+      const ex = document.getElementById('dataExport'), imp = document.getElementById('dataImport'), msg = document.getElementById('dataMsg');
+      const copyB = document.getElementById('dataCopy'), dlB = document.getElementById('dataDownload'), impB = document.getElementById('dataImportBtn');
+      const lock = v => { try { document.body.style.overflow = v ? 'hidden' : ''; } catch (e) {} };
+      const enc = s => { try { return btoa(unescape(encodeURIComponent(s))); } catch (e) { return ''; } };
+      const dec = s => { try { return decodeURIComponent(escape(atob(s))); } catch (e) { return ''; } };
+      const setMsg = (t, cls) => { if (msg) { msg.textContent = t || ''; msg.className = 'data-msg' + (cls ? ' ' + cls : ''); } };
+      function buildExport() {
+        const data = {};
+        try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); data[k] = localStorage.getItem(k); } } catch (e) {}
+        return enc(JSON.stringify({ app: 'komyo', v: 1, ts: Date.now(), data }));
+      }
+      if (btn) btn.addEventListener('click', () => { if (ex) ex.value = buildExport(); if (imp) imp.value = ''; setMsg(''); modal.showModal(); lock(true); });
+      if (closeBtn) closeBtn.addEventListener('click', () => modal.close());
+      modal.addEventListener('close', () => lock(false));
+      modal.addEventListener('click', e => { if (e.target === modal) modal.close(); });
+      if (copyB) copyB.addEventListener('click', () => { try { ex.select(); if (navigator.clipboard) navigator.clipboard.writeText(ex.value); copyB.textContent = 'Copied!'; setTimeout(() => copyB.textContent = 'Copy', 1500); } catch (e) {} });
+      if (dlB) dlB.addEventListener('click', () => {
+        try { const u = URL.createObjectURL(new Blob([ex.value], { type: 'text/plain' })); const a = document.createElement('a'); a.href = u; a.download = 'komyo-backup.txt'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 800); } catch (e) {}
+      });
+      if (impB) impB.addEventListener('click', () => {
+        let parsed = null; try { parsed = JSON.parse(dec((imp.value || '').trim())); } catch (e) {}
+        if (!parsed || parsed.app !== 'komyo' || !parsed.data) { setMsg("That doesn't look like a valid komyo backup code.", 'err'); return; }
+        try { for (const k in parsed.data) if (Object.prototype.hasOwnProperty.call(parsed.data, k)) localStorage.setItem(k, parsed.data[k]); }
+        catch (e) { setMsg('Import failed — storage error.', 'err'); return; }
+        setMsg('Imported! Reloading…', 'ok');
+        setTimeout(() => { try { location.reload(); } catch (e) {} }, 700);
+      });
     })();
 
     // ---- Daily / weekly Challenges panel (🏆 right drawer) ----
