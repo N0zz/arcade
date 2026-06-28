@@ -748,6 +748,7 @@
       if (lastT === null) lastT = now;
       let dt = now - lastT;
       lastT = now;
+      if (window.gamekit && window.gamekit.isPaused && window.gamekit.isPaused()) { render(); return; } // kit pause (lastT kept fresh → no dt jump)
       if (dt > MAX_FRAME) dt = MAX_FRAME;
       if (dt < 0) dt = 0;
       const mult = state === 'playing' ? speedMult : 1;

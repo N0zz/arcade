@@ -1379,6 +1379,7 @@
 
   function loop() {
     requestAnimationFrame(loop);
+    if (window.gamekit && window.gamekit.isPaused && window.gamekit.isPaused()) return; // kit pause
     try {
       if (state === 'wave' || state === 'build') {
         update();

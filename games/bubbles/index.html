@@ -1024,6 +1024,7 @@
   function loop() {
     requestAnimationFrame(loop);
     const K = window.gamekit;
+    if (K && K.isPaused && K.isPaused()) return; // kit pause
     // when locked + held the wrong way: kit shows the "↻ rotate" overlay and we FREEZE (skip update)
     if (portraitLockActive() && K && K.layout && K.layout.requireOrientation && !K.layout.requireOrientation('portrait')) return;
     try { update(); render(); } catch(e) { if (typeof console !== 'undefined') console.error(e); }

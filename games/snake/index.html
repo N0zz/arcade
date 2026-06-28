@@ -494,6 +494,7 @@
   // ---- rAF loop (render only, decoupled from ticks) ----
   function loop(ts) {
     requestAnimationFrame(loop);
+    if (window.gamekit && window.gamekit.isPaused && window.gamekit.isPaused()) { lastTick = ts; return; } // kit pause (keep tick baseline fresh)
     if (state === 'playing' && ts - lastTick >= getInterval()) {
       lastTick = ts;
       tick();

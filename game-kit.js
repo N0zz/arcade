@@ -205,6 +205,29 @@
   function lastResult(slug) { try { return JSON.parse(lsGet('gamekit_result_' + slug) || 'null'); } catch (e) { return null; } }
   function playedToday() { try { return JSON.parse(lsGet('gamekit_played_' + utcDateStr()) || 'null') || emptyLog(); } catch (e) { return emptyLog(); } }
 
+  // ---------- universal pause (button in the top-right cluster + overlay; games skip update when isPaused) ----------
+  var _paused = false, _pauseOv = null, _pauseBtns = [];
+  function pauseOverlay() {
+    if (_pauseOv) return _pauseOv;
+    if (typeof document === 'undefined' || !document.body || !document.createElement) return null;
+    var ov = document.createElement('div'); ov.className = 'gamekit-pause';
+    ov.innerHTML = '<div class="gamekit-pause-box"><div class="gamekit-pause-ico">⏸</div><div>Paused</div><button class="gamekit-pause-resume" type="button">Resume</button></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) {
+      var t = e && e.target;
+      if (t === ov || (t && t.closest && t.closest('.gamekit-pause-resume'))) setPaused(false);
+    });
+    _pauseOv = ov; return ov;
+  }
+  function syncPauseUI() {
+    var ov = _paused ? pauseOverlay() : _pauseOv;
+    if (ov && ov.classList) ov.classList.toggle('show', _paused);
+    for (var i = 0; i < _pauseBtns.length; i++) { try { _pauseBtns[i].textContent = _paused ? '▶' : '⏸'; _pauseBtns[i].setAttribute('aria-pressed', _paused ? 'true' : 'false'); _pauseBtns[i].title = _paused ? 'Resume' : 'Pause'; } catch (e) {} }
+  }
+  function setPaused(p) { _paused = !!p; syncPauseUI(); }
+  function togglePause() { setPaused(!_paused); }
+  function isPaused() { return _paused; }
+
   // ---------- top-right sound menu (+ optional per-game "reset scores") ----------
   function audioMenu(opts) {
     opts = opts || {};
@@ -214,7 +237,8 @@
       + '<input class="gamekit-au-slider" id="gamekitSfxV" type="range" min="0" max="100" aria-label="Sound effects volume"></div>';
     if (opts.music) rows += '<div class="gamekit-au-row"><button class="gamekit-au-toggle" id="gamekitMusM" type="button" aria-label="Mute music">🎵</button>'
       + '<input class="gamekit-au-slider" id="gamekitMusV" type="range" min="0" max="100" aria-label="Music volume"></div>';
-    wrap.innerHTML = '<button class="gamekit-au-btn" id="gamekitAudioBtn" type="button" aria-label="Sound settings" title="Sound settings">🔊</button>'
+    wrap.innerHTML = '<button class="gamekit-au-btn gamekit-au-pausebtn" id="gamekitPause" type="button" aria-pressed="false" aria-label="Pause" title="Pause">⏸</button>'
+      + '<button class="gamekit-au-btn" id="gamekitAudioBtn" type="button" aria-label="Sound settings" title="Sound settings">🔊</button>'
       + '<div class="gamekit-au-panel" id="gamekitAudioPanel">' + rows + '</div>'
       + '<button class="gamekit-au-btn gamekit-au-embedbtn" id="gamekitEmbed" type="button" aria-label="Embed this game" title="Embed this game on your website or blog">&#x29C9;</button>'
       + (opts.reset ? '<button class="gamekit-au-resetbtn" id="gamekitReset" type="button" aria-label="Reset this game’s scores" title="Reset this game’s saved scores">↺</button>' : '');
@@ -241,6 +265,9 @@
       var m = ((typeof location !== 'undefined' && location.pathname) ? location.pathname : '').match(/games\/([^\/?#]+)/);
       embedModal({ slug: m ? m[1] : '', title: (typeof document !== 'undefined' ? document.title : '') });
     });
+    var pb = document.getElementById('gamekitPause');
+    if (pb) { _pauseBtns.push(pb); pb.addEventListener('click', togglePause); }
+    syncPauseUI();
     audioUIs.push(u); syncAudioUI();
   }
 
@@ -539,7 +566,7 @@
     }
   })();
 
-  var api = { sound: sound, music: music, nav: nav, audioMenu: audioMenu, resetScores: resetScores, confirm: confirmDialog, shareRow: shareRow, shareUrls: shareUrls, shareText: shareText, param: param, pwa: pwa, player: player, setName: setName, postDiscord: postDiscord, layout: layout, recordResult: recordResult, lastResult: lastResult, playedToday: playedToday, utcDateStr: utcDateStr, utcDayNumber: utcDayNumber, scoreCard: buildScoreCard, embedModal: embedModal };
+  var api = { sound: sound, music: music, nav: nav, audioMenu: audioMenu, resetScores: resetScores, confirm: confirmDialog, shareRow: shareRow, shareUrls: shareUrls, shareText: shareText, param: param, pwa: pwa, player: player, setName: setName, postDiscord: postDiscord, layout: layout, recordResult: recordResult, lastResult: lastResult, playedToday: playedToday, utcDateStr: utcDateStr, utcDayNumber: utcDayNumber, scoreCard: buildScoreCard, embedModal: embedModal, isPaused: isPaused, setPaused: setPaused, togglePause: togglePause };
   var g = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : this);
   g.gamekit = api;
   if (typeof window !== 'undefined') window.gamekit = api;

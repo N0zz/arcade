@@ -291,7 +291,7 @@
   function drawParticles(){ for (const p of particles){ ctx.fillStyle='rgba('+p.color+','+p.life+')'; ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2); ctx.fill(); } }
   function render(){ ctx.clearRect(0,0,W,H); ctx.shadowBlur=0; drawStars(); drawParticles(); drawAsteroids(); drawBullets(); drawShip(); ctx.shadowBlur=0; }
   const STEP_MS = 1000/60; let _accT = 0, _lastT = now();
-  function loop(){ requestAnimationFrame(loop); try { let _t=now(), _el=_t-_lastT; _lastT=_t; if(_el>250) _el=250; _accT+=_el; let _g=0; while(_accT>=STEP_MS && _g<5){ update(); _accT-=STEP_MS; _g++; } render(); } catch(e){ if(window.console) console.error(e); } }
+  function loop(){ requestAnimationFrame(loop); try { let _t=now(), _el=_t-_lastT; _lastT=_t; if(window.gamekit&&window.gamekit.isPaused&&window.gamekit.isPaused()){ render(); return; } if(_el>250) _el=250; _accT+=_el; let _g=0; while(_accT>=STEP_MS && _g<5){ update(); _accT-=STEP_MS; _g++; } render(); } catch(e){ if(window.console) console.error(e); } }
 
   // ---- Touch controls (mobile): aim-and-go joystick + fire; desktop is unaffected ----
   const HAS_PAUSE = false; // no on-screen pause button (it sat behind the kit's top-right buttons); Esc still pauses on desktop
