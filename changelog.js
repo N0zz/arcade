@@ -5,6 +5,7 @@
 // Keep bullets plain-language and about what a PLAYER notices — never kit/test/build/refactor.
 window.CHANGELOG = [
   { date: '2026-06-28', title: 'Challenges, score cards & more', items: [
+    'New: Asteroids+ — the roguelite Asteroids (XP, upgrades, bosses, a wave shop) is now its own game. Plain Asteroids is the classic arcade one. Pick your mode right inside each game.',
     'New: Daily & Weekly Challenges — tap 🏆 for today’s challenge plus a bigger weekly one. Earn points (1 per daily, 5 per weekly) that only ever go up, with a History list of everything you’ve completed (up to a year, "Load more" to go back).',
     'New: Score cards — share a picture of your score from the end screen (📷), straight to your apps.',
     'New: Embed games on your own site or blog — an Embed button in each game’s sound menu, plus "Embed a game" in the main menu.',

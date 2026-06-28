@@ -6,14 +6,6 @@ Design docs live in `~/` (not in the repo): mobile-rotation, gamedev-skills, cha
 
 ## 🔴 Critical (before more games)
 
-- **Per-game mobile + rotation pass.** The `gamekit.layout` helper is shipped and every game is routed
-  through it (rotation now triggers relayout), but each game still needs its **own layout work** —
-  distinct portrait/landscape arrangement, redraw, HUD placement — per the fix table in
-  **`~/komyo-mobile-rotation-design.md`** (aim-trainer HUD caching, snake HUD, flappy bird-Y, stacker
-  banner, breakout redraw…). Decide each game's **dual vs locked** orientation; where a second
-  orientation isn't viable, **lock it + "↻ rotate to play" hint + tile marker + min-playable-size**.
-  *Verified: Flappy rotation + offline; other games still need a real-device check.*
-
 - **Verify every existing game against the game design knobs** (`@game-design-knobs.md`). One pass over
   all games, checking each against our distilled per-genre knobs + failure modes — **includes the old
   "TD self-audit"** (Keep Defender vs the 7 tower-defense systems + the DPS sanity formula). Output =
@@ -85,14 +77,28 @@ wipes progress — lean on Export/Import), timestamp-based offline accrual (not 
   decisions are open before polishing: (a) **redesign the card art** (after the real mascot), and
   (b) **keep the 📷 button in the share row or rebuild the share affordance** entirely. Decide UX first.
 - **Daily-challenge target tuning.** Challenges are live (UTC daily/weekly, points 1/5 that never reset,
-  single-game + cross-game goals). Targets are **provisional** — playtest and retune (Snake already
-  bumped 50→250); confirm the UTC daily-reset behaves.
+  single-game + cross-game goals, plus a 1-year completion History). Targets are **provisional** —
+  playtest and retune (Snake already bumped 50→250); confirm the UTC daily-reset behaves.
+
+- **Privacy policy — legal review** *(in progress)*. AI draft is published at `komyo.online/privacy.html`
+  and links from the cookie banner + About. **Waiting on the lawyer's response** (handoff briefs:
+  `~/komyo-prawnik-brief-pl.md` PL + `~/komyo-privacy-lawyer-brief.md` EN). Open: PL-authoritative
+  version + LLM convenience translations, the children/analytics question, and the Discord auto-post
+  clause. Revisit `privacy.html` once counsel replies.
 
 ### Catalogue / kit
 
 - **Kit menu framework (v3)** *(undecided)* — promote the asteroids-style mode tiles + option-group rows
   into a reusable `gamekit.menu` (declarative config → consistent menus, less per-game markup). Only
   worth it if per-game menu boilerplate starts to hurt as games scale. Decide before the next batch.
+
+- **Standardize the tag/genre system** *(bug + idea)*. **Bug:** tag colors aren't tied to the tag —
+  two games with the same genre can show different-colored tag pills (e.g. ARCADE is blue on Asteroids
+  but pink on Brick Breaker). Each genre needs **one canonical color**, defined once and looked up by
+  tag (not per-game `accent`). Fix when standardizing tags. **Idea:** allow **2–3 tags per game**
+  (a game is often both e.g. `ARCADE` + `SHOOTER`). Before adopting, think through the **display
+  caveats**: tile pill crowding / wrapping, badge vs tag stacking, how filters combine (AND vs OR
+  across a game's multiple tags), genre-row placement when a game belongs to several, and SEO/llms map.
 
 ### Platforms
 
