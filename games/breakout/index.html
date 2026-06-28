@@ -32,6 +32,10 @@
     text-shadow:0 0 20px var(--mg), 0 0 40px var(--mg); }
   #overlay p, #endOverlay p { margin:2px; font-size:14px; opacity:0.85; max-width:480px; line-height:1.6; letter-spacing:1px; }
   #overlay .hint, #endOverlay .hint { opacity:0.5; font-size:12px; letter-spacing:1px; }
+  /* touch-only hint: which screen half moves the paddle (the canvas handles the actual input) */
+  #bkpad { position:fixed; left:0; right:0; bottom:13%; z-index:6; display:none; justify-content:space-between; padding:0 22px; pointer-events:none; user-select:none; }
+  #bkpad span { font-size:32px; line-height:1; color:rgba(0,255,255,0.3); text-shadow:0 0 12px rgba(0,255,255,0.45); }
+  body.bktouch #bkpad { display:flex; }
   #againBtn { font-family:inherit; cursor:pointer; font-size:15px; letter-spacing:3px; padding:11px 28px;
     border-radius:4px; color:#fff; background:transparent; border:2px solid var(--mg);
     text-shadow:0 0 8px var(--mg); box-shadow:0 0 16px rgba(255,0,255,0.4), inset 0 0 16px rgba(255,0,255,0.1); }
@@ -53,6 +57,7 @@
 </head>
 <body>
 <canvas id="game"></canvas>
+<div id="bkpad" aria-hidden="true"><span>◀</span><span>▶</span></div>
 <div id="hud" class="gamekit-hud">
   <div class="stat"><span class="lbl">SCORE</span><span class="val" id="scoreEl">0</span></div>
   <div class="stat"><span class="lbl">BEST</span><span class="val" id="bestEl">0</span></div>
@@ -70,7 +75,8 @@
   </div>
   <p id="modeDesc" class="hint">Level progression — clear all bricks</p>
   <label class="opt"><input type="checkbox" id="speed2x">2× SPEED</label>
-  <p class="hint">Mouse / Touch to move · Click / Space to launch</p>
+  <p class="hint">Move: ← → keys or mouse · on phone, hold the left / right side of the screen</p>
+  <p class="hint">Launch the ball: Space, click, or tap</p>
   <button id="startBtn">INSERT COIN</button>
 </div>
 <div id="endOverlay" class="hidden">
@@ -139,9 +145,10 @@
     W = canvas.width = window.innerWidth;
     H = canvas.height = window.innerHeight;
     // Reserve headroom so the playfield clears the shared center-top .gamekit-hud pill.
-    // Landscape: pill at top:8px → ~48px. Portrait (≤560px): pill drops to top:50px → ~92px.
+    // Landscape: pill at top:8px → ~48px. Portrait: the 5-stat pill drops to top:50px and wraps to
+    // two rows, so it needs more headroom or the top bricks tuck under it. Landscape is unchanged.
     const portrait = H > W || W <= 560;
-    topMargin = portrait ? 92 : 48;
+    topMargin = portrait ? 128 : 48;
     brickW = Math.floor((W - BRICK_GAP * (BRICK_COLS + 1)) / BRICK_COLS);
     brickOffX = Math.floor((W - (brickW + BRICK_GAP) * BRICK_COLS + BRICK_GAP) / 2);
     brickOffY = topMargin + 12;
@@ -643,34 +650,27 @@
   }
 
   // ---- Input ----
-  // Touch: RELATIVE drag (paddle follows the finger's DELTA, not its absolute x). The paddle
-  // is horizontal-only, so an "offset above finger" wouldn't move the thumb off the action
-  // line — but relative drag lets the player anchor a thumb anywhere comfortable (a bottom
-  // corner, off the bricks/ball) and still reach the full width. A 1.7x gain keeps it snappy
-  // without a full-width swipe. Mouse / pen stay ABSOLUTE so desktop aiming is unchanged.
-  const DRAG_GAIN = 1.7;
-  let dragX = null, dragBase = 0;
+  // Touch: HOLD a screen half to move — press/hold the LEFT half to slide the paddle left, the
+  // RIGHT half to slide right (drag your thumb across the middle to switch). Mouse / pen stay
+  // ABSOLUTE (paddle follows the cursor) so desktop aiming is unchanged.
+  let holdDir = 0, touchId = null;
+  if (((typeof matchMedia !== 'undefined' && matchMedia('(pointer:coarse)').matches) || (typeof window !== 'undefined' && 'ontouchstart' in window)) && document.body) document.body.classList.add('bktouch');
   function cx(e, r) { return (e.clientX - r.left) * (W / r.width); }
+  function sideDir(e, r) { return cx(e, r) < W / 2 ? -1 : 1; }
   canvas.addEventListener('pointermove', e => {
     const r = canvas.getBoundingClientRect();
-    if (e.pointerType === 'touch') {
-      if (dragX === null) return;
-      paddleTarget = dragBase + (cx(e, r) - dragX) * DRAG_GAIN;
-    } else {
-      paddleTarget = cx(e, r);
-    }
+    if (e.pointerType === 'touch') { if (touchId === e.pointerId) holdDir = sideDir(e, r); }
+    else paddleTarget = cx(e, r);
   });
   canvas.addEventListener('pointerdown', e => {
     const r = canvas.getBoundingClientRect();
-    if (e.pointerType === 'touch') {
-      dragX = cx(e, r); dragBase = paddleX;
-    } else {
-      paddleTarget = cx(e, r);
-    }
+    if (e.pointerType === 'touch') { touchId = e.pointerId; holdDir = sideDir(e, r); }
+    else paddleTarget = cx(e, r);
     if (state === 'playing') launch();
   });
-  canvas.addEventListener('pointerup', () => { dragX = null; });
-  canvas.addEventListener('pointercancel', () => { dragX = null; });
+  const relTouch = e => { if (e.pointerType === 'touch' && e.pointerId === touchId) { touchId = null; holdDir = 0; } };
+  canvas.addEventListener('pointerup', relTouch);
+  canvas.addEventListener('pointercancel', relTouch);
 
   window.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') paddleTarget = Math.max(0, paddleX - 30);
@@ -721,9 +721,13 @@
   // ---- Key hold polling ----
   function pollKeys() {
     const pw = widePaddle > 0 ? paddleW * 1.6 : paddleW;
-    const speed = 12;
-    if (keys['ArrowLeft']) paddleTarget = Math.max(pw / 2, paddleTarget - speed);
-    if (keys['ArrowRight']) paddleTarget = Math.min(W - pw / 2, paddleTarget + speed);
+    const speed = 14;
+    let d = 0;
+    if (keys['ArrowLeft'] || holdDir < 0) d -= 1;
+    if (keys['ArrowRight'] || holdDir > 0) d += 1;
+    // keys / held side move the paddle DIRECTLY (snappy; stops the instant you release) — sync the
+    // target so the mouse-easing step below is a no-op while holding. Mouse still glides smoothly.
+    if (d) { paddleX = Math.max(pw / 2, Math.min(W - pw / 2, paddleX + d * speed)); paddleTarget = paddleX; }
   }
   // integrate into update
   const _update = update;
