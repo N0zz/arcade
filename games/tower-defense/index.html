@@ -376,7 +376,7 @@
     grunt:   { hp: 36,  speed: 1.05, reward: 3,   color: '#9a6a44', rr: 0.30, leak: 1 },
     runner:  { hp: 22,  speed: 2.0,  reward: 3,   color: '#d8b24a', rr: 0.25, leak: 1 },
     brute:   { hp: 140, speed: 0.62, reward: 8,   color: '#7a7a88', rr: 0.40, leak: 2 },
-    boss:    { hp: 570, speed: 0.5,  reward: 90,  color: '#b04141', rr: 0.55, leak: 10 },
+    boss:    { hp: 400, speed: 0.5,  reward: 90,  color: '#b04141', rr: 0.55, leak: 6 },
     armored: { hp: 78,  speed: 0.85, reward: 10,  color: '#6a8a6a', rr: 0.35, leak: 1, armored: true },
     swarm:   { hp: 11,  speed: 1.8,  reward: 1,   color: '#c09040', rr: 0.20, leak: 1 },
   };
@@ -405,9 +405,9 @@
   let difficulty = 1;          // global threat multiplier (HP/speed)
   let waveLeaked = false;      // did any enemy reach the keep this wave?
   let waveMaxFrac = 0;         // furthest path fraction any enemy reached this wave (0..1)
-  const DIFF_CP = [0.25, 0.55, 0.85]; // early / mid / LATE checkpoint fractions to watch
+  const DIFF_CP = [0.45, 0.70, 0.90]; // early / mid / LATE checkpoint fractions (moved closer to the keep)
   const DIFF_MIN = 1.0, DIFF_MAX = 5.0;
-  const DIFF_UP = 0.15, DIFF_DOWN = 0.2;   // rises slowly, drops a touch faster (forgiving)
+  const DIFF_UP = 0.30, DIFF_DOWN = 0.40;  // 2× faster threat swings (rise/fall step doubled)
   const DIFF_EARLY = DIFF_CP[0], DIFF_LATE = DIFF_CP[2];
 
   function reset() {
