@@ -255,6 +255,7 @@
 
   function shoot(px, py) {
     if (state !== 'playing') return;
+    reticle.x = px; reticle.y = py; // the crosshair marks the LAST shot (so touch gets a static mark, not a dragging cursor)
     let hit = false;
     for (let i = targets.length - 1; i >= 0; i--) {
       const t = targets[i];
@@ -301,6 +302,7 @@
     state = 'playing';
     overlay.classList.add('hidden');
     endScreen.style.display = 'none';
+    window.gamekit.showMenuButton(true); // ‹ Menu only during play, not on the mode picker
     spawnTarget();
     updateHud();
   }
@@ -581,6 +583,7 @@
     shoot(x, y);
   });
   canvas.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch') return; // touch: the crosshair is the last-shot mark only — don't let it drag/lag behind the finger
     const { x, y } = getCanvasPos(e);
     reticle.x = x; reticle.y = y;
   });
@@ -653,6 +656,7 @@
   $('restartBtn').addEventListener('click', () => {
     endScreen.style.display = 'none';
     overlay.classList.remove('hidden');
+    window.gamekit.showMenuButton(false); // back on the mode picker → hide ‹ Menu
     renderBestPanel();
   });
 
@@ -669,6 +673,7 @@
     params: () => { const p = mode === 'sprint' ? { mode: 'sprint' } : { mode: 'timed', secs: sessionSeconds }; p.moving = movingTargets ? 1 : 0; return p; },
   });
   window.gamekit.nav({ reset: 'aim-trainer_' });
+  window.gamekit.showMenuButton(false); // start on the mode picker → ‹ Menu hidden until play begins
 
   // ---- Test hook ----
   window.__test = {
