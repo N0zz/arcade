@@ -369,6 +369,32 @@ section('Bubble Pop: layout fits the screen (portrait / landscape / desktop)');
   }
 }
 
+// ---- Descent keeps the shape (no horizontal reshape) + landing snaps to nearest empty cell ----
+section('Bubble Pop: descent shape + landing snap');
+{
+  // (1) inserting a row on top must move existing bubbles straight DOWN, not sideways
+  const g = runGame();
+  g.resize(390, 780);
+  g.T().clearGrid();
+  g.T().setGridCell(0, 3, 0);
+  const x0 = g.T().cellX(0, 3);          // its on-screen X at row 0
+  g.T().pushTopRow();                     // endless descent → bubble is now at row 1
+  const x1 = g.T().cellX(1, 3);
+  ok(Math.abs(x0 - x1) < 0.01, 'descend keeps each bubble’s horizontal position (no reshape): ' + x0.toFixed(2) + ' vs ' + x1.toFixed(2));
+  ok(g.T().gridParity === 1, 'gridParity toggles on a top-row insert');
+
+  // (2) a landed shot snaps to the EMPTY cell nearest the contact point — never a far/occupied one
+  const g2 = runGame();
+  g2.resize(390, 780);
+  g2.T().clearGrid();
+  for (let c = 0; c < 12; c++) g2.T().setGridCell(0, c, 0); // row 0 full, row 1 empty
+  const tx = g2.T().cellX(1, 5), ty = g2.T().cellY(1);      // contact right at empty cell (1,5)
+  const s = g2.T().snap(tx, ty);
+  ok(s.row === 1 && s.col === 5, 'snap picks the empty cell nearest the contact point (got ' + s.row + ',' + s.col + ')');
+  const occupied = !!(g2.T().grid[s.row] && g2.T().grid[s.row][s.col] != null);
+  ok(!occupied, 'snap never returns an occupied cell');
+}
+
 // ---- Summary ----
 console.log('\n----------------------------------------');
 console.log('PASS: ' + pass + '   FAIL: ' + fail);

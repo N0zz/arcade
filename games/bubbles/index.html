@@ -204,6 +204,7 @@
   let score = 0, bestScore = 0, level = 1;
   let grid = []; // array of rows; each row is array of {color, colorIdx} or null
   let gridOffsetY = 0; // pixels the whole grid has descended
+  let gridParity = 0;  // 0/1 — flips when a row is unshifted on top, so existing rows keep their hex offset (no reshape)
   let shotBubble = null; // { x, y, vx, vy, colorIdx, isSpecial, specialType }
   let shotColor = 0;
   let nextColor = 0;
@@ -230,8 +231,16 @@
 
   // ---- Resize ----
   function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
+    // Render at device-pixel resolution so bubbles stay sharp on retina/hi-dpi screens
+    // (drawing coords stay in CSS px via the transform; W/H below are CSS px).
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     // Shrink bubbles so the fixed 12-column grid (incl. the half-step offset rows)
     // always fits the viewport width — otherwise narrow / zoomed screens clip columns.
     R = Math.max(9, Math.min(18, Math.floor((W - 24) / (2 * (COLS_COUNT + 1)))));
@@ -252,7 +261,7 @@
   function gridX(col, row) {
     const totalW = COLS_COUNT * R * 2;
     const startX = Math.floor((W - totalW) / 2) + R;
-    const offset = (row % 2 === 1) ? R : 0;
+    const offset = ((row + gridParity) % 2 === 1) ? R : 0;
     return startX + col * R * 2 + offset;
   }
   function gridY(row) {
@@ -331,6 +340,7 @@
     level = 1;
     score = 0;
     gridOffsetY = 0;
+    gridParity = 0;
     descentTimer = 0;
     endlessRowTimer = 0;
     shotsThisLevel = 0;
@@ -371,18 +381,6 @@
   }
 
   // ---- Nearest grid cell from pixel coords ----
-  function nearestCell(px, py) {
-    let bestDist = Infinity, bestR = -1, bestC = -1;
-    for (let r = 0; r < grid.length; r++) {
-      for (let c = 0; c < COLS_COUNT; c++) {
-        const bx = gridX(c, r), by = gridY(r);
-        const d = (px - bx) ** 2 + (py - by) ** 2;
-        if (d < bestDist) { bestDist = d; bestR = r; bestC = c; }
-      }
-    }
-    return { row: bestR, col: bestC, dist: Math.sqrt(bestDist) };
-  }
-
   // ---- BFS flood fill ----
   function bfsColor(startR, startC, targetColorIdx) {
     const visited = new Set();
@@ -403,7 +401,7 @@
   }
 
   function neighbors(r, c) {
-    const odd = r % 2 === 1;
+    const odd = (r + gridParity) % 2 === 1;
     return [
       [r - 1, c + (odd ? 0 : -1)],
       [r - 1, c + (odd ? 1 : 0)],
@@ -575,31 +573,30 @@
   }
 
   // ---- Snap bubble to grid ----
+  // Snap a landed shot to the EMPTY grid cell whose center is closest to the contact point —
+  // so the bubble always sticks right where it touched, never tunnels to a far/back cell.
   function snapToGrid(px, py) {
-    // Extend grid if needed
-    while (py > gridY(grid.length - 1) + R * 2) {
-      const row = Array.from({ length: COLS_COUNT }, () => null);
-      grid.push(row);
+    // ensure rows exist down to (and just past) the contact point, so a cell below it is available
+    let guard = 0;
+    while ((grid.length === 0 || gridY(grid.length - 1) < py + ROW_H) && guard++ < 80) {
+      grid.push(Array.from({ length: COLS_COUNT }, () => null));
     }
-
-    const { row, col } = nearestCell(px, py);
-    let r = row, c = col;
-    if (r < 0) r = 0;
-    if (r >= grid.length) { grid.push(Array.from({ length: COLS_COUNT }, () => null)); r = grid.length - 1; }
-    if (c < 0) c = 0;
-    if (c >= COLS_COUNT) c = COLS_COUNT - 1;
-    // find free slot near snap point
-    if (grid[r][c]) {
-      for (const [nr, nc] of [[r - 1, c], ...neighbors(r, c)]) {
-        if (nr >= 0 && nr < grid.length + 2 && nc >= 0 && nc < COLS_COUNT) {
-          if (nr >= grid.length) { while (grid.length <= nr) grid.push(Array.from({ length: COLS_COUNT }, () => null)); }
-          if (!grid[nr][nc]) { r = nr; c = nc; break; }
-        }
+    let bestD = Infinity, bestR = 0, bestC = 0, found = false;
+    for (let r = 0; r < grid.length; r++) {
+      for (let c = 0; c < COLS_COUNT; c++) {
+        if (grid[r][c]) continue; // only empty cells are landing candidates
+        const dx = px - gridX(c, r), dy = py - gridY(r);
+        const d = dx * dx + dy * dy;
+        if (d < bestD) { bestD = d; bestR = r; bestC = c; found = true; }
       }
     }
-    if (r < 0) r = 0;
-    if (r >= grid.length) { while (grid.length <= r) grid.push(Array.from({ length: COLS_COUNT }, () => null)); }
-    return { row: r, col: c };
+    if (!found) { // every existing cell is full → drop into a fresh row at the nearest column
+      grid.push(Array.from({ length: COLS_COUNT }, () => null));
+      bestR = grid.length - 1;
+      bestC = Math.max(0, Math.min(COLS_COUNT - 1, Math.round((px - gridX(0, bestR)) / (R * 2))));
+    }
+    while (grid.length <= bestR) grid.push(Array.from({ length: COLS_COUNT }, () => null));
+    return { row: bestR, col: bestC };
   }
 
   // ---- Particles ----
@@ -738,6 +735,7 @@
       } else {
         level++;
         gridOffsetY = 0;
+        gridParity = 0;
         descentTimer = 0;
         shotsThisLevel = 0;
         shotsSinceDescent = 0;
@@ -764,6 +762,7 @@
       newRow.push(Math.random() < 0.8 ? { colorIdx: randColorIdx(nc) } : null);
     }
     grid.unshift(newRow);
+    gridParity ^= 1; // inserting a row at the top would flip every row's hex offset — counter it so the existing shape only moves DOWN, not sideways
     gridOffsetY = Math.max(0, gridOffsetY - ROW_H);
     checkLose();
   }
@@ -804,7 +803,7 @@
           if (!grid[r][c]) continue;
           const bx = gridX(c, r), by = gridY(r);
           const dx = shotBubble.x - bx, dy = shotBubble.y - by;
-          if (dx * dx + dy * dy <= (R * 2 - 1) * (R * 2 - 1)) {
+          if (dx * dx + dy * dy <= (R * 2) * (R * 2)) { // land as soon as it touches a bubble (less penetration → cleaner snap)
             hit = true; break outer;
           }
         }
@@ -1152,6 +1151,11 @@
     get specialType() { return specialType; },
     get grid() { return grid.map(row => row.map(b => b ? b.colorIdx : null)); },
     get isShooting() { return isShooting; },
+    get gridParity() { return gridParity; },
+    cellX(r, c) { return gridX(c, r); },
+    cellY(r) { return gridY(r); },
+    pushTopRow() { addEndlessRow(); },        // simulate an endless descent (row inserted on top)
+    snap(px, py) { return snapToGrid(px, py); },
 
     start() { startMode('arcade'); },
     startMode(m) { startMode(m); },
@@ -1177,6 +1181,7 @@
     },
     clearGrid() {
       grid = [];
+      gridParity = 0; gridOffsetY = 0;
       for (let r = 0; r < 2; r++) grid.push(Array.from({ length: COLS_COUNT }, () => null));
     },
     forceDescend() { descentStep(); },
