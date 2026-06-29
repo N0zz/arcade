@@ -187,13 +187,13 @@
 
   // ---- Upgrade pool ----
   const ALL_UPGRADES = [
-    { id:'rapid',  name:'Rapid Fire',     desc:'Shoot faster (-cooldown).',        max:5, price:16 },
-    { id:'spread', name:'Spread Shot',    desc:'+1 projectile in a wider arc.',    max:4, price:22 },
-    { id:'heavy',  name:'Heavy Rounds',   desc:'+1 bullet damage.',                max:5, price:18 },
+    { id:'rapid',  name:'Rapid Fire',     desc:'Shoot faster (-cooldown).',        max:3, price:16 },
+    { id:'spread', name:'Spread Shot',    desc:'+1 projectile in a wider arc.',    max:2, price:22 },
+    { id:'heavy',  name:'Heavy Rounds',   desc:'+bullet damage.',                  max:5, price:18 },
     { id:'long',   name:'Long Shot',      desc:'+range and +bullet speed.',        max:3, price:13 },
     { id:'pierce', name:'Piercing',       desc:'Bullets pass through +1 enemy.',   max:3, price:20 },
-    { id:'shield', name:'Shield',         desc:'+1 regenerating shield layer.',    max:3, price:20 },
-    { id:'hull',   name:'Reinforced Hull',desc:'+1 max HP (and heal 1).',          max:4, price:18 },
+    { id:'shield', name:'Shield',         desc:'+1 regenerating shield layer.',    max:2, price:20 },
+    { id:'hull',   name:'Reinforced Hull',desc:'+1 max HP (and heal 1).',          max:2, price:18 },
     { id:'thrust', name:'Thrusters',      desc:'+turn rate and acceleration.',     max:3, price:12 },
     { id:'orbital',name:'Orbital Shard',  desc:'+1 shard orbiting your ship.',     max:4, price:26 },
     { id:'drone',  name:'Drone',          desc:'+1 auto-firing escort drone.',     max:3, price:28 },
@@ -202,6 +202,13 @@
     { id:'magnet', name:'Magnet',         desc:'Wider XP pickup radius.',          max:4, price:10, levelupOnly:true },
   ];
   function pool(){ return ALL_UPGRADES.filter(u => PROGRESSION==='levelup' || !u.levelupOnly); }
+  // Offensive + active upgrades EXPIRE: each stack lapses EXPIRE_WAVES after the wave it was picked,
+  // so you can't permanently stack to the cap — you keep re-investing. Defensive (hull/shield) + QoL
+  // (long/pierce/thrust/auto/magnet) are permanent. Re-picking an expiring upgrade at cap refreshes
+  // its soonest-to-lapse stack instead of adding one. This is the second brake on the power snowball.
+  const EXPIRING = new Set(['rapid','spread','heavy','orbital','drone','nova']);
+  const EXPIRE_WAVES = 4;
+  const RUN_END_WAVE = 30;   // beat the wave-30 dual-boss finale → victory; the run is finite.
 
   // ---- Input ----
   const keys={};
@@ -227,7 +234,8 @@
       else if(k==='ArrowUp'){ selIdx=(selIdx+n-4)%n; renderShop(); }
       else if(k==='ArrowDown'){ selIdx=(selIdx+4)%n; renderShop(); }
       else if(k==='Enter'){ closeShop(); }            // Enter always continues to next wave
-      else if(k===' '){ buyByIndex(selIdx); }          // Space buys the highlighted item
+      else if(k===' '){ if(anyAffordable()) buyByIndex(selIdx); else closeShop(); }   // Space buys, or continues if nothing's affordable
+
       else if(/^[1-9]$/.test(k)) buyByIndex(parseInt(k,10)-1);
       return;
     }
@@ -237,19 +245,19 @@
   // ---- State ----
   let state='menu'; // menu | playing | paused | levelup | shop | dead | won
   let score=0, wave=1, credits=0;
-  let ship, asteroids=[], hunters=[], sentries=[], boss=null;
-  let bullets=[], ebullets=[], gems=[], particles=[], drones=[], novas=[], pickups=[];
-  let up={}, level=1, xp=0, xpNext=12;
+  let ship, asteroids=[], hunters=[], sentries=[], kamikazes=[], bosses=[], finalePending=false;
+  let bullets=[], ebullets=[], gems=[], particles=[], drones=[], novas=[], blasts=[], pickups=[];
+  let up={}, upExp={}, level=1, xp=0, xpNext=16;
   let shootCd=0, invuln=0, noHit=0, orbAngle=0, orbCd=[], novaTimer=0, flashTimer=0;
-  let waveBreak=0, pendingPicks=0, milestoneNext=500, milestoneStep=500, selIdx=0;
+  let waveBreak=0, pendingPicks=0, milestoneNext=700, milestoneStep=500, selIdx=0, waveDropRate=0.04;
 
   function resetRun(){
     score=0; wave=1; credits=0;
-    asteroids=[]; hunters=[]; sentries=[]; boss=null;
-    bullets=[]; ebullets=[]; gems=[]; particles=[]; drones=[]; novas=[]; pickups=[];
-    up={}; level=1; xp=0; xpNext=12;
+    asteroids=[]; hunters=[]; sentries=[]; kamikazes=[]; bosses=[]; finalePending=false;
+    bullets=[]; ebullets=[]; gems=[]; particles=[]; drones=[]; novas=[]; blasts=[]; pickups=[];
+    up={}; upExp={}; level=1; xp=0; xpNext=16;
     shootCd=0; invuln=0; noHit=0; orbAngle=0; orbCd=[]; novaTimer=0; flashTimer=0;
-    waveBreak=0; pendingPicks=0; milestoneNext=500; milestoneStep=500;
+    waveBreak=0; pendingPicks=0; milestoneNext=700; milestoneStep=500;
     spawnShip(); recalc(); ship.hp=ship.maxHp; ship.shield=ship.shieldMax;
   }
   function startGame(){ if(!HAS_PROG){ showModePicker(); if(KIT) KIT.showMenuButton(false); return; } resetRun(); startWave(1); state='playing'; overlay.classList.add('hidden');
@@ -260,9 +268,9 @@
 
   function recalc(){
     const u=up;
-    ship.fireCd   = Math.max(4, 14 - 2*(u.rapid||0));
+    ship.fireCd   = Math.max(8, 16 - 2*(u.rapid||0));
     ship.proj     = 1 + (u.spread||0);
-    ship.dmg      = 1 + (u.heavy||0);
+    ship.dmg      = 10 + 2*(u.heavy||0);
     ship.bLife    = 70 + 25*(u.long||0);
     ship.bSpeed   = 8 + 2*(u.long||0);
     ship.pierce   = (u.pierce||0);
@@ -278,10 +286,33 @@
     if(ship.hp>ship.maxHp) ship.hp=ship.maxHp;
     if(ship.shield>ship.shieldMax) ship.shield=ship.shieldMax;
     while(drones.length<ship.droneN) drones.push({x:ship.x,y:ship.y,cd:0});
+    if(drones.length>ship.droneN) drones.length=ship.droneN;   // an expired Drone stack removes an escort
     orbCd.length = ship.orbN;
     for(let i=0;i<orbCd.length;i++) if(orbCd[i]==null) orbCd[i]=0;
   }
-  function applyUpgrade(id){ up[id]=(up[id]||0)+1; if(id==='hull') ship.hp=Math.min(99,ship.hp+1); if(id==='shield') ship.shield=(up.shield); recalc(); SND.play('level'); flash(ALL_UPGRADES.find(u=>u.id===id).name.toUpperCase()); updateHud(); }
+  // Add a stack (capped). For expiring upgrades, record its lapse wave; at cap, refresh the
+  // soonest-to-lapse stack instead of adding (the "renew" path).
+  function applyUpgrade(id){
+    const def=ALL_UPGRADES.find(u=>u.id===id); const cur=up[id]||0;
+    if(EXPIRING.has(id)){
+      upExp[id]=upExp[id]||[];
+      if(cur<def.max){ up[id]=cur+1; upExp[id].push(wave+EXPIRE_WAVES); }
+      else { let mi=0; for(let i=1;i<upExp[id].length;i++) if(upExp[id][i]<upExp[id][mi]) mi=i; if(upExp[id].length) upExp[id][mi]=wave+EXPIRE_WAVES; }
+    } else { up[id]=Math.min(def.max,cur+1); }
+    if(id==='hull') ship.hp=Math.min(99,ship.hp+1); if(id==='shield') ship.shield=(up.shield);
+    recalc(); SND.play('level'); flash(def.name.toUpperCase()); updateHud();
+  }
+  // Called at each wave start: drop any expiring stacks whose lapse wave has passed.
+  function expireUpgrades(){
+    let changed=false, lapsed=[];
+    for(const id in upExp){ const keep=upExp[id].filter(w=>w>=wave);
+      if(keep.length!==(up[id]||0)){ const d=(up[id]||0)-keep.length; if(d>0) lapsed.push(ALL_UPGRADES.find(u=>u.id===id).name.toUpperCase()); }
+      upExp[id]=keep; up[id]=keep.length; if(up[id]===0) delete up[id]; changed=true; }
+    if(changed){ recalc(); updateHud(); }
+    if(lapsed.length) flash('LAPSED: '+lapsed.join(' '));
+  }
+  // active expiring upgrades + how many waves until the next stack lapses (for the HUD readout + tests)
+  function activeUpgrades(){ const out=[]; for(const id of EXPIRING){ const lv=up[id]||0; if(lv>0){ const exp=(upExp[id]||[]); const soon=exp.length?Math.min.apply(null,exp)-wave+1:0; out.push({id,lv,expiresIn:Math.max(0,soon)}); } } return out; }
 
   function updateHud(){
     scoreEl.textContent=score; const left=enemiesLeft(); waveEl.textContent='WAVE '+wave+' · '+left+' left';
@@ -325,8 +356,8 @@
   const MENU_BTN = '<button class="btn" id="menuBtn">QUIT TO MENU</button>';
   // end-screen share row is built by the game-kit into this placeholder
   const SHARE_ROW = '<div id="shareRow"></div>';
-  function wireShareRow(finalScore) {
-    if (KIT) KIT.shareRow($('shareRow'), { slug: 'asteroids-plus', title: 'Asteroids+', message: () => KIT.shareText({ score: finalScore, game: 'Asteroids+', emoji: '🛸', mode: (SPEEDRUN ? 'Speedrun' : ({ levelup: 'Level-up', milestones: 'Milestones', shop: 'Wave shop' }[PROGRESSION] || 'Roguelite')), extra: ['wave ' + wave] }), params: () => ({ prog: PROGRESSION }) });
+  function wireShareRow(finalScore, won) {
+    if (KIT) KIT.shareRow($('shareRow'), { slug: 'asteroids-plus', title: 'Asteroids+', message: () => KIT.shareText({ verb: won ? 'I beat' : 'I scored', score: finalScore, game: 'Asteroids+', emoji: '🛸', mode: (SPEEDRUN ? 'Speedrun' : ({ levelup: 'Level-up', milestones: 'Milestones', shop: 'Wave shop' }[PROGRESSION] || 'Roguelite')), extra: won ? ['VICTORY · all ' + RUN_END_WAVE + ' waves'] : ['wave ' + wave] }), params: () => ({ prog: PROGRESSION }) });
   }
 
   // ---- Spawning / waves ----
@@ -334,16 +365,24 @@
   function makeAsteroid(x,y,size){ const r=size===3?56:size===2?34:18; const verts=[]; const n=9+Math.floor(Math.random()*4);
     for(let i=0;i<n;i++){ const ang=(i/n)*Math.PI*2; verts.push({ang,d:r*(0.65+Math.random()*0.5)}); }
     const speed=(1.0+Math.random()*0.9)*(4-size)*0.5*(1+wave*0.045); const dir=Math.random()*Math.PI*2;
-    return {x,y,size,r,hp:size+Math.floor(wave/3),vx:Math.cos(dir)*speed,vy:Math.sin(dir)*speed,rot:Math.random()*Math.PI*2,vrot:(Math.random()-0.5)*0.03,verts,hue:200+Math.random()*40}; }
-  function makeHunter(x,y){ return {x,y,r:13,hp:2+Math.floor(wave/4),vx:0,vy:0,rot:0}; }
-  function makeSentry(x,y){ return {x,y,r:16,hp:3+Math.floor(wave/3),vx:(Math.random()-0.5)*1.2,vy:(Math.random()-0.5)*1.2,fireCd:90+Math.random()*60,rot:0}; }
-  // boss HP ramps hard past wave 8 so the wave-10/15/20 bosses are real walls
-  function makeBoss(w){ const hp=Math.round(90 + w*20 + Math.max(0,w-6)*w*4.5); const r=70; const yTop=hudReserve()+r+18+10; return {x:W/2,y:Math.max(140,yTop),r,hp,maxHp:hp,vx:1.4,vy:0.9,fireCd:Math.max(40,85-w*2),spawnCd:Math.max(100,190-w*4),rot:0}; }
+    return {x,y,size,r,hp:size*10 + wave*2,vx:Math.cos(dir)*speed,vy:Math.sin(dir)*speed,rot:Math.random()*Math.PI*2,vrot:(Math.random()-0.5)*0.03,verts,hue:200+Math.random()*40}; }
+  function makeHunter(x,y){ return {x,y,r:13,hp:20+Math.floor(wave*1.5),vx:0,vy:0,rot:0}; }
+  function makeSentry(x,y){ return {x,y,r:16,hp:30+wave*2,vx:(Math.random()-0.5)*1.2,vy:(Math.random()-0.5)*1.2,fireCd:90+Math.random()*60,rot:0}; }
+  // little red kamikaze: drifts at you, low HP, and explodes on death — damaging you if you're close
+  const KAMI_BLAST_R = 128;
+  function makeKamikaze(x,y){ return {x,y,r:11,hp:10+wave*2,vx:0,vy:0,rot:0}; }
+  // boss HP ramps hard past wave 8 so the wave-10/15/20 bosses are real walls (and player DPS is now
+  // capped, so the same HP reads ~3× beefier than before). opts.finale → the dual-boss wave-30 variant.
+  function makeBoss(w,opts){ opts=opts||{}; const hp=5*w*w + 175*w; const r=70; const yTop=hudReserve()+r+18+10;
+    return {x:opts.x!=null?opts.x:W/2,y:Math.max(140,yTop),r,hp,maxHp:hp,vx:1.4*(opts.dir||1),vy:0.9,fireCd:Math.max(40,85-w*2),spawnCd:Math.max(100,190-w*4),rot:0,finale:!!opts.finale,radialCd:160}; }
 
   function startWave(n){
     wave=n; waveBreak=0;
+    expireUpgrades();   // lapse any expiring stacks whose 4-wave window has passed
+    if(ship && ship.shieldMax>0 && ship.shield<ship.shieldMax) ship.shield++;   // shield tops up +1 per wave (no mid-fight regen)
     bullets=[]; ebullets=[]; // clear leftover shots so a new wave starts clean
-    if(n%5===0){ boss=makeBoss(n); SND.play('boss'); flash('⚠ WAVE '+n+' — BOSS'); }
+    if(n===RUN_END_WAVE){ bosses=[makeBoss(n,{finale:true,x:W*0.35,dir:1})]; finalePending=true; waveDropRate=0.03; SND.play('boss'); flash('⚠ FINAL STAND — DUAL BOSS'); }
+    else if(n%5===0){ bosses=[makeBoss(n)]; waveDropRate=0.03; SND.play('boss'); flash('⚠ WAVE '+n+' — BOSS'); }
     else {
       const ast=3+Math.floor(n*1.45);
       for(let i=0;i<ast;i++){ const p=edgePos(); asteroids.push(makeAsteroid(p.x,p.y, Math.random()<0.55+n*0.03?3:2)); }
@@ -353,12 +392,17 @@
       // sentries don't home, so spawn them on-screen (not at the edge) — an edge spawn
       // could get trapped just off-screen by the bounce and become unkillable.
       for(let i=0;i<nS;i++){ sentries.push(makeSentry(80+Math.random()*(W-160), 80+Math.random()*(H-160))); }
+      const nK = n>=6 ? 1+Math.floor((n-6)*0.4) : 0;   // kamikazes (wave 6+) home in, so spawn at the edge
+      for(let i=0;i<nK;i++){ const p=edgePos(); kamikazes.push(makeKamikaze(p.x,p.y)); }
+      // normalize pickup drops to ~4 per wave regardless of enemy count (a size-3 asteroid = 7 kills)
+      const p3=Math.min(1,0.55+n*0.03), avgAst=p3*7+(1-p3)*3, waveKills=ast*avgAst+nH+nS+nK;
+      waveDropRate=Math.max(0.012, Math.min(0.25, 4/waveKills));
       flash('WAVE '+n);
     }
     updateHud();
   }
-  function enemiesLeft(){ return asteroids.length+hunters.length+sentries.length+(boss?1:0); }
-  function nearestEnemy(x,y){ let best=null,bd=Infinity; const consider=arr=>{ for(const e of arr){ const d=Math.hypot(e.x-x,e.y-y); if(d<bd){ bd=d; best=e; } } }; consider(asteroids); consider(hunters); consider(sentries); if(boss){ const d=Math.hypot(boss.x-x,boss.y-y); if(d<bd){ bd=d; best=boss; } } return best; }
+  function enemiesLeft(){ return asteroids.length+hunters.length+sentries.length+kamikazes.length+bosses.length; }
+  function nearestEnemy(x,y){ let best=null,bd=Infinity; const consider=arr=>{ for(const e of arr){ const d=Math.hypot(e.x-x,e.y-y); if(d<bd){ bd=d; best=e; } } }; consider(asteroids); consider(hunters); consider(sentries); consider(kamikazes); consider(bosses); return best; }
 
   // ---- Effects ----
   function burst(x,y,color,n,spread){ for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, sp=Math.random()*spread+0.5; particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,decay:Math.random()*0.025+0.012,color,size:Math.random()*2+1}); } }
@@ -373,42 +417,52 @@
     else { const arc=0.16; for(let i=0;i<n;i++){ const da=(i-(n-1)/2)*arc; fireBullet(ship.angle+da); } }
     burst(ship.x+Math.cos(ship.angle)*ship.r, ship.y+Math.sin(ship.angle)*ship.r, '180,230,255', 2, 1.2); SND.play('shoot');
   }
+  // aim assist: a bullet within AIM_ASSIST px of an enemy's edge curves toward it (the enemy "pulls" it in)
+  const AIM_ASSIST = 12;
+  function aimAssist(b){
+    let best=null, bd=Infinity;
+    const scan=arr=>{ for(const e of arr){ const d=Math.hypot(e.x-b.x,e.y-b.y); if(d < e.r+AIM_ASSIST && d<bd){ bd=d; best=e; } } };
+    scan(asteroids); scan(hunters); scan(sentries); scan(kamikazes); scan(bosses);
+    if(!best) return;
+    const sp=Math.hypot(b.vx,b.vy)||1, cur=Math.atan2(b.vy,b.vx), tgt=Math.atan2(best.y-b.y,best.x-b.x);
+    let da=tgt-cur; while(da>Math.PI)da-=2*Math.PI; while(da<-Math.PI)da+=2*Math.PI;
+    const na=cur+da*0.4; b.vx=Math.cos(na)*sp; b.vy=Math.sin(na)*sp;
+  }
 
   function dropRewards(x,y,kind){
-    const tbl={ ast3:{sc:20,xp:1,cr:1}, ast2:{sc:50,xp:2,cr:1}, ast1:{sc:100,xp:3,cr:2}, hunter:{sc:75,xp:4,cr:4}, sentry:{sc:150,xp:6,cr:8}, boss:{sc:1000,xp:30,cr:45} };
+    const tbl={ ast3:{sc:20,xp:1,cr:1}, ast2:{sc:50,xp:2,cr:1}, ast1:{sc:100,xp:3,cr:1}, hunter:{sc:75,xp:4,cr:2}, sentry:{sc:150,xp:6,cr:4}, kami:{sc:60,xp:3,cr:2}, boss:{sc:1000,xp:30,cr:26} };
     const r=tbl[kind]; score+=r.sc; credits+=r.cr;
     if(PROGRESSION==='levelup'){ const ng=Math.min(5,1+Math.floor(r.xp/2)); for(let i=0;i<ng;i++) gems.push({x:x+(Math.random()-0.5)*20,y:y+(Math.random()-0.5)*20,vx:(Math.random()-0.5),vy:(Math.random()-0.5),xp:Math.max(1,Math.round(r.xp/ng))}); }
     maybeDropPickup(x,y,kind);
     updateHud();
-    if(PROGRESSION==='milestones'){ while(score>=milestoneNext){ pendingPicks++; milestoneStep+=250; milestoneNext+=milestoneStep; } if(pendingPicks>0 && state==='playing') openPicker(); }
+    if(PROGRESSION==='milestones'){ while(score>=milestoneNext){ pendingPicks++; milestoneStep+=350; milestoneNext+=milestoneStep; } if(pendingPicks>0 && state==='playing') openPicker(); }
   }
 
   // random map pickups — health regen + a couple of power drops (since +max HP alone
   // is useless without a way to heal).
   const PICKUPS={ repair:{glyph:'+',color:'120,255,150'}, shieldcell:{glyph:'◇',color:'120,200,255'}, frenzy:{glyph:'≫',color:'255,210,90'}, pulse:{glyph:'✸',color:'255,140,90'} };
-  const MAX_PICKUPS = 4;
+  const MAX_PICKUPS = 3;
   function maybeDropPickup(x,y,kind){
     if(pickups.length >= MAX_PICKUPS) return;      // cap how many sit on the map
     const boss = kind==='boss';
     const wantHeal0 = ship.hp < ship.maxHp;
-    // low base; a bit better when hurt so a repair can show up
-    const chance = (wantHeal0 ? 0.11 : 0.045) * (kind==='sentry'?1.5:kind==='hunter'?1.2:1);
+    // a bit better when hurt so a repair shows up
+    const chance = waveDropRate * (wantHeal0 ? 1.5 : 1);
     if(!boss && Math.random() > chance) return;
     let type;
-    const wantHeal = ship.hp < ship.maxHp;
     const wantShield = ship.shieldMax>0 && ship.shield<ship.shieldMax;
     const r=Math.random();
-    if(boss) type = wantHeal ? 'repair' : 'pulse';
-    else if(wantHeal && r<0.45) type='repair';
+    if(boss) type = wantHeal0 ? 'repair' : 'pulse';
+    else if(wantHeal0 && r<0.45) type='repair';
     else if(wantShield && r<0.6) type='shieldcell';
-    else type = r<0.8 ? 'frenzy' : 'pulse';
+    else type = r<0.20 ? 'pulse' : 'frenzy';   // frenzy is the common buff again; pulse (screen-clear) stays rare
     pickups.push({ x, y, type, vx:(Math.random()-0.5)*0.8, vy:(Math.random()-0.5)*0.8, life:540 });
   }
   function collectPickup(p){
     if(p.type==='repair'){ ship.hp=Math.min(ship.maxHp, ship.hp+1); flash('REPAIR +1 HP'); }
     else if(p.type==='shieldcell'){ ship.shield=ship.shieldMax; flash('SHIELD RESTORED'); }
-    else if(p.type==='frenzy'){ ship.frenzy=420; flash('FRENZY!'); }
-    else if(p.type==='pulse'){ novas.push({x:ship.x,y:ship.y,r:0,max:Math.max(W,H)*0.6,dmg:6}); flash('PULSE'); }
+    else if(p.type==='frenzy'){ ship.frenzy=210; flash('FRENZY!'); }
+    else if(p.type==='pulse'){ novas.push({x:ship.x,y:ship.y,r:0,max:Math.max(W,H)*0.33,dmg:40}); flash('PULSE'); }
     burst(p.x,p.y,PICKUPS[p.type].color,12,2); SND.play('pickup'); updateHud();
   }
 
@@ -417,7 +471,14 @@
     asteroids.splice(idx,1); SND.play('pop'); dropRewards(a.x,a.y,kind); }
   function killHunter(idx){ const h=hunters[idx]; burst(h.x,h.y,'255,150,220',12,2); hunters.splice(idx,1); SND.play('pop'); dropRewards(h.x,h.y,'hunter'); }
   function killSentry(idx){ const s=sentries[idx]; burst(s.x,s.y,'150,255,200',16,2.5); sentries.splice(idx,1); SND.play('pop'); dropRewards(s.x,s.y,'sentry'); }
-  function killBoss(){ const b=boss; burst(b.x,b.y,'255,180,120',60,5); const wb=wave; boss=null; SND.play('explode'); dropRewards(b.x,b.y,'boss');
+  // kamikaze death = an explosion: red burst + ring, and it damages the ship if within KAMI_BLAST_R
+  function killKamikaze(idx){ const k=kamikazes[idx]; kamikazes.splice(idx,1); SND.play('explode');
+    burst(k.x,k.y,'255,90,80',22,4); blasts.push({x:k.x,y:k.y,r:0,max:KAMI_BLAST_R});
+    if(Math.hypot(ship.x-k.x,ship.y-k.y) < KAMI_BLAST_R && invuln===0) damageShip();
+    dropRewards(k.x,k.y,'kami'); }
+  function killBoss(idx){ idx=idx||0; const b=bosses[idx]; if(!b) return; burst(b.x,b.y,'255,180,120',60,5); const wb=wave; bosses.splice(idx,1); SND.play('explode'); dropRewards(b.x,b.y,'boss');
+    // finale: if the first boss dies before reaching half HP, bring in the second straight away
+    if(finalePending && bosses.length===0){ bosses.push(makeBoss(RUN_END_WAVE,{finale:true,x:W*0.5,dir:-1})); finalePending=false; SND.play('boss'); flash('⚠ SECOND BOSS'); }
     if(SPEEDRUN && !srDone && wb>=SR_TARGET_WAVE){ winRun(); } }
 
   function damageShip(){
@@ -435,10 +496,17 @@
   function winRun(){ srDone=true; state='won'; SND.stopMusic(); SND.play('level'); const best=saveBest(srElapsed); if(window.gamekit&&window.gamekit.recordResult)window.gamekit.recordResult('asteroids-plus',{mode:SPEEDRUN?'speedrun':'',score:score,time:srElapsed,stats:{wave:wave}});
     overlay.innerHTML='<h1 class="win">WAVE '+SR_TARGET_WAVE+' CLEARED</h1><p>Time <strong>'+fmtTime(srElapsed)+'</strong>'+(best?'  ★ NEW BEST':'')+'</p><p class="hint">score '+score+'</p><p class="blink">press ENTER or SPACE to run again</p><div id="shopFoot">'+MENU_BTN+'</div>'+SHARE_ROW;
     overlay.classList.remove('hidden'); wireOverlay(); wireShareRow(score); }
+  // beat the wave-30 dual-boss finale (non-speedrun) → the run is won and over
+  function victoryRun(){ state='won'; SND.stopMusic(); SND.play('level'); burst(ship.x,ship.y,'255,220,150',60,5);
+    const best=saveStat('asteroids_score_'+KEY,score); saveStat('asteroids_wave_'+KEY,wave);
+    if(window.gamekit&&window.gamekit.recordResult)window.gamekit.recordResult('asteroids-plus',{mode:({levelup:'Level-up',milestones:'Milestones',shop:'Wave shop'}[PROGRESSION]||'Roguelite'),score:score,time:0,stats:{wave:wave,victory:1}});
+    overlay.innerHTML='<h1 class="win">VICTORY</h1><p>You cleared all '+RUN_END_WAVE+' waves and broke the dual-boss finale.</p><p>Score <strong>'+score+'</strong>'+(best?'  ★ NEW BEST':'')+'</p><p class="blink">press ENTER or SPACE to play again</p><div id="shopFoot">'+MENU_BTN+'</div>'+SHARE_ROW;
+    overlay.classList.remove('hidden'); wireOverlay(); wireShareRow(score,true); }
 
   // ---- Picker (levelup + milestones) ----
   let pickOptions=[];
-  function rollPicks(){ const avail=pool().filter(u=>(up[u.id]||0)<u.max); const out=[]; const cp=avail.slice();
+  // offer any upgrade below its cap, PLUS expiring ones already at cap (so you can refresh them)
+  function rollPicks(){ const avail=pool().filter(u=>(up[u.id]||0)<u.max || EXPIRING.has(u.id)); const out=[]; const cp=avail.slice();
     while(out.length<3 && cp.length){ const i=Math.floor(Math.random()*cp.length); out.push(cp.splice(i,1)[0]); } return out; }
   function openPicker(){ state='levelup'; pickOptions=rollPicks(); selIdx=0;
     if(pickOptions.length===0){ pendingPicks=0; state='playing'; return; }
@@ -447,7 +515,7 @@
   function renderPicker(){
     const ttl = PROGRESSION==='levelup' ? ('LEVEL '+level) : 'CHOOSE UPGRADE';
     let html='<h1 class="level">'+ttl+'</h1><p class="hint">choose an upgrade ('+pendingPicks+' pending) — ←/→ then ENTER, or press 1-3</p><div class="cards">';
-    pickOptions.forEach((u,i)=>{ const lv=up[u.id]||0; html+='<div class="ucard'+(i===selIdx?' sel':'')+'" data-i="'+i+'"><div class="k">'+(i+1)+'</div><h3>'+u.name+'</h3><p>'+u.desc+'</p><div class="lvl">'+(lv>0?('LV '+lv+' → '+(lv+1)):'NEW')+'</div></div>'; });
+    pickOptions.forEach((u,i)=>{ const lv=up[u.id]||0; const maxed=lv>=u.max; const lbl=maxed?('RENEW ('+EXPIRE_WAVES+'w)'):(lv>0?('LV '+lv+' → '+(lv+1)):'NEW')+(EXPIRING.has(u.id)?(' · '+EXPIRE_WAVES+'w'):''); html+='<div class="ucard'+(i===selIdx?' sel':'')+'" data-i="'+i+'"><div class="k">'+(i+1)+'</div><h3>'+u.name+'</h3><p>'+u.desc+'</p><div class="lvl">'+lbl+'</div></div>'; });
     html+='</div>'; overlay.innerHTML=html; overlay.classList.remove('hidden');
     overlay.querySelectorAll('.ucard').forEach(c=>c.addEventListener('click',()=>pickByIndex(parseInt(c.dataset.i,10))));
   }
@@ -455,15 +523,17 @@
 
   // ---- Shop (between waves) ----
   // each tier costs a bit more than the last: base, +50%, +100%, ...
-  function shopCost(u){ const lv=up[u.id]||0; return Math.round(u.price*(1+0.5*lv)); }
+  function shopCost(u){ const lv=up[u.id]||0; return Math.round(u.price*(1+0.8*lv)); }
+  function anyAffordable(){ return pool().some(u=>{ const lv=up[u.id]||0, renew=lv>=u.max&&EXPIRING.has(u.id); return (lv<u.max||renew) && credits>=shopCost(u); }); }
   function openShop(){ state='shop'; selIdx=0; renderShop(); overlay.classList.remove('hidden'); }
   function renderShop(){
     const items=pool();
     let html='<h1 class="win">DRYDOCK</h1>'+
       '<div class="credits-big">◈ '+credits+' CREDITS</div>'+
       '<p class="hint">wave '+wave+' cleared &middot; ←/→/↑/↓ to highlight &middot; SPACE / number / click to buy &middot; ENTER to continue</p><div class="cards shop">';
-    items.forEach((u,i)=>{ const lv=up[u.id]||0; const maxed=lv>=u.max; const cost=shopCost(u); const afford=credits>=cost && !maxed;
-      html+='<div class="ucard'+(afford?'':' disabled')+(i===selIdx?' sel':'')+'" data-i="'+i+'"><div class="k">'+(i+1)+'</div><h3>'+u.name+'</h3><p>'+u.desc+'</p><div class="lvl">'+(maxed?'MAX':('LV '+lv+'/'+u.max))+'</div><div class="price">'+(maxed?'—':('◈ '+cost))+'</div></div>'; });
+    items.forEach((u,i)=>{ const lv=up[u.id]||0; const exp=EXPIRING.has(u.id); const maxed=lv>=u.max; const renew=maxed&&exp; const buyable=(!maxed||renew); const cost=shopCost(u); const afford=credits>=cost && buyable;
+      const lvl = renew?('RENEW ('+EXPIRE_WAVES+' waves)'):(maxed?'MAX':('LV '+lv+'/'+u.max)+(exp?(' · '+EXPIRE_WAVES+' waves'):''));
+      html+='<div class="ucard'+(afford?'':' disabled')+(i===selIdx?' sel':'')+'" data-i="'+i+'"><div class="k">'+(i+1)+'</div><h3>'+u.name+'</h3><p>'+u.desc+'</p><div class="lvl">'+lvl+'</div><div class="price">'+(buyable?('◈ '+cost):'—')+'</div></div>'; });
     html+='</div><div id="shopFoot"><button class="btn" id="continueBtn">CONTINUE ▶ (ENTER)</button> '+MENU_BTN+'</div>';
     overlay.innerHTML=html;
     overlay.querySelectorAll('.ucard').forEach(c=>c.addEventListener('click',()=>buyByIndex(parseInt(c.dataset.i,10))));
@@ -471,12 +541,14 @@
     wireOverlay();
   }
   function buyByIndex(i){ if(state!=='shop') return; const items=pool(); const u=items[i]; if(!u) return; const lv=up[u.id]||0;
-    const cost=shopCost(u); if(lv>=u.max || credits<cost) return; credits-=cost; applyUpgrade(u.id); renderShop(); }
+    const renew=lv>=u.max && EXPIRING.has(u.id); if(lv>=u.max && !renew) return;   // maxed permanent → no buy; maxed expiring → renew
+    const cost=shopCost(u); if(credits<cost) return; credits-=cost; applyUpgrade(u.id); renderShop(); }
   function closeShop(){ state='playing'; srPrev=now(); overlay.classList.add('hidden'); startWave(wave+1); }
 
   // ---- Wave completion ----
   function onWaveCleared(){
     if(SPEEDRUN && !srDone && wave>=SR_TARGET_WAVE){ /* boss handled win; non-boss target N/A since 5 is boss */ }
+    if(!SPEEDRUN && wave>=RUN_END_WAVE){ victoryRun(); return; }   // finite run: beating wave 30 wins
     if(PROGRESSION==='shop'){ openShop(); }
     else { waveBreak=90; } // brief pause then next wave
   }
@@ -501,12 +573,12 @@
         particles.push({x:bx,y:by,vx:-Math.cos(ship.angle)*(Math.random()*2+1)+(Math.random()-0.5),vy:-Math.sin(ship.angle)*(Math.random()*2+1)+(Math.random()-0.5),life:1,decay:0.06,color:'255,180,90',size:Math.random()*2+1}); }
       if(shootCd>0) shootCd--;
       if(ship.frenzy>0) ship.frenzy--;
-      if((keys[' ']||ship.auto) && shootCd===0){ shoot(); shootCd = ship.frenzy>0 ? Math.max(3,Math.floor(ship.fireCd/2)) : ship.fireCd; }
+      if((keys[' ']||ship.auto) && shootCd===0){ shoot(); shootCd = ship.frenzy>0 ? Math.max(6,Math.round(ship.fireCd*0.7)) : ship.fireCd; }
       if(invuln>0) invuln--; noHit++;
       // shield regen
-      if(ship.shieldMax>0 && ship.shield<ship.shieldMax && noHit>200 && noHit%40===0){ ship.shield++; updateHud(); }
+      // (shield no longer auto-regens on a timer — it tops up +1 at each wave start; see startWave)
       // nova
-      if(ship.novaLv>0){ if(novaTimer>0) novaTimer--; else { novaTimer=Math.floor(300/ship.novaLv); novas.push({x:ship.x,y:ship.y,r:0,max:160+ship.novaLv*30,dmg:1+ship.novaLv}); } }
+      if(ship.novaLv>0){ if(novaTimer>0) novaTimer--; else { novaTimer=Math.floor(280/ship.novaLv); novas.push({x:ship.x,y:ship.y,r:0,max:190+ship.novaLv*55,dmg:6+6*ship.novaLv}); } }
       // wave break countdown
       if(waveBreak>0){ waveBreak--; if(waveBreak===0) startWave(wave+1); }
     }
@@ -520,7 +592,7 @@
     // drones
     if(active){ for(const d of drones){ const ang=Math.atan2(ship.y-d.y,ship.x-d.x); const dist=Math.hypot(ship.x-d.x,ship.y-d.y);
       const tx=ship.x-Math.cos(ang)*70, ty=ship.y-Math.sin(ang)*70; d.x+=(tx-d.x)*0.06; d.y+=(ty-d.y)*0.06;
-      if(d.cd>0) d.cd--; else { const tgt=nearestEnemy(d.x,d.y); if(tgt){ const a=Math.atan2(tgt.y-d.y,tgt.x-d.x); bullets.push({x:d.x,y:d.y,vx:Math.cos(a)*7,vy:Math.sin(a)*7,life:60,r:2,dmg:1,pierce:0}); d.cd=45; } } } }
+      if(d.cd>0) d.cd--; else { const tgt=nearestEnemy(d.x,d.y); if(tgt){ const a=Math.atan2(tgt.y-d.y,tgt.x-d.x); bullets.push({x:d.x,y:d.y,vx:Math.cos(a)*8,vy:Math.sin(a)*8,life:72,r:2,dmg:8,pierce:0}); d.cd=38; } } } }
 
     if(active || state==='paused'){ /* enemies frozen on pause */ }
 
@@ -532,16 +604,24 @@
       // sentries drift + fire
       for(const s of sentries){ s.x+=s.vx; s.y+=s.vy; if((s.x<40&&s.vx<0)||(s.x>W-40&&s.vx>0)) s.vx*=-1; if((s.y<40&&s.vy<0)||(s.y>H-40&&s.vy>0)) s.vy*=-1; s.rot+=0.02;
         if(s.fireCd>0) s.fireCd--; else { const bs=4; const dist=Math.hypot(ship.x-s.x,ship.y-s.y); const tt=dist/bs; const ax=ship.x+ship.vx*tt, ay=ship.y+ship.vy*tt; const a=Math.atan2(ay-s.y,ax-s.x); ebullets.push({x:s.x,y:s.y,vx:Math.cos(a)*bs,vy:Math.sin(a)*bs,life:200,r:3}); s.fireCd=110+Math.random()*50; } }
-      // boss
-      if(boss){ const bTop=hudReserve()+boss.r+18+10; boss.x+=boss.vx; boss.y+=boss.vy; if(boss.x<80||boss.x>W-80) boss.vx*=-1; if(boss.y<bTop||boss.y>H*0.7) boss.vy*=-1; if(boss.y<bTop){ boss.y=bTop; boss.vy=Math.abs(boss.vy); } boss.rot+=0.01;
-        if(boss.fireCd>0) boss.fireCd--; else { const a=Math.atan2(ship.y-boss.y,ship.x-boss.x); for(const da of [-0.25,0,0.25]) ebullets.push({x:boss.x,y:boss.y,vx:Math.cos(a+da)*3.4,vy:Math.sin(a+da)*3.4,life:240,r:4}); boss.fireCd=90; }
-        if(boss.spawnCd>0) boss.spawnCd--; else { const p=edgePos(); hunters.push(makeHunter(p.x,p.y)); boss.spawnCd=200; } }
+      // kamikazes drift toward the ship (gentle homing), and detonate on contact
+      for(let i=kamikazes.length-1;i>=0;i--){ const k=kamikazes[i]; const a=Math.atan2(ship.y-k.y,ship.x-k.x); k.vx+=Math.cos(a)*0.05; k.vy+=Math.sin(a)*0.05; k.vx*=0.98; k.vy*=0.98; k.x+=k.vx; k.y+=k.vy; k.rot+=0.08; wrap(k);
+        if(Math.hypot(k.x-ship.x,k.y-ship.y) < k.r+ship.r*0.7){ killKamikaze(i); } }
+      // bosses (one per boss wave; two at the wave-30 finale)
+      for(const boss of bosses){ const bTop=hudReserve()+boss.r+18+10; boss.x+=boss.vx; boss.y+=boss.vy; if(boss.x<80||boss.x>W-80) boss.vx*=-1; if(boss.y<bTop||boss.y>H*0.7) boss.vy*=-1; if(boss.y<bTop){ boss.y=bTop; boss.vy=Math.abs(boss.vy); } boss.rot+=0.01;
+        // boss bullet RANGE matches the player's (distance = player bSpeed×bLife); speed stays 3.4 so you can't out-range it
+        if(boss.fireCd>0) boss.fireCd--; else { const a=Math.atan2(ship.y-boss.y,ship.x-boss.x), blife=Math.round(ship.bSpeed*ship.bLife/3.4); for(const da of [-0.25,0,0.25]) ebullets.push({x:boss.x,y:boss.y,vx:Math.cos(a+da)*3.4,vy:Math.sin(a+da)*3.4,life:blife,r:4}); boss.fireCd=90; }
+        if(boss.spawnCd>0) boss.spawnCd--; else { const p=edgePos(); hunters.push(makeHunter(p.x,p.y)); boss.spawnCd=boss.finale?320:200; }
+        // finale extra attack: a slow, evenly-spaced radial ring you can read and weave through (not bullet hell)
+        if(boss.finale){ if(boss.radialCd>0) boss.radialCd--; else { for(let k=0;k<10;k++){ const a=k/10*Math.PI*2; ebullets.push({x:boss.x,y:boss.y,vx:Math.cos(a)*2.4,vy:Math.sin(a)*2.4,life:260,r:4}); } boss.radialCd=210; } } }
+      // finale: the second boss joins once the first drops below half HP
+      if(finalePending && bosses.length===1 && bosses[0].hp < bosses[0].maxHp*0.5){ bosses.push(makeBoss(RUN_END_WAVE,{finale:true,x:W*0.65,dir:-1})); finalePending=false; SND.play('boss'); flash('⚠ SECOND BOSS'); }
 
       // gems (levelup)
       for(let i=gems.length-1;i>=0;i--){ const g=gems[i]; const d=Math.hypot(ship.x-g.x,ship.y-g.y);
         if(d<ship.magnet){ const a=Math.atan2(ship.y-g.y,ship.x-g.x); const pull=Math.min(8,(ship.magnet-d)*0.08+1.5); g.x+=Math.cos(a)*pull; g.y+=Math.sin(a)*pull; }
         else { g.x+=g.vx; g.y+=g.vy; g.vx*=0.98; g.vy*=0.98; }
-        if(d<ship.r+8){ xp+=g.xp; gems.splice(i,1); while(xp>=xpNext){ xp-=xpNext; level++; xpNext=Math.floor(xpNext*1.35+6); pendingPicks++; } updateHud(); if(pendingPicks>0) openPicker(); } }
+        if(d<ship.r+8){ xp+=g.xp; gems.splice(i,1); while(xp>=xpNext){ xp-=xpNext; level++; xpNext=Math.floor(xpNext*1.5+10); pendingPicks++; } updateHud(); if(pendingPicks>0) openPicker(); } }
 
       // pickups (health + power drops) — drift, get pulled by the magnet, collected on contact
       for(let i=pickups.length-1;i>=0;i--){ const p=pickups[i]; const d=Math.hypot(ship.x-p.x,ship.y-p.y);
@@ -552,31 +632,32 @@
         if(p.life<=0) pickups.splice(i,1); }
 
       // player bullets vs enemies
-      for(let i=bullets.length-1;i>=0;i--){ const b=bullets[i]; b.x+=b.vx; b.y+=b.vy; b.life--; wrap(b);
+      for(let i=bullets.length-1;i>=0;i--){ const b=bullets[i]; aimAssist(b); b.x+=b.vx; b.y+=b.vy; b.life--; wrap(b);
         if(b.life<=0){ bullets.splice(i,1); continue; }
         let consumed=false;
         for(let j=asteroids.length-1;j>=0;j--){ const a=asteroids[j]; if(Math.hypot(a.x-b.x,a.y-b.y)<a.r){ a.hp-=b.dmg; if(a.hp<=0) killAsteroid(j); consumed=true; break; } }
         if(!consumed){ for(let j=hunters.length-1;j>=0;j--){ const h=hunters[j]; if(Math.hypot(h.x-b.x,h.y-b.y)<h.r){ h.hp-=b.dmg; if(h.hp<=0) killHunter(j); consumed=true; break; } } }
         if(!consumed){ for(let j=sentries.length-1;j>=0;j--){ const s=sentries[j]; if(Math.hypot(s.x-b.x,s.y-b.y)<s.r){ s.hp-=b.dmg; if(s.hp<=0) killSentry(j); consumed=true; break; } } }
-        if(!consumed && boss){ if(Math.hypot(boss.x-b.x,boss.y-b.y)<boss.r){ boss.hp-=b.dmg; burst(b.x,b.y,'255,200,150',2,1); if(boss.hp<=0) killBoss(); consumed=true; } }
+        if(!consumed){ for(let j=kamikazes.length-1;j>=0;j--){ const k=kamikazes[j]; if(Math.hypot(k.x-b.x,k.y-b.y)<k.r){ k.hp-=b.dmg; if(k.hp<=0) killKamikaze(j); consumed=true; break; } } }
+        if(!consumed){ for(let j=bosses.length-1;j>=0;j--){ const bo=bosses[j]; if(Math.hypot(bo.x-b.x,bo.y-b.y)<bo.r){ bo.hp-=b.dmg; burst(b.x,b.y,'255,200,150',2,1); if(bo.hp<=0) killBoss(j); consumed=true; break; } } }
         if(consumed){ if(b.pierce>0){ b.pierce--; } else { bullets.splice(i,1); } }
       }
 
-      // orbital collisions
-      if(ship.orbN>0){ const ops=orbPositions(); for(const op of ops){ if(orbCd[op.k]>0) continue;
+      // orbital collisions (bodyguard: bigger reach + bite, shorter recharge)
+      if(ship.orbN>0){ const ops=orbPositions(); const OR=14, OD=12; for(const op of ops){ if(orbCd[op.k]>0) continue;
         let hit=false;
-        for(let j=asteroids.length-1;j>=0;j--){ const a=asteroids[j]; if(Math.hypot(a.x-op.x,a.y-op.y)<a.r+10){ a.hp-=2; if(a.hp<=0) killAsteroid(j); hit=true; break; } }
-        if(!hit) for(let j=hunters.length-1;j>=0;j--){ const h=hunters[j]; if(Math.hypot(h.x-op.x,h.y-op.y)<h.r+10){ h.hp-=2; if(h.hp<=0) killHunter(j); hit=true; break; } }
-        if(!hit) for(let j=sentries.length-1;j>=0;j--){ const s=sentries[j]; if(Math.hypot(s.x-op.x,s.y-op.y)<s.r+10){ s.hp-=2; if(s.hp<=0) killSentry(j); hit=true; break; } }
-        if(!hit && boss && Math.hypot(boss.x-op.x,boss.y-op.y)<boss.r+10){ boss.hp-=2; if(boss.hp<=0) killBoss(); hit=true; }
-        if(hit) orbCd[op.k]=18;
+        for(let j=asteroids.length-1;j>=0;j--){ const a=asteroids[j]; if(Math.hypot(a.x-op.x,a.y-op.y)<a.r+OR){ a.hp-=OD; if(a.hp<=0) killAsteroid(j); hit=true; break; } }
+        if(!hit) for(let j=hunters.length-1;j>=0;j--){ const h=hunters[j]; if(Math.hypot(h.x-op.x,h.y-op.y)<h.r+OR){ h.hp-=OD; if(h.hp<=0) killHunter(j); hit=true; break; } }
+        if(!hit) for(let j=sentries.length-1;j>=0;j--){ const s=sentries[j]; if(Math.hypot(s.x-op.x,s.y-op.y)<s.r+OR){ s.hp-=OD; if(s.hp<=0) killSentry(j); hit=true; break; } }
+        if(!hit) for(let j=kamikazes.length-1;j>=0;j--){ const k=kamikazes[j]; if(Math.hypot(k.x-op.x,k.y-op.y)<k.r+OR){ k.hp-=OD; if(k.hp<=0) killKamikaze(j); hit=true; break; } }
+        if(!hit) for(let j=bosses.length-1;j>=0;j--){ const bo=bosses[j]; if(Math.hypot(bo.x-op.x,bo.y-op.y)<bo.r+OR){ bo.hp-=OD; if(bo.hp<=0) killBoss(j); hit=true; break; } }
+        if(hit) orbCd[op.k]=14;
       } }
 
       // novas
       for(let i=novas.length-1;i>=0;i--){ const nv=novas[i]; nv.r+=6; if(nv.r>=nv.max){ novas.splice(i,1); continue; }
         const damageRing=(arr,killer)=>{ for(let j=arr.length-1;j>=0;j--){ const e=arr[j]; const d=Math.hypot(e.x-nv.x,e.y-nv.y); if(d<nv.r && d>nv.r-30){ e.hp-=nv.dmg; if(e.hp<=0) killer(j); } } };
-        damageRing(asteroids,killAsteroid); damageRing(hunters,killHunter); damageRing(sentries,killSentry);
-        if(boss){ const d=Math.hypot(boss.x-nv.x,boss.y-nv.y); if(d<nv.r && d>nv.r-30){ boss.hp-=nv.dmg; if(boss.hp<=0) killBoss(); } }
+        damageRing(asteroids,killAsteroid); damageRing(hunters,killHunter); damageRing(sentries,killSentry); damageRing(kamikazes,killKamikaze); damageRing(bosses,killBoss);
       }
 
       // enemy bullets vs ship
@@ -588,15 +669,17 @@
         for(const a of asteroids){ if(Math.hypot(a.x-ship.x,a.y-ship.y)<a.r+ship.r*0.7){ damageShip(); break; } }
         if(invuln===0) for(const h of hunters){ if(Math.hypot(h.x-ship.x,h.y-ship.y)<h.r+ship.r*0.7){ damageShip(); break; } }
         if(invuln===0) for(const s of sentries){ if(Math.hypot(s.x-ship.x,s.y-ship.y)<s.r+ship.r*0.7){ damageShip(); break; } }
-        if(invuln===0 && boss && Math.hypot(boss.x-ship.x,boss.y-ship.y)<boss.r+ship.r*0.7){ damageShip(); }
+        if(invuln===0) for(const bo of bosses){ if(Math.hypot(bo.x-ship.x,bo.y-ship.y)<bo.r+ship.r*0.7){ damageShip(); break; } }
       }
 
       // wave cleared?
-      if(state==='playing' && waveBreak===0 && enemiesLeft()===0){ onWaveCleared(); }
+      if(state==='playing' && waveBreak===0 && !finalePending && enemiesLeft()===0){ onWaveCleared(); }
     }
 
     // particles always
     for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.x+=p.vx; p.y+=p.vy; p.vx*=0.96; p.vy*=0.96; p.life-=p.decay; if(p.life<=0) particles.splice(i,1); }
+    // kamikaze blast rings (visual only — the damage was applied at detonation)
+    for(let i=blasts.length-1;i>=0;i--){ const bl=blasts[i]; bl.r+=5; if(bl.r>=bl.max) blasts.splice(i,1); }
   }
 
   // ---- Render ----
@@ -604,9 +687,13 @@
   function poly(x,y,rot,verts,stroke,glow){ ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.shadowColor=glow; ctx.shadowBlur=8;
     ctx.beginPath(); verts.forEach((v,i)=>{ const px=Math.cos(v.ang)*v.d, py=Math.sin(v.ang)*v.d; if(i===0)ctx.moveTo(px,py); else ctx.lineTo(px,py); }); ctx.closePath(); ctx.stroke(); ctx.restore(); }
   function drawShip(){ if(state==='menu'||state==='dead'||state==='won') return; if(invuln>0 && Math.floor(invuln/6)%2===0) return;
-    ctx.save(); ctx.translate(ship.x,ship.y); ctx.rotate(ship.angle); ctx.strokeStyle='#9fe8ff'; ctx.lineWidth=2; ctx.shadowColor='rgba(120,200,255,0.9)'; ctx.shadowBlur=12;
-    ctx.beginPath(); ctx.moveTo(16,0); ctx.lineTo(-12,-10); ctx.lineTo(-6,0); ctx.lineTo(-12,10); ctx.closePath(); ctx.stroke();
-    if(ship.shield>0){ ctx.strokeStyle='rgba(120,200,255,'+(0.25+0.15*ship.shield)+')'; ctx.shadowBlur=10; ctx.beginPath(); ctx.arc(0,0,ship.r+8,0,Math.PI*2); ctx.stroke(); }
+    // hero ship is WHITE (distinct from every enemy: blue asteroids, pink hunters, green sentries,
+    // red kamikazes, orange bosses) and its glow + fill intensify with the wave so it stays readable in a crowd.
+    const wf=Math.min(1,(wave-1)/20);
+    ctx.save(); ctx.translate(ship.x,ship.y); ctx.rotate(ship.angle); ctx.strokeStyle='#ffffff'; ctx.lineWidth=2+wf; ctx.shadowColor='rgba(255,255,255,0.95)'; ctx.shadowBlur=12+wf*16;
+    ctx.fillStyle='rgba(255,255,255,'+(0.14+wf*0.34)+')';
+    ctx.beginPath(); ctx.moveTo(16,0); ctx.lineTo(-12,-10); ctx.lineTo(-6,0); ctx.lineTo(-12,10); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if(ship.shield>0){ ctx.strokeStyle='rgba(180,230,255,'+(0.3+0.18*ship.shield)+')'; ctx.shadowColor='rgba(180,230,255,0.9)'; ctx.shadowBlur=10; ctx.beginPath(); ctx.arc(0,0,ship.r+8,0,Math.PI*2); ctx.stroke(); }
     ctx.restore();
     // orbitals
     if(ship.orbN>0){ for(let k=0;k<ship.orbN;k++){ const a=orbAngle+k*(Math.PI*2/ship.orbN), ox=ship.x+Math.cos(a)*60, oy=ship.y+Math.sin(a)*60;
@@ -618,10 +705,10 @@
     ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(10,8); ctx.lineTo(0,3); ctx.lineTo(-10,8); ctx.closePath(); ctx.stroke(); ctx.restore(); } }
   function drawSentries(){ for(const s of sentries){ ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.rot); ctx.strokeStyle='#8effc0'; ctx.lineWidth=2; ctx.shadowColor='rgba(120,255,180,0.6)'; ctx.shadowBlur=8;
     ctx.beginPath(); for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; const px=Math.cos(a)*s.r, py=Math.sin(a)*s.r; if(i===0)ctx.moveTo(px,py); else ctx.lineTo(px,py); } ctx.closePath(); ctx.stroke(); ctx.restore(); } }
-  function drawBoss(){ if(!boss) return; ctx.save(); ctx.translate(boss.x,boss.y); ctx.rotate(boss.rot); ctx.strokeStyle='#ffb070'; ctx.lineWidth=3; ctx.shadowColor='rgba(255,160,90,0.7)'; ctx.shadowBlur=16;
+  function drawBoss(){ for(const boss of bosses){ ctx.save(); ctx.translate(boss.x,boss.y); ctx.rotate(boss.rot); ctx.strokeStyle=boss.finale?'#ff9a6a':'#ffb070'; ctx.lineWidth=3; ctx.shadowColor='rgba(255,160,90,0.7)'; ctx.shadowBlur=16;
     ctx.beginPath(); for(let i=0;i<8;i++){ const a=i/8*Math.PI*2; const rr=boss.r*(i%2?0.8:1); const px=Math.cos(a)*rr, py=Math.sin(a)*rr; if(i===0)ctx.moveTo(px,py); else ctx.lineTo(px,py); } ctx.closePath(); ctx.stroke(); ctx.restore();
     // boss hp bar
-    const bw=200, x=boss.x-bw/2, y=boss.y-boss.r-18; ctx.shadowBlur=0; ctx.fillStyle='rgba(60,30,20,0.7)'; ctx.fillRect(x,y,bw,6); ctx.fillStyle='#ffb070'; ctx.fillRect(x,y,bw*Math.max(0,boss.hp/boss.maxHp),6); }
+    const bw=200, x=boss.x-bw/2, y=boss.y-boss.r-18; ctx.shadowBlur=0; ctx.fillStyle='rgba(60,30,20,0.7)'; ctx.fillRect(x,y,bw,6); ctx.fillStyle='#ffb070'; ctx.fillRect(x,y,bw*Math.max(0,boss.hp/boss.maxHp),6); } }
   function drawGems(){ for(const g of gems){ ctx.fillStyle='#c79bff'; ctx.shadowColor='rgba(180,120,255,0.9)'; ctx.shadowBlur=10; ctx.beginPath(); ctx.arc(g.x,g.y,3,0,Math.PI*2); ctx.fill(); } }
   function drawPickups(){ ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='bold 14px "Courier New",monospace';
     for(const p of pickups){ const def=PICKUPS[p.type]; const blink=p.life<120 && Math.floor(p.life/8)%2===0; if(blink) continue;
@@ -630,8 +717,19 @@
   function drawBullets(){ ctx.shadowColor='rgba(180,230,255,0.9)'; ctx.shadowBlur=8; ctx.fillStyle='#dff3ff'; for(const b of bullets){ ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); }
     ctx.fillStyle='#ff9a9a'; ctx.shadowColor='rgba(255,120,120,0.9)'; for(const b of ebullets){ ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); } }
   function drawNovas(){ for(const nv of novas){ ctx.strokeStyle='rgba(180,220,255,'+(1-nv.r/nv.max)+')'; ctx.lineWidth=3; ctx.shadowColor='rgba(150,200,255,0.6)'; ctx.shadowBlur=10; ctx.beginPath(); ctx.arc(nv.x,nv.y,nv.r,0,Math.PI*2); ctx.stroke(); } }
+  function drawBlasts(){ for(const bl of blasts){ ctx.strokeStyle='rgba(255,90,70,'+(1-bl.r/bl.max)+')'; ctx.lineWidth=3; ctx.shadowColor='rgba(255,90,70,0.6)'; ctx.shadowBlur=10; ctx.beginPath(); ctx.arc(bl.x,bl.y,bl.r,0,Math.PI*2); ctx.stroke(); } }
+  function drawKamikazes(){ for(const k of kamikazes){ ctx.save(); ctx.translate(k.x,k.y); ctx.rotate(k.rot); ctx.strokeStyle='#ff5a4a'; ctx.lineWidth=2; ctx.shadowColor='rgba(255,70,60,0.8)'; ctx.shadowBlur=10;
+    ctx.beginPath(); ctx.moveTo(0,-11); ctx.lineTo(8,9); ctx.lineTo(0,5); ctx.lineTo(-8,9); ctx.closePath(); ctx.stroke(); ctx.restore(); } }
   function drawParticles(){ for(const p of particles){ ctx.fillStyle='rgba('+p.color+','+p.life+')'; ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2); ctx.fill(); } }
-  function render(){ ctx.clearRect(0,0,W,H); ctx.shadowBlur=0; drawStars(); drawParticles(); drawNovas(); drawGems(); drawPickups(); drawAsteroids(); drawHunters(); drawSentries(); drawBoss(); drawDrones(); drawBullets(); drawShip(); ctx.shadowBlur=0; }
+  // active (expiring) upgrades + waves-until-lapse, bottom-left — so you can see your build decaying
+  const UP_NAMES={rapid:'RAPID',spread:'SPREAD',heavy:'HEAVY',orbital:'ORBIT',drone:'DRONE',nova:'NOVA'};
+  function drawUpgrades(){ if(state!=='playing'&&state!=='paused') return; const list=activeUpgrades(); if(!list.length) return;
+    ctx.save(); ctx.shadowBlur=0; ctx.textAlign='left'; ctx.textBaseline='bottom'; ctx.font=Math.round(11*SCALE)+'px "Courier New",monospace';
+    let y=H-10*SCALE; const x=10*SCALE;
+    for(let i=list.length-1;i>=0;i--){ const u=list[i]; ctx.fillStyle=u.expiresIn<=2?'rgba(255,150,120,0.95)':'rgba(180,210,255,0.7)';
+      ctx.fillText(UP_NAMES[u.id]+' ×'+u.lv+'  '+u.expiresIn+'w', x, y); y-=14*SCALE; }
+    ctx.restore(); ctx.textAlign='start'; ctx.textBaseline='alphabetic'; }
+  function render(){ ctx.clearRect(0,0,W,H); ctx.shadowBlur=0; drawStars(); drawParticles(); drawNovas(); drawBlasts(); drawGems(); drawPickups(); drawAsteroids(); drawHunters(); drawSentries(); drawKamikazes(); drawBoss(); drawDrones(); drawBullets(); drawShip(); drawUpgrades(); ctx.shadowBlur=0; }
 
   const STEP_MS = 1000/60; let _accT = 0, _lastT = now();
   function loop(){ requestAnimationFrame(loop); try { let _t=now(), _el=_t-_lastT; _lastT=_t; if(window.gamekit&&window.gamekit.isPaused&&window.gamekit.isPaused()){ render(); return; } if(_el>250) _el=250; _accT+=_el; let _g=0; while(_accT>=STEP_MS && _g<5){ update(); _accT-=STEP_MS; _g++; } render(); } catch(e){ if(window.console) console.error(e); } }
@@ -642,29 +740,38 @@
     get hp(){ return ship?ship.hp:0; }, get enemies(){ return enemiesLeft(); }, get credits(){ return credits; },
     get upgrades(){ return JSON.parse(JSON.stringify(up)); }, get progression(){ return PROGRESSION; }, get speedrun(){ return SPEEDRUN; },
     get picks(){ return pickOptions.map(o=>o.id); }, get sel(){ return selIdx; }, get magnet(){ return ship?ship.magnet:0; },
-    get bossY(){ return boss?boss.y:null; }, get waveLabel(){ return waveEl.textContent; },
+    get bossY(){ return bosses[0]?bosses[0].y:null; }, get waveLabel(){ return waveEl.textContent; },
     get strandedEnemies(){ const out=e=>e.x<-12||e.x>W+12||e.y<-12||e.y>H+12; return sentries.filter(out).length + hunters.filter(out).length; },
     get bulletCount(){ return bullets.length; }, shopCostOf(id){ const u=ALL_UPGRADES.find(x=>x.id===id); return u?shopCost(u):0; },
-    get pickupCount(){ return pickups.length; }, get autoFire(){ return ship?!!ship.auto:false; }, get bossHp(){ return boss?boss.maxHp:0; }, get shipAngle(){ return ship?ship.angle:null; },
+    get pickupCount(){ return pickups.length; }, get autoFire(){ return ship?!!ship.auto:false; }, get bossHp(){ return bosses[0]?bosses[0].maxHp:0; }, get shipAngle(){ return ship?ship.angle:null; },
+    get bossCount(){ return bosses.length; }, get finalePending(){ return finalePending; },
+    get activeUpgrades(){ return activeUpgrades(); }, get upExpiry(){ return JSON.parse(JSON.stringify(upExp)); }, get droneCount(){ return drones.length; }, get expireWaves(){ return EXPIRE_WAVES; },
     // JS-computed layout snapshot (canvas/px space) for on-screen / no-HUD-overlap regression tests.
     // topReserve = the center-HUD headroom (game-kit hudTop, CSS px) projected into canvas px via the
     // same scale resize() uses, so on-canvas content drawn near the top can be checked against it.
     get layout(){
       const lo={ W, H, scale:SCALE, topReserve:hudReserve() };
       if(ship){ lo.shipTop=ship.y-ship.r; lo.shipBottom=ship.y+ship.r; lo.shipLeft=ship.x-ship.r; lo.shipRight=ship.x+ship.r; }
-      if(boss){ lo.bossTop=boss.y-boss.r-18; lo.bossBottom=boss.y+boss.r; lo.bossLeft=boss.x-boss.r; lo.bossRight=boss.x+boss.r; } // -18 covers the HP bar drawn above the body
+      if(bosses[0]){ const boss=bosses[0]; lo.bossTop=boss.y-boss.r-18; lo.bossBottom=boss.y+boss.r; lo.bossLeft=boss.x-boss.r; lo.bossRight=boss.x+boss.r; } // -18 covers the HP bar drawn above the body
       return lo;
     },
     spawnPickup(type){ pickups.push({x:ship.x,y:ship.y,type,vx:0,vy:0,life:540}); },
+    dropReward(kind){ dropRewards(ship.x,ship.y,kind); }, get gemCount(){ return gems.length; }, get maxPickups(){ return MAX_PICKUPS; },
     quitToMenu, hasMenuBtn(){ return !!$('menuBtn'); },
-    start:startGame, clearEnemies(){ asteroids=[]; hunters=[]; sentries=[]; boss=null; },
-    addScore(n){ score+=n; credits+=Math.floor(n/10); updateHud(); if(PROGRESSION==='milestones'){ while(score>=milestoneNext){ pendingPicks++; milestoneStep+=250; milestoneNext+=milestoneStep; } if(pendingPicks>0&&state==='playing') openPicker(); } },
+    start:startGame, clearEnemies(){ asteroids=[]; hunters=[]; sentries=[]; kamikazes=[]; bosses=[]; finalePending=false; },
+    addScore(n){ score+=n; credits+=Math.floor(n/10); updateHud(); if(PROGRESSION==='milestones'){ while(score>=milestoneNext){ pendingPicks++; milestoneStep+=350; milestoneNext+=milestoneStep; } if(pendingPicks>0&&state==='playing') openPicker(); } },
     setScore(n){ score=n; updateHud(); },
     addCredits(n){ credits+=n; updateHud(); },
     forcePick(){ pendingPicks++; if(state==='playing') openPicker(); },
     giveUpgrade(id){ applyUpgrade(id); },
-    gotoWave(n){ asteroids=[]; hunters=[]; sentries=[]; boss=null; waveBreak=0; startWave(n); },
-    killBossNow(){ if(boss) killBoss(); },
+    gotoWave(n){ asteroids=[]; hunters=[]; sentries=[]; kamikazes=[]; bosses=[]; finalePending=false; waveBreak=0; startWave(n); },
+    get kamikazeCount(){ return kamikazes.length; },
+    spawnKamikazeAt(x,y){ const k=makeKamikaze(x,y); k.x=x; k.y=y; kamikazes.push(k); return kamikazes.length-1; },
+    killKamikazeAt(i){ killKamikaze(i); }, setInvuln(v){ invuln=v; }, get shipX(){ return ship?ship.x:0; }, get shipY(){ return ship?ship.y:0; },
+    spawnAsteroidAt(x,y,size){ const a=makeAsteroid(x,y,size||1); a.x=x; a.y=y; a.vx=0; a.vy=0; asteroids.push(a); return asteroids.length-1; },
+    assistVel(x,y,vx,vy){ const b={x,y,vx,vy}; aimAssist(b); return {vx:b.vx, vy:b.vy}; },
+    killBossNow(){ while(bosses.length) killBoss(0); },
+    setBossHp(frac){ if(bosses[0]) bosses[0].hp=Math.max(1,Math.round(bosses[0].maxHp*frac)); },
     hurt(){ invuln=0; damageShip(); },
     pick(i){ pickByIndex(i); }, buy(i){ buyByIndex(i); }, continueShop:closeShop,
   };

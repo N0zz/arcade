@@ -268,7 +268,7 @@ function testMilestonePick(file) {
   const g = runGame(file);
   const T = () => g.test();
   T().start(); g.step(2);
-  T().addScore(600); g.step(1); // crosses first milestone (500)
+  T().addScore(800); g.step(1); // crosses first milestone (700)
   ok(T().state === 'levelup', file + ' milestone opens picker (got ' + T().state + ')');
   T().pick(0); g.step(2);
   ok(T().state === 'playing', file + ' milestone pick resumes');
@@ -557,6 +557,109 @@ function testLauncher() {
 
 // ---------------- Run ----------------
 // Asteroids+ is the de-iframed roguelite game: one engine (index.html), variant via ?prog=.
+// ---- bounded power: lowered caps ----
+function testUpgradeCaps(file) {
+  section(file + ' (upgrade caps lowered)');
+  const g = runGame(file); const T = () => g.test();
+  T().start(); g.step(2);
+  const caps = { heavy: 5, spread: 2, rapid: 3, shield: 2, hull: 2 };
+  for (const id in caps) {
+    for (let i = 0; i < 6; i++) T().giveUpgrade(id);
+    ok((T().upgrades[id] || 0) === caps[id], file + ' ' + id + ' caps at ' + caps[id] + ' (got ' + (T().upgrades[id] || 0) + ')');
+  }
+}
+
+// ---- expiring offensive upgrades: lapse after 10 waves, refresh on re-pick ----
+function testExpiry(file) {
+  section(file + ' (offensive upgrades expire after 10 waves)');
+  const g = runGame(file); const T = () => g.test();
+  T().start(); g.step(2);                         // wave 1
+  const EW = T().expireWaves;
+  T().giveUpgrade('heavy');                        // picked at wave 1 → active through wave 1+EW
+  ok((T().upgrades.heavy || 0) === 1, file + ' heavy applied (got ' + (T().upgrades.heavy || 0) + ')');
+  T().gotoWave(1 + EW); g.step(2);
+  ok((T().upgrades.heavy || 0) === 1, file + ' heavy still active at wave ' + (1 + EW) + ' (got ' + (T().upgrades.heavy || 0) + ')');
+  T().gotoWave(1 + EW + 1); g.step(2);
+  ok(!(T().upgrades.heavy), file + ' heavy has lapsed by wave ' + (1 + EW + 1) + ' (got ' + (T().upgrades.heavy || 0) + ')');
+  // hull is permanent — never expires
+  T().gotoWave(1); g.step(2); T().giveUpgrade('hull'); T().gotoWave(20); g.step(2);
+  ok((T().upgrades.hull || 0) === 1, file + ' permanent hull survives to wave 20 (got ' + (T().upgrades.hull || 0) + ')');
+}
+function testExpiryRefresh(file) {
+  section(file + ' (re-pick refreshes / renews at cap)');
+  const g = runGame(file); const T = () => g.test();
+  T().start(); g.step(2);
+  const EW = T().expireWaves;
+  for (let i = 0; i < 3; i++) T().giveUpgrade('rapid');     // wave 1: 3 stacks all lapse after 1+EW
+  ok((T().upgrades.rapid || 0) === 3, file + ' rapid at cap 3');
+  T().gotoWave(3); g.step(2);                                // still within the window (needs EW>=2)
+  T().giveUpgrade('rapid');                                  // at cap → renews soonest stack to wave 3+EW
+  const exp = T().upExpiry.rapid || [];
+  ok((T().upgrades.rapid || 0) === 3, file + ' rapid stays at cap after renew (got ' + (T().upgrades.rapid || 0) + ')');
+  ok(exp.indexOf(3 + EW) >= 0, file + ' a rapid stack was renewed to wave ' + (3 + EW) + ' (exp=' + JSON.stringify(exp) + ')');
+}
+
+// ---- staggered dual-boss finale + finite victory at wave 30 ----
+function testFinaleStagger(file) {
+  section(file + ' (wave-30 dual boss is staggered)');
+  const g = runGame(file); const T = () => g.test();
+  T().start(); T().gotoWave(30); g.step(2);
+  ok(T().bossCount === 1, file + ' finale starts with one boss (got ' + T().bossCount + ')');
+  ok(T().finalePending === true, file + ' second boss pending');
+  T().setBossHp(0.4); g.step(3);                             // drop first below half → second joins
+  ok(T().bossCount === 2, file + ' second boss joins below 50% (got ' + T().bossCount + ')');
+  ok(T().finalePending === false, file + ' finale no longer pending');
+}
+function testVictory(file) {
+  section(file + ' (beating wave 30 wins the run)');
+  const g = runGame(file); const T = () => g.test();
+  T().start(); T().gotoWave(30); g.step(2);
+  T().killBossNow();                                         // kills first → spawns second → kills second
+  ok(T().bossCount === 0, file + ' both finale bosses down (got ' + T().bossCount + ')');
+  g.step(120);
+  ok(T().state === 'won', file + ' run is won after wave 30 (got ' + T().state + ')');
+}
+
+// ---- buff-pickup cap actually holds (boss kind always drops) ----
+function testPickupCap(file) {
+  section(file + ' (buff-pickup cap holds)');
+  const g = runGame(file); const T = () => g.test();
+  T().start(); g.step(2);
+  for (let i = 0; i < 30; i++) T().dropReward('boss');   // boss drops bypass the chance gate
+  ok(T().pickupCount <= T().maxPickups, file + ' buff pickups never exceed ' + T().maxPickups + ' (got ' + T().pickupCount + ')');
+}
+
+// ---- kamikaze: spawns, and blast damages the ship only when close ----
+function testKamikaze(file) {
+  section(file + ' (kamikaze drifts in + explodes)');
+  const g = runGame(file); const T = () => g.test();
+  T().start(); g.step(2);
+  T().gotoWave(6); g.step(2);
+  ok(T().kamikazeCount > 0, file + ' kamikazes spawn on a normal wave (got ' + T().kamikazeCount + ')');
+  // FAR kill: ship unharmed
+  T().clearEnemies(); T().setInvuln(0);
+  const hpBefore = T().hp;
+  T().spawnKamikazeAt(5, 5); T().killKamikazeAt(0);
+  ok(T().hp === hpBefore, file + ' killing a distant kamikaze does no damage (hp ' + hpBefore + '->' + T().hp + ')');
+  // CLOSE kill: ship takes the blast
+  T().setInvuln(0);
+  const hp2 = T().hp;
+  T().spawnKamikazeAt(T().shipX, T().shipY); T().killKamikazeAt(0);
+  ok(T().hp === hp2 - 1, file + ' a point-blank kamikaze blast costs 1 HP (hp ' + hp2 + '->' + T().hp + ')');
+}
+
+// ---- bullet aim assist: a near-miss curves toward the enemy ----
+function testAimAssist(file) {
+  section(file + ' (bullet aim assist)');
+  const g = runGame(file); const T = () => g.test();
+  T().start(); T().clearEnemies();
+  T().spawnAsteroidAt(300, 300, 1);                 // size-1 asteroid, r=18, at (300,300)
+  const v = T().assistVel(300, 325, 8, 0);          // bullet 25px below center (inside r+12=30, outside r=18), moving +x
+  ok(v.vy < 0, file + ' assist curves the near-miss toward the asteroid (vy=' + v.vy.toFixed(2) + ')');
+  const v2 = T().assistVel(0, 0, 8, 0);             // far away → untouched
+  ok(v2.vy === 0 && v2.vx === 8, file + ' a far bullet is not steered');
+}
+
 // testMenuButton is launcher-specific (quit now navigates in-page, not postMessage) — dropped;
 // testSaveOnQuit still covers save-on-quit.
 console.log('Running Asteroids+ headless tests…');
@@ -585,6 +688,16 @@ testShop('index.html?prog=shop');
 testShopProgression('index.html?prog=shop');
 testTieredPricing('index.html?prog=shop');
 testMilestonePick('index.html?prog=milestones');
+testUpgradeCaps('index.html?prog=levelup');
+testExpiry('index.html?prog=levelup');
+testExpiryRefresh('index.html?prog=levelup');
+testFinaleStagger('index.html?prog=levelup');
+testVictory('index.html?prog=levelup');
+testVictory('index.html?prog=shop');
+testPickupCap('index.html?prog=levelup');
+testPickupCap('index.html?prog=shop');
+testKamikaze('index.html?prog=levelup');
+testAimAssist('index.html?prog=levelup');
 
 // ---------------- Layout: everything on-screen + clears the top HUD, in portrait / landscape / desktop ----------------
 function testLayoutFits(file) {

@@ -5,6 +5,9 @@
 // Keep bullets plain-language and about what a PLAYER notices — never kit/test/build/refactor.
 window.CHANGELOG = [
   { date: '2026-06-29', title: 'Polish & fixes', items: [
+    'New: Asteroids+ — a big rebalance. It’s now a finite run that ends with a two-boss finale on wave 30 (beat it for a Victory), upgrades are gentler and now lapse after a few waves so you keep choosing, and a new red kamikaze enemy (from wave 6) charges in and explodes — don’t pop it in your face.',
+    'New: Asteroids+ — light aim assist: shots that just graze an enemy curve in and connect.',
+    'Improved: Asteroids+ — your ship is now a bright white so it never gets lost among the asteroids, bosses can return fire as far as you can shoot, and pickups are tuned so a good run is rewarded without burying you in power-ups.',
     'New: Meadow Flyer — long runs no longer level off. Past a score of 55 the world speeds up, peaking around 100, so a great run stays a real challenge.',
     'Fix: on narrow phones the top bar no longer crowds itself — the Menu button and the sound/pause buttons keep clear of each other.',
     'Fix: the ‹ Menu button now only shows while you’re actually playing, not on a game’s own menu (where it was easy to mistake for “back to the website”).',
