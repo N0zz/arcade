@@ -350,6 +350,7 @@
     $('overlay').classList.add('hidden');
     $('gameOver').classList.add('hidden');
     $('wonScreen').classList.add('hidden');
+    if (window.gamekit && window.gamekit.showMenuButton) window.gamekit.showMenuButton(true);
     updateHud();
   }
   function startGame() { startMode(mode); }
@@ -1121,6 +1122,7 @@
   $('goMenu').addEventListener('click', () => {
     $('gameOver').classList.add('hidden');
     $('overlay').classList.remove('hidden');
+    if (window.gamekit && window.gamekit.showMenuButton) window.gamekit.showMenuButton(false);
     refreshMenuBests();
   });
   $('wonNext').addEventListener('click', startGame);
@@ -1132,6 +1134,7 @@
     params: () => ({ mode: mode }),
   });
   window.gamekit.nav({ reset: 'bubbles_' });
+  if (window.gamekit && window.gamekit.showMenuButton) window.gamekit.showMenuButton(false); // initial = mode picker
 
   // ---- __test API ----
   window.__test = {

@@ -358,6 +358,7 @@
   function startGame() {
     reset();
     state = 'playing';
+    window.gamekit.showMenuButton(true);
     if (endScreen) endScreen.classList.add('hidden');
     if (menuScreen) menuScreen.classList.remove('hidden');
     overlay.classList.add('hidden');
@@ -718,6 +719,7 @@
     params: () => ({ speed: opts.speed, walls: opts.walls, size: opts.size }),
   });
   window.gamekit.nav({ reset: 'snake_' });
+  window.gamekit.showMenuButton(false);
 
   loadOpts();
   applyGridSize();

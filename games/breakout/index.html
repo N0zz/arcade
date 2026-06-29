@@ -255,6 +255,7 @@
   function startGame() {
     reset();
     state = 'playing';
+    window.gamekit.showMenuButton(true); // entering active play
     overlay.classList.add('hidden');
     if (endOverlay) endOverlay.classList.add('hidden');
     updateHud();
@@ -694,6 +695,7 @@
     params: () => ({ mode: gameMode }),
   });
   window.gamekit.nav({ reset: 'breakout_' });
+  window.gamekit.showMenuButton(false); // initial state = menu/mode-picker
 
   // Menu: per-mode best scores (refreshed when the menu is shown)
   function refreshMenuBests() {

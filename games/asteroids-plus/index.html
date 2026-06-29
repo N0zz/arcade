@@ -252,8 +252,8 @@
     waveBreak=0; pendingPicks=0; milestoneNext=500; milestoneStep=500;
     spawnShip(); recalc(); ship.hp=ship.maxHp; ship.shield=ship.shieldMax;
   }
-  function startGame(){ if(!HAS_PROG){ showModePicker(); return; } resetRun(); startWave(1); state='playing'; overlay.classList.add('hidden');
-    srElapsed=0; srPrev=now(); srDone=false; SND.startMusic(); updateHud(); }
+  function startGame(){ if(!HAS_PROG){ showModePicker(); if(KIT) KIT.showMenuButton(false); return; } resetRun(); startWave(1); state='playing'; overlay.classList.add('hidden');
+    srElapsed=0; srPrev=now(); srDone=false; SND.startMusic(); if(KIT) KIT.showMenuButton(true); updateHud(); }
   function pauseGame(){ state='paused'; overlay.innerHTML='<h1>PAUSED</h1><p class="hint">wave '+wave+' &middot; score '+score+'</p><div id="shopFoot"><button class="btn" id="resumeBtn">RESUME (ESC)</button> '+MENU_BTN+'</div>'; overlay.classList.remove('hidden'); wireOverlay(); }
   function resumeGame(){ state='playing'; srPrev=now(); overlay.classList.add('hidden'); }
   function spawnShip(){ ship={x:W/2,y:H/2,vx:0,vy:0,angle:-Math.PI/2,r:14,hp:3,maxHp:3,shield:0,shieldMax:0,frenzy:0}; invuln=120; }
@@ -702,7 +702,7 @@
   if(isTouch){ document.body.classList.add('touch'); buildTouch(); }
 
   // game-kit nav: top-left ‹ Menu (quits to the launcher) + top-right sound menu (SFX + Music + Reset)
-  if (KIT) { KIT.nav({ music: true, reset: 'asteroids_', home: '../../', onMenu: () => { quitToMenu(); } }); KIT.pwa(); }
+  if (KIT) { KIT.nav({ music: true, reset: 'asteroids_', home: '../../', onMenu: () => { quitToMenu(); } }); KIT.showMenuButton(false); KIT.pwa(); }
 
   resize(); updateHud(); loop();
   if (!HAS_PROG) showModePicker(); // entry with no mode chosen → show the in-page picker

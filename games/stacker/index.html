@@ -313,6 +313,7 @@
     mode = m || 'classic';
     state = 'playing';
     overlay.classList.add('hidden');
+    window.gamekit.showMenuButton(true);
     resetGame();
   }
 
@@ -606,6 +607,7 @@
   };
 
   window.gamekit.nav({ reset: 'stacker_' });
+  window.gamekit.showMenuButton(false); // initial screen is the menu
 
   resize();
   updateHud();

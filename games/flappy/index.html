@@ -298,6 +298,7 @@
     state = 'playing';
     overlay.classList.add('hidden');
     goScreen.classList.add('hidden');
+    window.gamekit.showMenuButton(true); // run started → show the ‹ Menu button
   }
 
   let overAt = 0; // timestamp the end screen appeared — used to debounce the death-tap
@@ -733,6 +734,7 @@
     params: () => ({ bird: selectedBird.id }),
   });
   window.gamekit.nav({ reset: 'flappy_' });
+  window.gamekit.showMenuButton(false); // initial = menu/ready screen → hide the ‹ Menu button
 
   // ---- Test hook ----
   window.__test = {

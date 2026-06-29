@@ -421,6 +421,7 @@
     reset();
     state = 'build';
     overlay.classList.add('hidden');
+    window.gamekit.showMenuButton(true); // in-session → the ‹ Menu button is meaningful
     loadBest();
     updateHud();
     refreshToolbar();
@@ -1475,6 +1476,7 @@
   const spdBtn = $('speedBtn');
   if (spdBtn) spdBtn.addEventListener('click', () => { gameSpeed = gameSpeed === 1 ? 2 : 1; refreshToolbar(); });
   window.gamekit.nav({ reset: 'tower-defense_' });
+  window.gamekit.showMenuButton(false); // initial = menu screen → hide the ‹ Menu button
   const autoBtn = $('autoBtn');
   if (autoBtn) autoBtn.addEventListener('click', () => {
     autoWave = !autoWave;

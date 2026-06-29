@@ -164,7 +164,7 @@
 
   function startGame(){ if(!HAS_V){ showModePicker(); return; } score=0; lives=3; level=1; weaponLevel=1; asteroids=[]; bullets=[]; particles=[];
     spawnShip(); spawnWave(4); state='playing'; overlay.classList.add('hidden'); updateHud();
-    srElapsed=0; srPrev=now(); srDone=false; SND.startMusic(); }
+    srElapsed=0; srPrev=now(); srDone=false; SND.startMusic(); if(KIT) KIT.showMenuButton(true); }
   function pauseGame(){ state='paused'; if(!ENHANCED) SND.stopMusic(); overlay.innerHTML='<h1>PAUSED</h1><p class="hint">score '+score+(ENHANCED?(' &middot; wave '+level):'')+'</p><div class="row"><button class="btn" id="resumeBtn">RESUME (ESC)</button>'+MENU_BTN+'</div>'; overlay.classList.remove('hidden'); wireOverlay(); }
   function resumeGame(){ state='playing'; srPrev=now(); if(!ENHANCED) SND.startMusic(); overlay.classList.add('hidden'); }
   function spawnShip(){ ship={x:W/2,y:H/2,vx:0,vy:0,angle:-Math.PI/2,r:14}; invuln=120; }
@@ -175,7 +175,7 @@
   // highlights; nothing starts until Play. Play reloads with ?v=<mode>[&speedrun=1].
   const PICK_MODES = [['classic', 'CLASSIC'], ['enh', 'CLASSIC+']];
   function showModePicker(){
-    state='menu'; SND.stopMusic();
+    state='menu'; SND.stopMusic(); if(KIT) KIT.showMenuButton(false);
     let selV = 'classic', selSR = new URLSearchParams(location.search).has('speedrun'); // default mode preselected (Play ready)
     function render(){
       overlay.innerHTML = '<h1>ASTEROIDS</h1>'
@@ -307,7 +307,7 @@
   if(isTouch){ document.body.classList.add('touch'); buildTouch(); }
 
   // game-kit nav: top-left ‹ Menu (quits to the launcher) + top-right sound menu (SFX + Music + Reset)
-  if (KIT) { KIT.nav({ music: true, reset: 'asteroids_', home: '../../', onMenu: () => { quitToMenu(); } }); KIT.pwa(); }
+  if (KIT) { KIT.nav({ music: true, reset: 'asteroids_', home: '../../', onMenu: () => { quitToMenu(); } }); KIT.pwa(); KIT.showMenuButton(false); }
 
   // ---- test hook: state getters + a layout snapshot for the headless harness (inert in normal play) ----
   window.__test = {
