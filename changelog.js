@@ -15,6 +15,7 @@ window.CHANGELOG = [
     'New: direct links to the menu pages — e.g. komyo.online/?m=faq or ?m=changelog open straight to that panel.',
     'New: a quick “?” tip in the search box — search by game name or genre (arcade, puzzle, kids…).',
     'Improved: score posts in our Discord now show a tidy “▶ Play this game on Komyo” link instead of a long raw address.',
+    'Fix: completed challenges now reliably show up in your History — even if you finished one inside a game and didn’t reopen the home page that day.',
   ] },
   { date: '2026-06-28', title: 'Challenges, score cards & more', items: [
     'New: game tiles now show up to three genre tags, each in its own consistent color, and you can filter by any of them.',

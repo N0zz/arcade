@@ -266,7 +266,7 @@
     border-radius:999px; color:#06121a; background:#9fe8ff; }
   .filter-pop { display:none; position:absolute; top:calc(100% + 8px); right:0; z-index:45; width:230px; text-align:left;
     background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:12px 13px; box-shadow:0 16px 44px rgba(0,0,0,0.55);
-    resize:both; overflow:auto; min-width:220px; max-width:min(92vw,440px); min-height:200px; max-height:82vh; }
+    resize:vertical; overflow:auto; min-height:200px; max-height:82vh; }
   .filter-pop.show { display:block; }
   .filter-pop .fh { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--faint); margin:2px 0 7px; }
   .filter-pop .fh:not(:first-child) { margin-top:12px; }
@@ -291,7 +291,8 @@
     font-family:var(--sans); font-weight:400; font-size:12px; line-height:1.5; letter-spacing:0; text-align:left; color:var(--muted);
     background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 12px; box-shadow:0 12px 30px rgba(0,0,0,0.5); }
   .search-tip b { color:var(--text); }
-  .search-help:hover .search-tip, .search-help:focus-within .search-tip { display:block; }
+  /* hover OR keyboard focus shows the tip — a mouse click does NOT (so it never sticks open) */
+  .search-help:hover .search-tip, .search-help:focus-visible .search-tip { display:block; }
   /* Highlights + Genre as selectable chips (color dot + accent ring when on) */
   .chips { display:flex; flex-wrap:wrap; gap:6px; }
   .chip { appearance:none; -webkit-appearance:none; display:inline-flex; align-items:center; gap:7px; margin:0;
@@ -772,6 +773,19 @@
       return el;
     }
 
+    // deep-link panel (?m=faq…): capture it NOW, before the filter syncURL rewrites the URL on first
+    // render; `openPanel` is the panel currently shown (kept in the URL so it's shareable).
+    const DEEPLINK_M = (function () { try { return new URLSearchParams(location.search).get('m'); } catch (e) { return null; } })();
+    let openPanel = null;
+    function setPanelUrl(key) {
+      openPanel = key || null;
+      try {
+        const u = new URL(location.href);
+        if (openPanel) u.searchParams.set('m', openPanel); else u.searchParams.delete('m');
+        history.replaceState(null, '', u.pathname + (u.search || '') + (u.hash || ''));
+      } catch (e) {}
+    }
+
     // live filter state, driven by the search box + the Filter ▾ dropdown
     const FILTER = { q: '', genres: new Set(), badges: new Set(), type: 'all', showSoon: true };
     function passes(g) {
@@ -807,6 +821,7 @@
         if (FILTER.badges.size) p.set('badge', [...FILTER.badges].join(','));
         if (FILTER.type !== 'all') p.set('type', FILTER.type);
         if (!FILTER.showSoon) p.set('soon', '0');
+        if (openPanel) p.set('m', openPanel); // keep an open panel in the URL across filter changes
         const qs = p.toString();
         const base = (typeof location !== 'undefined' && location.pathname) ? location.pathname : '';
         history.replaceState(null, '', qs ? base + '?' + qs : base || location.pathname);
@@ -1254,11 +1269,21 @@
       }
       const distinctGenres = slugs => { const s = new Set(); slugs.forEach(x => { if (genreOf[x]) s.add(genreOf[x]); }); return s.size; };
       const crossVal = (m, a) => m === 'distinctGames' ? a.slugs.length : m === 'totalGames' ? a.count : m === 'totalScore' ? a.totalScore : m === 'distinctGenres' ? distinctGenres(a.slugs) : 0;
-      function evalGoal(goal) {
+      const dayLog = dStr => { try { return JSON.parse(lsGet('gamekit_played_' + dStr) || 'null') || { slugs: [], totalScore: 0, count: 0 }; } catch (e) { return { slugs: [], totalScore: 0, count: 0 }; } };
+      const bestFor = (slug, dStr) => { try { return (JSON.parse(lsGet('gamekit_daybest_' + dStr) || 'null') || {})[slug] || null; } catch (e) { return null; } };
+      // evaluate a goal for a given UTC day (defaults to today). Single-game goals read that day's
+      // BEST result; cross goals read that day's activity log (weekly cross → the current week).
+      function evalGoal(goal, dStr) {
         if (!goal) return null;
+        dStr = dStr || K.utcDateStr();
         let val = 0;
-        if (goal.scope === 'cross') { val = crossVal(goal.metric, goal.range === 'week' ? weekAgg() : K.playedToday()); }
-        else { const r = K.lastResult(goal.slug); if (r) val = goal.metric === 'score' ? r.score : goal.metric === 'time' ? r.time : ((r.stats && r.stats[goal.metric]) || 0); }
+        if (goal.scope === 'cross') {
+          if (goal.range === 'week') val = crossVal(goal.metric, weekAgg());
+          else { const lg = dayLog(dStr); val = crossVal(goal.metric, { slugs: lg.slugs || [], totalScore: lg.totalScore || 0, count: lg.count || 0 }); }
+        } else {
+          const r = bestFor(goal.slug, dStr);
+          if (r) val = goal.metric === 'score' ? (r.score || 0) : goal.metric === 'time' ? (r.time || 0) : ((r.stats && r.stats[goal.metric]) || 0);
+        }
         return { val, target: goal.target, done: val >= goal.target, pct: Math.max(0, Math.min(1, val / goal.target)), title: goal.title, slug: goal.slug };
       }
       function pick(list, bucket) {
@@ -1298,7 +1323,7 @@
         if (key && !(key in done)) {
           done[key] = pts;
           try { localStorage.setItem('gamekit_done', JSON.stringify(done)); } catch (e) {}
-          if (snap) pushHistory({ day: K.utcDayNumber(), date: K.utcDateStr(), id: snap.id, title: snap.title, kind: snap.kind, pts });
+          if (snap) pushHistory({ day: snap.day != null ? snap.day : K.utcDayNumber(), date: snap.date || K.utcDateStr(), id: snap.id, title: snap.title, kind: snap.kind, pts });
         }
         let total = 0; for (const k in done) total += (done[k] | 0); return total;
       }
@@ -1313,6 +1338,7 @@
         let h = [];
         try { h = JSON.parse(lsGet('gamekit_history') || 'null') || []; } catch (e) {}
         if (!Array.isArray(h)) h = [];
+        h.sort((a, b) => ((b && b.day) || 0) - ((a && a.day) || 0)); // newest first (back-fill can insert out of order)
         if (!h.length) { histEl.innerHTML = ''; if (moreEl) moreEl.hidden = true; if (emptyEl) emptyEl.hidden = false; return; }
         if (emptyEl) emptyEl.hidden = true;
         histEl.innerHTML = h.slice(0, histShown).map(r =>
@@ -1321,14 +1347,25 @@
         if (moreEl) moreEl.hidden = h.length <= histShown;
       }
       if (moreEl) moreEl.addEventListener('click', () => { histShown += PAGE; renderHistory(); });
+      // award any completion in the retained window (≈8 days), so a challenge counts even if the
+      // catalogue wasn't open the day it was finished (the old code only awarded today's, lazily).
+      function backfillAndAward() {
+        const today = K.utcDayNumber();
+        const len = (C.daily && C.daily.length) || 0;
+        for (let d = today; len && d > today - 8; d--) {
+          const dStr = K.utcDateStr(d * 86400000);
+          const id = C.daily[((d % len) + len) % len], g = id && C.goals[id];
+          if (g) { const e = evalGoal(g, dStr); if (e && e.done) award(dStr + '#' + id, g.points || DAILY_PTS, { id, title: g.title, kind: 'daily', day: d, date: dStr }); }
+        }
+        const weekly = pick(C.weekly, 'week'); // weekly persists all week → current week is enough
+        if (weekly && weekly.goal) { const we = evalGoal(weekly.goal); if (we && we.done) award(weekly.period + '#' + weekly.id, weekly.goal.points || WEEKLY_PTS, { id: weekly.id, title: weekly.goal.title, kind: 'weekly', day: today, date: K.utcDateStr() }); }
+      }
       function render() {
         if (!C || !todayEl) return;
         const daily = pick(C.daily, 'day'), weekly = pick(C.weekly, 'week');
-        const de = daily && evalGoal(daily.goal), we = weekly && evalGoal(weekly.goal);
         todayEl.innerHTML = card(daily && daily.goal, DAILY_PTS);
         weekEl.innerHTML = card(weekly && weekly.goal, WEEKLY_PTS);
-        if (de && de.done) award(daily.period + '#' + daily.id, (daily.goal && daily.goal.points) || DAILY_PTS, { id: daily.id, title: daily.goal && daily.goal.title, kind: 'daily' });
-        if (we && we.done) award(weekly.period + '#' + weekly.id, (weekly.goal && weekly.goal.points) || WEEKLY_PTS, { id: weekly.id, title: weekly.goal && weekly.goal.title, kind: 'weekly' });
+        backfillAndAward();
         const n = award();
         if (streakEl) streakEl.textContent = '🔥 ' + n + (n === 1 ? ' point' : ' points');
         renderHistory();
@@ -1422,13 +1459,24 @@
         .catch(() => {}));
     }
 
-    // ---- Deep links: /?m=faq|changelog|about|privacy|embed|data opens that panel on load ----
+    // ---- Deep links: /?m=faq|changelog|about|privacy|embed|data — open that panel + keep it in the URL ----
     (function () {
+      const MAP = { faq: 'faqBtn', changelog: 'changelogBtn', about: 'aboutBtn', privacy: 'legalBtn', embed: 'embedBtn', data: 'dataBtn' };
+      const DLG = { faq: 'faqModal', changelog: 'clModal', about: 'aboutModal', privacy: 'legalModal', data: 'dataModal' };
+      const ALIAS = { legal: 'privacy', license: 'privacy' };
+      // reflect manual opens/closes in the URL (so it's shareable): trigger click → ?m=key; dialog close → drop it
+      Object.keys(MAP).forEach(key => {
+        const btn = document.getElementById(MAP[key]); if (!btn) return;
+        if (DLG[key]) { // <dialog>-based panels can be reflected + cleared on close (embed is a kit overlay, skip)
+          btn.addEventListener('click', () => setPanelUrl(key));
+          const dlg = document.getElementById(DLG[key]);
+          if (dlg) dlg.addEventListener('close', () => { if (openPanel === key) setPanelUrl(null); });
+        }
+      });
+      // open the panel named in the (early-captured) ?m= on load
       try {
-        const m = new URLSearchParams(location.search).get('m'); if (!m) return;
-        const MAP = { faq: 'faqBtn', changelog: 'changelogBtn', about: 'aboutBtn',
-          privacy: 'legalBtn', legal: 'legalBtn', license: 'legalBtn', embed: 'embedBtn', data: 'dataBtn' };
-        const id = MAP[m.toLowerCase()], btn = id && document.getElementById(id);
+        let m = DEEPLINK_M; if (!m) return; m = m.toLowerCase(); m = ALIAS[m] || m;
+        const btn = MAP[m] && document.getElementById(MAP[m]);
         if (btn) btn.click();
       } catch (e) {}
     })();

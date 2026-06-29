@@ -161,10 +161,11 @@
       if (typeof fetch !== 'function' || typeof FormData === 'undefined') return;
       var fd = new FormData();
       // fixed username (no impersonation via override) + no pings (player name/text can't @everyone)
-      var payload = { username: 'Komyo Games', content: String(text).slice(0, 1800), allowed_mentions: { parse: [] } };
-      // the play link goes in an embed so it renders as a tidy "▶ Play this game on Komyo" link
-      // (masked links only render inside embeds, not in plain content), not a raw ?query URL.
-      if (url) payload.embeds = [{ description: '[▶ Play this game on Komyo](' + String(url) + ')', color: 0x9fe8ff }];
+      // play link as a masked markdown link in the message text (webhook content renders these) →
+      // a tidy "▶ Play this game on Komyo" instead of a raw ?query URL, and no embed box.
+      var content = String(text);
+      if (url) content += '\n[▶ Play this game on Komyo](' + String(url) + ')';
+      var payload = { username: 'Komyo Games', content: content.slice(0, 1800), allowed_mentions: { parse: [] } };
       fd.append('payload_json', JSON.stringify(payload));
       fetch(DISCORD_WEBHOOK, { method: 'POST', body: fd })['catch'](function () {}); // multipart = no CORS preflight; fire-and-forget
     } catch (e) {}
@@ -183,9 +184,10 @@
       var today = utcDayNumber(), kill = [];
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (k && k.indexOf('gamekit_played_') === 0) {
-          var n = utcDayNumber(Date.parse(k.slice('gamekit_played_'.length) + 'T00:00:00Z'));
-          if (today - n > 8) kill.push(k); // keep ~a week of activity
+        var pfx = (k && k.indexOf('gamekit_played_') === 0) ? 'gamekit_played_' : (k && k.indexOf('gamekit_daybest_') === 0) ? 'gamekit_daybest_' : null;
+        if (pfx) {
+          var n = utcDayNumber(Date.parse(k.slice(pfx.length) + 'T00:00:00Z'));
+          if (today - n > 8) kill.push(k); // keep ~a week of activity + per-day bests
         }
       }
       for (var j = 0; j < kill.length; j++) { try { localStorage.removeItem(kill[j]); } catch (e) {} }
@@ -204,6 +206,18 @@
       if (log.slugs.indexOf(slug) < 0) log.slugs.push(slug);
       log.totalScore += rec.score; log.count += 1;
       lsSet(key, JSON.stringify(log));
+      // per-day BEST per slug (max of each numeric metric) — lets the catalogue detect a daily-challenge
+      // completion for the day it happened, even if you never reopened the catalogue that day or later
+      // replayed with a lower score. (No daily goal uses 'time' as a ≥-target, so max is fine here.)
+      var bkey = 'gamekit_daybest_' + utcDateStr();
+      var best = JSON.parse(lsGet(bkey) || 'null') || {};
+      var cur = best[slug] || { score: 0, time: 0, stats: {} };
+      if (rec.score > (cur.score || 0)) cur.score = rec.score;
+      if (rec.time > (cur.time || 0)) cur.time = rec.time;
+      cur.stats = cur.stats || {};
+      for (var sk in rec.stats) { if (Object.prototype.hasOwnProperty.call(rec.stats, sk)) { var sv = +rec.stats[sk] || 0; if (sv > (cur.stats[sk] || 0)) cur.stats[sk] = sv; } }
+      best[slug] = cur;
+      lsSet(bkey, JSON.stringify(best));
       pruneOldLogs();
     } catch (e) {}
     return rec;

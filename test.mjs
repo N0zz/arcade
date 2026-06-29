@@ -83,6 +83,26 @@ function testCatalogue() {
     tiles()[0].children[0].fire('click');
     ok(tiles()[0].href === 'games/' + GAMES[0].slug + '/', 'unfavoriting restores order');
   }
+
+  // challenge history back-fill: a completion is recorded even when detected on a later catalogue
+  // load (the old code only awarded "today's" goal lazily, so in-game completions were lost).
+  {
+    const K = g.win.gamekit, C = g.win.CHALLENGES;
+    if (K && C && C.daily && C.daily.length) {
+      const day = K.utcDayNumber(), dStr = K.utcDateStr(), len = C.daily.length;
+      const id = C.daily[((day % len) + len) % len], goal = C.goals[id];
+      if (goal && goal.scope === 'cross') {
+        const slugs = GAMES.filter(x => !x.soon).slice(0, 5).map(x => x.slug);
+        g.store['gamekit_played_' + dStr] = JSON.stringify({ slugs, totalScore: 1e9, count: 99 });
+      } else if (goal) {
+        const best = {}; best[goal.slug] = { score: 1e9, time: 1e9, stats: { wave: 9999, accuracy: 100 } };
+        g.store['gamekit_daybest_' + dStr] = JSON.stringify(best);
+      }
+      g.win.__renderChallenges();
+      let hist = []; try { hist = JSON.parse(g.store['gamekit_history'] || '[]'); } catch (e) {}
+      ok(hist.some(r => r && r.id === id), 'completing the daily challenge records it in history (back-fill, goal=' + id + ')');
+    }
+  }
 }
 
 // ---------------- Tower Defense ----------------
