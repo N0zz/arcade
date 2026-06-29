@@ -169,9 +169,9 @@
   <div class="map-picker" id="mapPicker"></div>
   <p style="font-size:13px;opacity:0.7;margin-top:8px;">Difficulty:</p>
   <div class="diff-picker" id="diffPicker">
-    <button class="diff-btn" data-diff="easy"><span class="nm">Easy</span><span class="desc">Squishier foes · richer purse</span></button>
-    <button class="diff-btn" data-diff="medium"><span class="nm">Medium</span><span class="desc">Balanced threat &amp; income</span></button>
-    <button class="diff-btn" data-diff="hard"><span class="nm">Hard</span><span class="desc">Tanky foes · starved economy</span></button>
+    <button class="diff-btn" data-diff="easy"><span class="nm">Easy</span><span class="desc">Approachable, still a fair fight</span></button>
+    <button class="diff-btn" data-diff="medium"><span class="nm">Medium</span><span class="desc">Tanky foes · tight gold</span></button>
+    <button class="diff-btn" data-diff="hard"><span class="nm">Hard</span><span class="desc">Brutal · for veterans</span></button>
   </div>
   <button id="startGameBtn" style="margin-top:6px;">Begin</button>
 </div>
@@ -199,9 +199,9 @@
   // hpBase/hpGrow drive GEOMETRIC per-enemy HP scaling (waveHpK); the economy fields starve
   // income (lower start gold, lower interest + cap, smaller bounties via rewardMul).
   const DIFFICULTY = {
-    easy:   { label:'Easy',   hpBase:1.8, hpGrow:1.12, startGold:100, interestRate:0.020, interestCap:20, rewardMul:0.85 },
-    medium: { label:'Medium', hpBase:2.0, hpGrow:1.17, startGold:90,  interestRate:0.015, interestCap:12, rewardMul:0.75 },
-    hard:   { label:'Hard',   hpBase:2.3, hpGrow:1.22, startGold:80,  interestRate:0.010, interestCap:8,  rewardMul:0.65 },
+    easy:   { label:'Easy',   hpBase:2.0, hpGrow:1.17, startGold:90, interestRate:0.015, interestCap:12, rewardMul:0.75 },
+    medium: { label:'Medium', hpBase:2.3, hpGrow:1.22, startGold:80, interestRate:0.010, interestCap:8,  rewardMul:0.65 },
+    hard:   { label:'Hard',   hpBase:2.6, hpGrow:1.26, startGold:70, interestRate:0.008, interestCap:6,  rewardMul:0.55 },
   };
   const DIFF_KEY = 'tower-defense_diff';
   let diffLevel = 'medium';
@@ -376,7 +376,7 @@
     grunt:   { hp: 36,  speed: 1.05, reward: 3,   color: '#9a6a44', rr: 0.30, leak: 1 },
     runner:  { hp: 22,  speed: 2.0,  reward: 3,   color: '#d8b24a', rr: 0.25, leak: 1 },
     brute:   { hp: 140, speed: 0.62, reward: 8,   color: '#7a7a88', rr: 0.40, leak: 2 },
-    boss:    { hp: 880, speed: 0.5,  reward: 90,  color: '#b04141', rr: 0.55, leak: 6 },
+    boss:    { hp: 570, speed: 0.5,  reward: 90,  color: '#b04141', rr: 0.55, leak: 10 },
     armored: { hp: 78,  speed: 0.85, reward: 10,  color: '#6a8a6a', rr: 0.35, leak: 1, armored: true },
     swarm:   { hp: 11,  speed: 1.8,  reward: 1,   color: '#c09040', rr: 0.20, leak: 1 },
   };
@@ -411,7 +411,7 @@
   const DIFF_EARLY = DIFF_CP[0], DIFF_LATE = DIFF_CP[2];
 
   function reset() {
-    gold = DIFF().startGold; hp = 20; wave = 0; score = 0;
+    gold = DIFF().startGold; hp = 30; wave = 0; score = 0;
     towers = []; enemies = []; shots = []; floats = []; spawnQ = [];
     particles = []; drops = []; dropCooldown = 360; hasteTicks = 0;
     selBuild = null; selTower = null;
@@ -851,7 +851,8 @@
       const c = Math.floor(Math.random() * COLS), r = Math.floor(Math.random() * ROWS);
       if (!road[c][r] && !towerAt(c, r)) cell = { c, r };
     }
-    if (!cell) cell = { c: 0, r: 0 };
+    // map jammed with towers → no free grass; scatter to a random cell instead of the (0,0) corner
+    if (!cell) cell = { c: Math.floor(Math.random() * COLS), r: Math.floor(Math.random() * ROWS) };
     const k = kind || (Math.random() < 0.6 ? 'gold' : 'haste');
     const isEvent = !!EVENTS[k];
     const baseGold = 15 + Math.floor(Math.random() * 20) + wave * 2;
@@ -871,9 +872,14 @@
       if (d.event === 'rally' || d.event === 'relic') hasteTicks = Math.max(hasteTicks, 360);
       if (d.event === 'freeze') { for (const e of enemies) e.slow = Math.max(e.slow, 150); float(d.x, d.y - 14, '❄ FROZEN!', '#9ee0ff'); }
       if (d.event === 'meteor') {
-        // Rare, devastating: blast spans the whole board (well over 2/3) and KILLS everything caught.
+        // Rare, devastating: blast spans the whole board (well over 2/3). It KILLS ordinary enemies,
+        // but a BOSS only takes a big chunk (half its max HP) — it can't trivialise the boss fight.
         const R = Math.hypot(COLS * ts, ROWS * ts);
-        for (const e of [...enemies]) { if (dist(d.x, d.y, e.x, e.y) <= R) killEnemy(e); }
+        for (const e of [...enemies]) {
+          if (dist(d.x, d.y, e.x, e.y) > R) continue;
+          if (e.type === 'boss') { e.hp -= e.maxHp * 0.5; if (e.hp <= 0) killEnemy(e); }
+          else killEnemy(e);
+        }
         spawnMeteorBlast(d.x, d.y, R);
         float(d.x, d.y - 22, '☄️ METEOR STRIKE!', '#ff7a3a');
       }
@@ -1102,7 +1108,7 @@
   function gameOver() {
     state = 'over';
     saveBest();
-    window.gamekit.recordResult('tower-defense', { mode: '', score: score, stats: { wave: wave } });
+    window.gamekit.recordResult('tower-defense', { mode: DIFF().label, score: score, stats: { wave: wave, difficulty: diffLevel } });
     SND.play('over');
     enemies = []; shots = []; spawnQ = [];
     overlay.innerHTML =
@@ -1115,8 +1121,8 @@
     const ab = $('againBtn'); if (ab) ab.addEventListener('click', startGame);
     window.gamekit.shareRow($('shareRow'), {
       slug: 'tower-defense', title: 'Keep Defender',
-      message: () => window.gamekit.shareText({ verb: 'I survived', score: wave, unit: 'waves', game: 'Keep Defender', emoji: '🏰', mode: MAPS[mapIndex].name }),
-      params: () => ({ map: mapIndex }),
+      message: () => window.gamekit.shareText({ verb: 'I survived', score: wave, unit: 'waves', game: 'Keep Defender', emoji: '🏰', mode: MAPS[mapIndex].name + ' · ' + DIFF().label }),
+      params: () => ({ map: mapIndex, diff: diffLevel }),
     });
   }
 
@@ -1649,7 +1655,8 @@
 
   resize(); loadBest(); buildMapPicker(); applyMap(mapIndex); loadDiff(); setDiff(diffLevel); updateHud(); loop();
   // deep-link ?map= → preselect that map
-  { const P = window.gamekit && window.gamekit.param; const m = P && parseInt(P('map'), 10); if (m >= 0 && m < MAPS.length) { applyMap(m); loadBest(); buildMapPicker(); } }
+  { const P = window.gamekit && window.gamekit.param; const m = P && parseInt(P('map'), 10); if (m >= 0 && m < MAPS.length) { applyMap(m); loadBest(); buildMapPicker(); }
+    const d = P && P('diff'); if (d && DIFFICULTY[d]) setDiff(d); } // a shared link can deep-link the difficulty too
 })();
   window.gamekit.pwa();
 </script>

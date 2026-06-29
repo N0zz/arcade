@@ -117,7 +117,7 @@ function testTD() {
   const T = () => g.test();
   ok(T() != null, 'TD exposes __test');
   T().start();
-  ok(T().state === 'build' && T().gold === 90 && T().hp === 20, 'start → build, 90 gold (medium default), 20 keep HP (got ' + T().state + '/' + T().gold + '/' + T().hp + ')');
+  ok(T().state === 'build' && T().gold === 80 && T().hp === 30, 'start → build, 80 gold (medium default), 30 keep HP (got ' + T().state + '/' + T().gold + '/' + T().hp + ')');
 
   const cell = freeCell(T());
   const before = T().gold;

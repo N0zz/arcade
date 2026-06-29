@@ -65,7 +65,7 @@ function run() {
   T().selectMap(0);
 
   T().start();
-  ok(T().state === 'build' && T().gold === 90 && T().hp === 20, 'start → GAME (build, 90g medium default, 20hp)');
+  ok(T().state === 'build' && T().gold === 80 && T().hp === 30, 'start → GAME (build, 80g medium default, 30hp)');
 
   section('resize / orientation reflow (the bug)');
   const cell = freeCell(T());
@@ -308,13 +308,13 @@ function run() {
   Dm().setDifficultyLevel('easy'); Dm().start();
   ok(Dm().diffLevel === 'easy', 'difficulty level set to easy');
   const easyGold = Dm().gold;
-  ok(easyGold === 100, 'easy starts with 100 gold (got ' + easyGold + ')');
+  ok(easyGold === 90, 'easy starts with 90 gold (got ' + easyGold + ')');
   Dm().setDifficultyLevel('hard'); Dm().start();
   const hardGold = Dm().gold;
-  ok(hardGold === 80, 'hard starts with 80 gold (got ' + hardGold + ')');
+  ok(hardGold === 70, 'hard starts with 70 gold (got ' + hardGold + ')');
   ok(easyGold > hardGold, 'switching difficulty changes start gold (easy ' + easyGold + ' > hard ' + hardGold + ')');
   Dm().setDifficultyLevel('medium'); Dm().start();
-  ok(Dm().gold === 90, 'medium starts with 90 gold (got ' + Dm().gold + ')');
+  ok(Dm().gold === 80, 'medium starts with 80 gold (got ' + Dm().gold + ')');
   // geometric HP scaling: harder hpBase/hpGrow → tankier foes at the same wave
   const gDh = runInline('index.html'); const Dh = () => gDh.test();
   Dh().selectMap(0); Dh().setDifficultyLevel('easy'); Dh().start(); Dh().startWave(); Dh().step(30);
