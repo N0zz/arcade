@@ -94,6 +94,13 @@
   .map-btn .bw b { color:var(--gold); }
   .map-btn .sw { display:inline-block; width:13px; height:13px; border-radius:50%; flex:none;
     border:1px solid rgba(0,0,0,0.4); }
+  .diff-picker { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; width:100%; max-width:540px; }
+  .diff-btn { font-family:inherit; cursor:pointer; text-align:left; padding:10px 14px; border-radius:10px;
+    color:var(--parch); background:linear-gradient(180deg,#6a4a2c,#4a3220); border:2px solid #2c1d10;
+    display:flex; flex-direction:column; gap:4px; }
+  .diff-btn.active { border-color:var(--gold); box-shadow:0 0 8px rgba(224,178,90,0.5); }
+  .diff-btn .nm { font-size:15px; font-weight:bold; }
+  .diff-btn .desc { font-size:11px; line-height:1.35; opacity:0.85; }
   @media (max-width: 480px) {
     .map-picker { grid-template-columns:repeat(2, 1fr); gap:8px; }
     /* top padding clears the kit's top nav (which sits above the menu overlay) so the title isn't hidden */
@@ -141,7 +148,7 @@
 <div id="tip" class="panel"></div>
 <div id="panelTower" class="panel"><h3 id="ptName">Tower</h3><div class="ptstats" id="ptStats"></div><div class="pr">
   <button id="upBtn">Upgrade</button><button id="sellBtn">Sell</button>
-</div><div id="ptKills" style="font-size:11px;opacity:0.7;margin-top:4px;"></div></div>
+</div><div class="pr" style="margin-top:6px;"><button id="targetBtn">Target: First ▸</button></div><div id="ptKills" style="font-size:11px;opacity:0.7;margin-top:4px;"></div></div>
 
 <div id="bottom">
   <div class="tbtn" data-t="archer"><div class="ic">🏹</div><div class="n">Archer</div><div class="c" data-cost>18g</div><div class="d">fast · single</div></div>
@@ -160,6 +167,12 @@
   <p class="hint">Pick a tower below, tap a grass tile to build &middot; tap a tower to upgrade/sell &middot; Start Wave when ready.</p>
   <p style="font-size:13px;opacity:0.7;margin-top:4px;">Choose a map:</p>
   <div class="map-picker" id="mapPicker"></div>
+  <p style="font-size:13px;opacity:0.7;margin-top:8px;">Difficulty:</p>
+  <div class="diff-picker" id="diffPicker">
+    <button class="diff-btn" data-diff="easy"><span class="nm">Easy</span><span class="desc">Squishier foes · richer purse</span></button>
+    <button class="diff-btn" data-diff="medium"><span class="nm">Medium</span><span class="desc">Balanced threat &amp; income</span></button>
+    <button class="diff-btn" data-diff="hard"><span class="nm">Hard</span><span class="desc">Tanky foes · starved economy</span></button>
+  </div>
   <button id="startGameBtn" style="margin-top:6px;">Begin</button>
 </div>
 
@@ -181,6 +194,29 @@
     over: ({ tone }) => [440, 330, 220, 165].forEach((f, i) => setTimeout(() => tone(f, 0.3, 'sawtooth', 0.14), i * 180)),
     sell: ({ tone }) => tone(660, 0.08, 'sine', 0.1),
   });
+
+  // ---- Difficulty levels (FIRST-PASS playtesting knobs — easy to find & dial) ----
+  // hpBase/hpGrow drive GEOMETRIC per-enemy HP scaling (waveHpK); the economy fields starve
+  // income (lower start gold, lower interest + cap, smaller bounties via rewardMul).
+  const DIFFICULTY = {
+    easy:   { label:'Easy',   hpBase:1.8, hpGrow:1.12, startGold:100, interestRate:0.020, interestCap:20, rewardMul:0.85 },
+    medium: { label:'Medium', hpBase:2.0, hpGrow:1.17, startGold:90,  interestRate:0.015, interestCap:12, rewardMul:0.75 },
+    hard:   { label:'Hard',   hpBase:2.3, hpGrow:1.22, startGold:80,  interestRate:0.010, interestCap:8,  rewardMul:0.65 },
+  };
+  const DIFF_KEY = 'tower-defense_diff';
+  let diffLevel = 'medium';
+  function DIFF() { return DIFFICULTY[diffLevel] || DIFFICULTY.medium; }
+  function loadDiff() {
+    try { const v = localStorage.getItem(DIFF_KEY); if (v && DIFFICULTY[v]) diffLevel = v; } catch (e) {}
+  }
+  function setDiff(key) {
+    if (!DIFFICULTY[key]) return;
+    diffLevel = key;
+    try { localStorage.setItem(DIFF_KEY, key); } catch (e) {}
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.toggle('active', b.dataset.diff === key));
+  }
+  // Geometric per-enemy HP multiplier for the current wave (excludes map-diff + adaptive threat).
+  function waveHpK() { return DIFF().hpBase * Math.pow(DIFF().hpGrow, wave - 1); }
 
   // ---- Maps (distinct layout + theme each) ----
   // theme: g1/g2 = terrain checker, road = path fill, edge = road border,
@@ -375,7 +411,7 @@
   const DIFF_EARLY = DIFF_CP[0], DIFF_LATE = DIFF_CP[2];
 
   function reset() {
-    gold = 110; hp = 20; wave = 0; score = 0;
+    gold = DIFF().startGold; hp = 20; wave = 0; score = 0;
     towers = []; enemies = []; shots = []; floats = []; spawnQ = [];
     particles = []; drops = []; dropCooldown = 360; hasteTicks = 0;
     selBuild = null; selTower = null;
@@ -551,13 +587,13 @@
     // Baseline roughly doubled (1.7 base + 0.5/wave) to offset the new buffs/drops, then
     // the live `difficulty` multiplier ramps it further when the path stays clear (TASK 4).
     const dm = MAPS[mapIndex].diff || 1;
-    const k = (1.7 + (wave - 1) * 0.5) * dm * difficulty;
+    const k = waveHpK() * dm * difficulty;
     const hpv = Math.max(1, Math.round(b.hp * k));
     // surface affects movement; difficulty also nudges speed up (capped so it stays playable)
     const spd = b.speed * surfaceMul() * (1 + (difficulty - 1) * 0.25);
     const e = {
       type, maxHp: hpv, hp: hpv,
-      speed: spd, reward: b.reward, color: b.color, rr: b.rr, leak: b.leak,
+      speed: spd, reward: Math.max(1, Math.round(b.reward * DIFF().rewardMul)), color: b.color, rr: b.rr, leak: b.leak,
       armored: b.armored || false,
       seg: 0, slow: 0,
       x: cx(WP[0][0]), y: cy(WP[0][1]),
@@ -585,6 +621,7 @@
       range: cfg.range, dmg: cfg.dmg, fireCd: cfg.cd,
       kind: cfg.kind, splash: cfg.splash, slow: cfg.slow, spent: cfg.cost,
       aura: cfg.aura ? { ...cfg.aura } : null,
+      targetMode: 'first',
     });
     recomputeBuffs(); // always: applies the map tower-mod to eDmg even without a Bard
     SND.play('place');
@@ -627,7 +664,15 @@
     $('upBtn').textContent = t.lvl >= 3 ? 'Maxed' : ('Upgrade ' + upgradeCost(t) + 'g');
     $('sellBtn').textContent = 'Sell +' + Math.round(t.spent * 0.7) + 'g';
     const pk = $('ptKills'); if (pk) pk.textContent = 'Kills: ' + t.kills;
+    const tb = $('targetBtn');
+    if (tb) { tb.style.display = t.kind === 'buff' ? 'none' : ''; tb.textContent = 'Target: ' + TARGET_LABEL[t.targetMode || 'first'] + ' ▸'; }
     refreshUpBtn();
+  }
+  function cycleTarget(t) {
+    if (!t || t.kind === 'buff') return;
+    const i = TARGET_MODES.indexOf(t.targetMode || 'first');
+    t.targetMode = TARGET_MODES[(i + 1) % TARGET_MODES.length];
+    const tb = $('targetBtn'); if (tb) tb.textContent = 'Target: ' + TARGET_LABEL[t.targetMode] + ' ▸';
   }
   // Grey out (disable) the upgrade button when it's maxed or unaffordable; it "pops in" once you
   // can afford it (refreshToolbar runs on every gold change, e.g. each kill).
@@ -722,6 +767,29 @@
     return Math.max(1, Math.round(dmg * 0.25));
   }
 
+  // ---- Targeting priority ----
+  // Pick the single primary/aim target in range for a tower per its targetMode.
+  // first = furthest along path (default), last = least along, strongest/weakest = hp,
+  // closest = min distance to the tower. (AoE towers still hit everything; this is only the aim point.)
+  const TARGET_MODES = ['first', 'last', 'strongest', 'weakest', 'closest'];
+  const TARGET_LABEL = { first: 'First', last: 'Last', strongest: 'Strongest', weakest: 'Weakest', closest: 'Closest' };
+  function acquireTarget(t, R) {
+    const mode = t.targetMode || 'first';
+    let tgt = null, best = null;
+    for (const e of enemies) {
+      const d = dist(t.x, t.y, e.x, e.y);
+      if (d > R) continue;
+      let key;
+      if (mode === 'last') key = -e.seg;
+      else if (mode === 'strongest') key = e.hp;
+      else if (mode === 'weakest') key = -e.hp;
+      else if (mode === 'closest') key = -d;
+      else key = e.seg; // first
+      if (best === null || key > best) { best = key; tgt = e; }
+    }
+    return tgt;
+  }
+
   function spawnParticles(x, y, col) {
     const count = 5 + Math.floor(Math.random() * 3);
     for (let i = 0; i < count; i++) {
@@ -768,9 +836,9 @@
   function spawnBogBeast() {
     const b = ENEMY_DEFS.brute;
     const dm = MAPS[mapIndex].diff || 1;
-    const k = (1.7 + (wave - 1) * 0.5) * dm * difficulty * 0.8;
+    const k = waveHpK() * dm * difficulty * 0.8;
     const hpv = Math.max(1, Math.round(b.hp * k));
-    enemies.push({ type: 'brute', maxHp: hpv, hp: hpv, speed: b.speed * surfaceMul(), reward: b.reward + 4,
+    enemies.push({ type: 'brute', maxHp: hpv, hp: hpv, speed: b.speed * surfaceMul(), reward: Math.max(1, Math.round((b.reward + 4) * DIFF().rewardMul)),
       color: '#6f9a4f', rr: b.rr, leak: b.leak, armored: false, seg: 0, slow: 0,
       x: cx(WP[0][0]), y: cy(WP[0][1]), gx: WP[0][0], gy: WP[0][1] });
   }
@@ -908,8 +976,7 @@
         continue;
       }
 
-      let tgt = null, best = -1;
-      for (const e of enemies) { if (dist(t.x, t.y, e.x, e.y) <= R && e.seg > best) { best = e.seg; tgt = e; } }
+      const tgt = acquireTarget(t, R);
       if (tgt) {
         shots.push({ x: t.x, y: t.y, gx: t.c, gy: t.r, tx: tgt.x, ty: tgt.y, tgt, dmg: dmg0, kind: t.kind, splash: t.splash, col: TOWERS[t.type].color, t: 0, src: t });
         t.cd = fcd;
@@ -1002,7 +1069,7 @@
       autoDelay = 150; // brief breather before auto-start launches the next wave
       adjustThreat(); // between-rounds rubber-band (TASK 4)
       const base = 6 + Math.round(wave * 1.5);
-      const interest = Math.min(25, Math.max(1, Math.round(gold * 0.025)));
+      const interest = Math.min(DIFF().interestCap, Math.max(1, Math.round(gold * DIFF().interestRate)));
       let bonus = 0;
       if (victory) bonus = Math.round(base * 0.5);
       gold += base + bonus + interest;
@@ -1472,7 +1539,9 @@
   $('startBtn').addEventListener('click', startWave);
   $('upBtn').addEventListener('click', () => { if (selTower) upgradeTower(selTower); });
   $('sellBtn').addEventListener('click', () => { if (selTower) sellTower(selTower); });
+  { const tb = $('targetBtn'); if (tb) tb.addEventListener('click', () => { if (selTower) cycleTarget(selTower); }); }
   $('startGameBtn').addEventListener('click', startGame);
+  document.querySelectorAll('.diff-btn').forEach(b => b.addEventListener('click', () => setDiff(b.dataset.diff)));
   const spdBtn = $('speedBtn');
   if (spdBtn) spdBtn.addEventListener('click', () => { gameSpeed = gameSpeed === 1 ? 2 : 1; refreshToolbar(); });
   window.gamekit.nav({ reset: 'tower-defense_' });
@@ -1550,6 +1619,15 @@
         grid: { left: ox, top: oy, right: ox + COLS * ts, bottom: oy + ROWS * ts },
       };
     },
+    // selectable difficulty level (easy/medium/hard)
+    get diffLevel() { return diffLevel; },
+    setDifficultyLevel(key) { setDiff(key); },
+    get diffConfig() { return DIFF(); },
+    waveHpK() { return waveHpK(); },
+    // per-tower targeting priority
+    setTargetMode(i, mode) { const t = towers[i]; if (t && TARGET_MODES.includes(mode)) { t.targetMode = mode; return true; } return false; },
+    cycleTargetAt(c, r) { const t = towerAt(c, r); if (t) { selectPanel(t); cycleTarget(t); return t.targetMode; } return null; },
+    targetMode(i) { const t = towers[i]; return t ? (t.targetMode || 'first') : null; },
     // dynamic difficulty (TASK 4)
     get difficulty() { return difficulty; },
     setDifficulty(d) { difficulty = d; updateHud(); },
@@ -1569,7 +1647,7 @@
     towerInfo(i) { const t = towers[i]; return t ? placedTowerStatsHtml(t) : null; },
   };
 
-  resize(); loadBest(); buildMapPicker(); applyMap(mapIndex); updateHud(); loop();
+  resize(); loadBest(); buildMapPicker(); applyMap(mapIndex); loadDiff(); setDiff(diffLevel); updateHud(); loop();
   // deep-link ?map= → preselect that map
   { const P = window.gamekit && window.gamekit.param; const m = P && parseInt(P('map'), 10); if (m >= 0 && m < MAPS.length) { applyMap(m); loadBest(); buildMapPicker(); } }
 })();

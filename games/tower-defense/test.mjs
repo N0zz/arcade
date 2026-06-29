@@ -65,7 +65,7 @@ function run() {
   T().selectMap(0);
 
   T().start();
-  ok(T().state === 'build' && T().gold === 110 && T().hp === 20, 'start → GAME (build, 110g, 20hp)');
+  ok(T().state === 'build' && T().gold === 90 && T().hp === 20, 'start → GAME (build, 90g medium default, 20hp)');
 
   section('resize / orientation reflow (the bug)');
   const cell = freeCell(T());
@@ -301,6 +301,43 @@ function run() {
   let gu = 0; while (Un().hp > 0 && gu++ < 60000) { if (Un().state === 'build') Un().startWave(); Un().step(1); }
   ok(Un().state === 'over', 'undefended run still ends (keep falls)');
   ok(Un().difficulty <= 1.0 + 1e-9, 'threat never rose during a losing run (' + Un().difficulty.toFixed(2) + ')');
+
+  section('difficulty levels (start gold + HP scaling)');
+  const gD = runInline('index.html'); const Dm = () => gD.test();
+  Dm().selectMap(0);
+  Dm().setDifficultyLevel('easy'); Dm().start();
+  ok(Dm().diffLevel === 'easy', 'difficulty level set to easy');
+  const easyGold = Dm().gold;
+  ok(easyGold === 100, 'easy starts with 100 gold (got ' + easyGold + ')');
+  Dm().setDifficultyLevel('hard'); Dm().start();
+  const hardGold = Dm().gold;
+  ok(hardGold === 80, 'hard starts with 80 gold (got ' + hardGold + ')');
+  ok(easyGold > hardGold, 'switching difficulty changes start gold (easy ' + easyGold + ' > hard ' + hardGold + ')');
+  Dm().setDifficultyLevel('medium'); Dm().start();
+  ok(Dm().gold === 90, 'medium starts with 90 gold (got ' + Dm().gold + ')');
+  // geometric HP scaling: harder hpBase/hpGrow → tankier foes at the same wave
+  const gDh = runInline('index.html'); const Dh = () => gDh.test();
+  Dh().selectMap(0); Dh().setDifficultyLevel('easy'); Dh().start(); Dh().startWave(); Dh().step(30);
+  const easyMaxHp = Dh().diffConfig.hpBase; // base factor (wave 1 → hpBase only)
+  const gDh2 = runInline('index.html'); const Dh2 = () => gDh2.test();
+  Dh2().selectMap(0); Dh2().setDifficultyLevel('hard'); Dh2().start(); Dh2().startWave(); Dh2().step(30);
+  ok(Dh2().diffConfig.hpBase > easyMaxHp, 'hard hpBase exceeds easy hpBase (' + Dh2().diffConfig.hpBase + ' > ' + easyMaxHp + ')');
+  ok(Math.abs(Dh().waveHpK() - Dh().diffConfig.hpBase) < 1e-9, 'waveHpK at wave 1 equals hpBase (geometric, ' + Dh().waveHpK().toFixed(3) + ')');
+
+  section('targeting priority (per-tower mode)');
+  const gT = runInline('index.html'); const Tg = () => gT.test();
+  Tg().selectMap(0); Tg().start(); Tg().addGold(500);
+  const tcell = freeCell(Tg());
+  Tg().place('archer', tcell.c, tcell.r);
+  ok(Tg().targetMode(0) === 'first', 'tower defaults to "first" targeting');
+  const cycled = Tg().cycleTargetAt(tcell.c, tcell.r);
+  ok(cycled === 'last', 'cycling target advances first → last (got ' + cycled + ')');
+  ok(Tg().setTargetMode(0, 'strongest') === true, 'setTargetMode accepts a valid mode');
+  ok(Tg().targetMode(0) === 'strongest', 'target mode is now strongest');
+  ok(Tg().setTargetMode(0, 'bogus') === false, 'setTargetMode rejects an unknown mode');
+  // the button label/control wiring exists in the panel
+  const tdRaw = fs.readFileSync(path.join(DIR, 'index.html'), 'utf8');
+  ok(/id="targetBtn"/.test(tdRaw) && /Target: First/.test(tdRaw), 'panel has a Target cycle button labelled "Target: First ▸"');
 
   section('Keep Defender: layout fits the screen (portrait / landscape / desktop)');
   const VIEWPORTS = [
