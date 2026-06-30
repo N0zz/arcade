@@ -66,7 +66,7 @@ API on `window.gamekit`:
 - `gamekit.nav({ music, reset, onMenu })` — injects the top-left `‹ Menu · komyo ›` bar **and** the
   top-right **sound menu** (🔊 SFX mute+slider, ♪ Music mute+slider when `music:true`). `reset` is a
   localStorage **prefix** (e.g. `'snake_'`) → adds a scoped "↺ Reset scores" entry. `onMenu` overrides
-  the Menu button's default `location.reload()` (asteroids levels post to the parent instead).
+  the Menu button's default `location.reload()` (asteroids uses it to drop its `?v` and reshow the picker).
 - `gamekit.shareRow(el, { slug, title, message })` — builds + wires Native/X/Reddit/Copy into `el`;
   `message` is a function → a standalone sentence (no url), evaluated at click time. (Its `.sbtn`
   visual props are `!important` so a game's broad `#overlay button {…}` rule can't clobber the icons.)
@@ -78,9 +78,9 @@ API on `window.gamekit`:
   reserve ~48px (landscape) / ~92px (portrait) top headroom.
 
 Each game's `sw.js` SHELL must include `'../../game-kit.js','../../game-kit.css'` (offline). The kit
-is fully headless-safe (every browser API guarded). **Asteroids is now on the kit too** (launcher +
-generated levels; SFX via `gamekit.sound`, music gain via `gamekit.music.subscribe`, Menu via `onMenu` →
-`postMessage`); still mind its generated-trio workflow.
+is fully headless-safe (every browser API guarded). **Asteroids is on the kit too** — a single-engine
+game (no launcher/iframe): SFX via `gamekit.sound`, music gain via `gamekit.music.subscribe`, Menu via
+`onMenu` → drop `?v` and reshow the in-page mode picker.
 
 ## Adding / changing a game
 
@@ -191,9 +191,11 @@ When the change is visual/interactive, offer the user this local URL to verify b
 - Monetization is optional only: **Buy Me a Coffee** (footer) + GitHub Sponsors (README badge
   only — the footer Sponsor link was removed; footer = coffee + a GitHub-icon repo link).
 
-## Asteroids (launcher — handle with care, but in scope)
+## Asteroids (single engine — handle with care, but in scope)
 
-`games/asteroids/` is a **launcher** (`index.html`) + `levels/*.html`; the roguelite trio is
-**generated** from `roguelite-levelup.html` (edit the source/generator, **not** the generated
-files). It is **not off-limits** — it should follow the same **menu → game → scoreboard + share**
-schema as the other games. Read `games/asteroids/CLAUDE.md` first and keep its ~295-test suite green.
+`games/asteroids/` is **Classic Asteroids** — one `index.html` engine, Classic + Classic-Enhanced
+behind the `ENHANCED` flag (mode chosen by `?v=classic` / `?v=enh`; an **in-page picker** shows with
+no `?v`). No launcher, no `levels/`, no codegen. The **roguelite** Asteroids is the separate
+`games/asteroids-plus/` game. Both follow the standard **menu → game → scoreboard + share** schema.
+Read `games/asteroids/CLAUDE.md` first; keep both suites green (`node games/asteroids/test.mjs` and
+`node games/asteroids-plus/test.mjs`).
