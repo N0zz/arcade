@@ -149,13 +149,15 @@
       + '<textarea class="gamekit-embed-code" readonly rows="4"></textarea>'
       + '<button class="gamekit-embed-copy" type="button">Copy code</button></div>';
     document.body.appendChild(ov);
+    _modalOpen++; // open overlay → halts the game underneath
     var sel = ov.querySelector ? ov.querySelector('.gamekit-embed-sel') : null;
     var code = ov.querySelector ? ov.querySelector('.gamekit-embed-code') : null;
     var copy = ov.querySelector ? ov.querySelector('.gamekit-embed-copy') : null;
     var setCode = function () { var g = games[(sel ? (sel.value | 0) : 0)] || games[0]; if (code) code.value = embedSnippet(g.slug, g.title); };
     setCode();
     if (sel) sel.addEventListener('change', setCode);
-    var close = function () { try { if (ov.parentNode) ov.parentNode.removeChild(ov); } catch (e) {} };
+    var closed = false;
+    var close = function () { if (closed) return; closed = true; _modalOpen = Math.max(0, _modalOpen - 1); try { if (ov.parentNode) ov.parentNode.removeChild(ov); } catch (e) {} };
     var xb = ov.querySelector ? ov.querySelector('.gamekit-embed-x') : null; if (xb) xb.addEventListener('click', close);
     ov.addEventListener('click', function (e) { if (e && e.target === ov) close(); });
     if (copy) copy.addEventListener('click', function () {
@@ -186,7 +188,7 @@
       + (cfg.note ? '<p class="gkctl-note">' + cfg.note + '</p>' : '') + '</div>';
     if (theme) applyMenuTheme(ov, theme);
     document.body.appendChild(ov);
-    _modalOpen++;
+    _modalOpen++; // counts as an open overlay → isPaused() halts the game underneath
     var done = false;
     function close() { if (done) return; done = true; _modalOpen = Math.max(0, _modalOpen - 1); try { document.removeEventListener('keydown', onKey, true); } catch (e) {} try { if (ov.parentNode) ov.parentNode.removeChild(ov); } catch (e) {} }
     function onKey(e) { if (e && (e.key === 'Escape' || e.key === 'Esc')) { if (e.preventDefault) e.preventDefault(); if (e.stopImmediatePropagation) e.stopImmediatePropagation(); close(); } }
@@ -306,7 +308,9 @@
   // Used while a leave-confirm is up so the game stops underneath but no second pause UI appears.
   var _frozen = false;
   function freeze(on) { _frozen = !!on; }
-  function isPaused() { return _paused || _frozen; }
+  // paused when: the game set it, a quiet freeze is on, OR any kit overlay is open (confirm / controls /
+  // embed / sound panel) — so opening any top-bar control halts the game underneath until it's closed.
+  function isPaused() { return _paused || _frozen || _modalOpen > 0; }
 
   // ---------- top-right sound menu (+ optional per-game "reset scores") ----------
   function audioMenu(opts) {
@@ -326,13 +330,16 @@
     document.body.appendChild(wrap);
     _audioEl = wrap;
     var btn = document.getElementById('gamekitAudioBtn'), panel = document.getElementById('gamekitAudioPanel');
-    if (btn && panel) btn.addEventListener('click', function () { if (panel.classList) panel.classList.toggle('open'); });
+    // open/close the sound panel idempotently; an open panel counts as an overlay (halts the game)
+    var panelOpen = false;
+    function setPanel(open) { if (!panel || !panel.classList) return; open = !!open; if (open === panelOpen) return; panelOpen = open; panel.classList.toggle('open', open); _modalOpen += open ? 1 : -1; }
+    if (btn && panel) btn.addEventListener('click', function () { setPanel(!panelOpen); });
     // click anywhere outside the sound menu closes the open panel
     if (panel && typeof document.addEventListener === 'function') document.addEventListener('click', function (e) {
-      if (!panel.classList || !panel.classList.contains('open')) return;
+      if (!panelOpen) return;
       var t = e && e.target;
       if (t === btn || (t && t.closest && (t.closest('#gamekitAudioBtn') || t.closest('#gamekitAudioPanel')))) return;
-      panel.classList.remove('open');
+      setPanel(false);
     });
     var u = { mainBtn: btn };
     u.sfxBtn = document.getElementById('gamekitSfxM'); u.sfxSlider = document.getElementById('gamekitSfxV');
@@ -418,8 +425,8 @@
       };
       var guarded = function (doLeave) {
         var msg = leaveMsg();
-        // freeze (quiet) the game under the confirm — do NOT trigger the universal pause overlay/menu
-        if (msg) { freeze(true); confirmDialog(msg, function () { freeze(false); doLeave(); }, 'Leave', function () { freeze(false); }); }
+        // confirmDialog opens an overlay (isPaused → game halts under it); cancel resumes automatically
+        if (msg) confirmDialog(msg, doLeave, 'Leave', null);
         else doLeave();
       };
       if (menu) menu.addEventListener('click', function () {
