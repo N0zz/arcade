@@ -309,6 +309,19 @@
       if (nr.right + 12 > ar.left) _navEl.classList.add('gamekit-nav-tight');
     } catch (e) {}
   }
+  // bottom-left build stamp (the short commit SHA from version.js) — tiny, 50% opacity, no link,
+  // there only so it's legible in a screenshot. Hidden on local/dev (no real SHA).
+  function versionTag() {
+    try {
+      if (typeof document === 'undefined' || !document.body || !document.createElement) return;
+      var v = (typeof window !== 'undefined') ? window.KOMYO_VERSION : null;
+      if (!v || !v.sha || v.sha === 'dev') return;
+      var el = document.getElementById('gamekitVersion');
+      if (!el) { el = document.createElement('div'); el.id = 'gamekitVersion'; document.body.appendChild(el); }
+      el.textContent = v.sha;
+    } catch (e) {}
+  }
+
   function nav(opts) {
     opts = opts || {};
     if (typeof document !== 'undefined' && document.body) {
@@ -325,6 +338,7 @@
       });
     }
     audioMenu({ music: !!opts.music, reset: opts.reset });
+    versionTag();
     if (typeof layout !== 'undefined' && layout && layout.on) layout.on(fitNav);
     fitNav();
     // block the browser context menu on game canvases (no "save image…" popping mid-play)
@@ -607,7 +621,7 @@
     }
   })();
 
-  var api = { sound: sound, music: music, nav: nav, audioMenu: audioMenu, resetScores: resetScores, confirm: confirmDialog, shareRow: shareRow, shareUrls: shareUrls, shareText: shareText, param: param, pwa: pwa, player: player, setName: setName, postDiscord: postDiscord, layout: layout, recordResult: recordResult, lastResult: lastResult, playedToday: playedToday, utcDateStr: utcDateStr, utcDayNumber: utcDayNumber, scoreCard: buildScoreCard, embedModal: embedModal, isPaused: isPaused, setPaused: setPaused, togglePause: togglePause, showMenuButton: showMenuButton };
+  var api = { sound: sound, music: music, nav: nav, audioMenu: audioMenu, resetScores: resetScores, confirm: confirmDialog, shareRow: shareRow, shareUrls: shareUrls, shareText: shareText, param: param, pwa: pwa, player: player, setName: setName, postDiscord: postDiscord, layout: layout, recordResult: recordResult, lastResult: lastResult, playedToday: playedToday, utcDateStr: utcDateStr, utcDayNumber: utcDayNumber, scoreCard: buildScoreCard, embedModal: embedModal, isPaused: isPaused, setPaused: setPaused, togglePause: togglePause, showMenuButton: showMenuButton, versionTag: versionTag };
   var g = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : this);
   g.gamekit = api;
   if (typeof window !== 'undefined') window.gamekit = api;

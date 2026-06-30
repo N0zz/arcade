@@ -1,0 +1,45 @@
+name: Deploy to GitHub Pages
+
+# Builds the version stamp (short commit SHA → version.js) and deploys the site via the
+# GitHub Actions Pages pipeline. Requires the repo's Pages source to be set to "GitHub Actions"
+# (Settings → Pages → Build and deployment → Source). version.js is generated here, never committed.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp version.js with the commit SHA
+        run: |
+          SHA_SHORT="${GITHUB_SHA:0:7}"
+          BUILT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          cat > version.js <<EOF
+          // Generated at deploy by .github/workflows/pages.yml from \$GITHUB_SHA — do not edit by hand.
+          window.KOMYO_VERSION = { sha: '${SHA_SHORT}', url: 'https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}', built: '${BUILT}' };
+          EOF
+          echo "Stamped version.js → ${SHA_SHORT}"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

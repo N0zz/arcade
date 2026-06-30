@@ -233,6 +233,14 @@ function testKit() {
   let threw = null;
   try { F.nav({ music: true, reset: 'snake_' }); F.shareRow(doc.getElementById('sr'), { slug: 'snake', message: () => 'x' }); F.pwa(); F.resetScores('snake_'); } catch (e) { threw = e.message; }
   ok(threw === null, 'nav/audioMenu/shareRow/pwa/resetScores run headless without throwing: ' + threw);
+  // version tag (bottom-left build stamp): renders the SHA when present, no-op on dev
+  sandbox.window.KOMYO_VERSION = { sha: 'abc1234', url: 'https://github.com/N0zz/komyo.online/commit/abc1234' };
+  F.versionTag();
+  ok(els['gamekitVersion'] && els['gamekitVersion'].textContent === 'abc1234', 'versionTag shows the commit SHA');
+  sandbox.window.KOMYO_VERSION = { sha: 'dev' };
+  delete els['gamekitVersion'];
+  F.versionTag();
+  ok(!els['gamekitVersion'], 'versionTag is a no-op on dev (nothing rendered)');
 }
 
 // ---------------- Challenges ↔ games coverage ----------------

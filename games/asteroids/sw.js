@@ -3,7 +3,7 @@
 const CACHE = 'asteroids-v1';
 const ASSETS = [
   './', './index.html', './favicon.svg', './manifest.json',
-  '../../game-kit.js', '../../game-kit.css', './icon-192.png','./icon-512.png',
+  '../../game-kit.js', '../../game-kit.css','../../version.js', './icon-192.png','./icon-512.png',
 ];
 
 self.addEventListener('install', e => {

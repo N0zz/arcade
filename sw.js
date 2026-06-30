@@ -1,7 +1,7 @@
 // Arcade service worker — installable + offline. Network-first so updates show up
 // online; the cache is the offline fallback. Game sub-pages get cached as you visit.
 const CACHE = 'gamekit-v1';
-const SHELL = ['./', './index.html', './games.js', './changelog.js', './challenges.js', './favicon.svg', './manifest.json'];
+const SHELL = ['./', './index.html', './games.js', './changelog.js', './challenges.js', './version.js', './favicon.svg', './manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

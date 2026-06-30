@@ -110,3 +110,7 @@
 .gamekit-embed-x { position: absolute; top: 12px; right: 14px; background: none; border: none; color: #9fb2c8;
   font-size: 18px; line-height: 1; cursor: pointer; padding: 2px; }
 .gamekit-embed-x:hover { color: #fff; }
+
+/* bottom-left build stamp (short commit SHA from version.js) — debug aid, deliberately faint + non-interactive */
+#gamekitVersion { position: fixed; left: 8px; bottom: 7px; z-index: 99999; pointer-events: none; user-select: none;
+  font: 11px/1 ui-monospace, "SFMono-Regular", Menlo, monospace; letter-spacing: 0.4px; color: #cdd8e8; opacity: 0.5; }
