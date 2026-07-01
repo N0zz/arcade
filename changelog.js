@@ -4,6 +4,12 @@
 // One release per date: { date:'YYYY-MM-DD', title:'…', items:['New: …','Fix: …'] }.
 // Keep bullets plain-language and about what a PLAYER notices — never kit/test/build/refactor.
 window.CHANGELOG = [
+  { date: '2026-07-01', title: 'Sound on 🔊', items: [
+    'New: every game now has music — a themed backdrop track that plays on the menu and keeps going while you play. Keep Defender even changes its tune per map (grassland, ice, lava, desert, dungeon, marsh).',
+    'Improved: punchier sound effects across every game — richer hits, pops, explosions and pickups, with a touch of space. Asteroids fire now sounds like a proper laser.',
+    'New: little win / lose / level-up fanfares on the end screens.',
+    'New: a Settings page (menu → ⚙️ Settings) to turn sound effects and music on or off — or set their volume — for the whole site at once. Each game still has its own sound menu too.',
+  ] },
   { date: '2026-07-01', title: 'Asteroids+ joins the new menu', items: [
     'New: Asteroids+ now opens with the same one-screen card menu as every other game — pick Level-up, Milestones or Wave Shop (plus Speedrun) in a single screen, over a drifting field of asteroids and enemy ships. Its level-up picker and between-wave shop got the matching look too.',
     'New: Asteroids+ asks before you leave a run from the menu, so you don’t lose a run by accident.',
