@@ -281,7 +281,7 @@ section('sprint: best time persists to localStorage');
     const tgt = Ts2().targets[0];
     if (tgt) Ts2().shootAt(tgt.x, tgt.y);
   }
-  const savedTime = parseInt(gsp2.store['aim-trainer_sprint'] || '0', 10);
+  const savedTime = parseInt(gsp2.store['aim-trainer_sprint_100'] || '0', 10); // sprint best is now keyed per target count
   ok(savedTime > 0, 'sprint best time saved to localStorage (got ' + savedTime + ')');
   ok(Ts2().bestTime === savedTime, 'bestTime getter matches localStorage (bestTime=' + Ts2().bestTime + ', saved=' + savedTime + ')');
 }

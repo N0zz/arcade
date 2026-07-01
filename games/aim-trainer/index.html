@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="../../game-kit.css">
 <script src="../../version.js"></script>
 <script src="../../game-kit.js"></script>
+<script src="../../challenges.js"></script>
 <style>
   :root { --bg:#0d1117; --grid:#1a2030; --accent:#ff7a3c; --fg:#e0e8f0; --dim:#6a7a8a; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -25,43 +26,7 @@
   /* .gamekit-hud (shared kit) provides center-top placement, pill, wrap + font; keep only item colors. */
   #hud .stat b { color:var(--accent); }
   #hud #hTime.warn { color:#ff3c3c; }
-  #overlay { position:fixed; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; gap:14px; background:rgba(13,17,23,0.88); padding:24px; }
-  #overlay.hidden { display:none; }
-  #overlay h1 { margin:0; font-size:42px; letter-spacing:5px; color:var(--accent); text-shadow:0 0 30px rgba(255,122,60,0.4); }
-  #overlay p { margin:2px; font-size:14px; opacity:0.85; max-width:480px; line-height:1.6; letter-spacing:0.5px; }
-  #overlay .hint { opacity:0.5; font-size:12px; letter-spacing:1px; }
-  .mode-label { font-size:11px; letter-spacing:2px; opacity:0.6; margin-bottom:2px; }
-  .mode-row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-  .mode-btn { font-family:inherit; cursor:pointer; font-size:13px; letter-spacing:2px; padding:9px 18px;
-    border-radius:6px; color:var(--fg); background:transparent; border:1px solid #3a4a5a; transition:background 0.15s,border-color 0.15s; }
-  .mode-btn:hover { border-color:var(--accent); }
-  .mode-btn.selected { background:var(--accent); border-color:var(--accent); color:#0d1117; font-weight:bold;
-    box-shadow:0 0 14px rgba(255,122,60,0.5); }
-  .mode-btn.selected::before { content:'\2713 '; }
-  .start-btn { font-family:inherit; cursor:pointer; font-size:14px; letter-spacing:2px; padding:10px 32px;
-    border-radius:6px; color:var(--fg); background:var(--accent); border:none; margin-top:4px; }
-  .opt-row { display:flex; gap:10px; justify-content:center; align-items:center; margin-top:6px; }
-  .opt-toggle { font-family:inherit; cursor:pointer; font-size:12px; letter-spacing:2px; padding:8px 16px;
-    border-radius:6px; color:var(--fg); background:transparent; border:1px solid #3a4a5a; transition:background 0.15s,border-color 0.15s; }
-  .opt-toggle:hover { border-color:var(--accent); }
-  .opt-toggle[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#0d1117; font-weight:bold;
-    box-shadow:0 0 14px rgba(255,122,60,0.5); }
-  .opt-toggle[aria-pressed="true"]::before { content:'\2713 '; }
-  #bestPanel { display:flex; gap:8px 16px; flex-wrap:wrap; justify-content:center; margin-top:8px;
-    font-size:11px; letter-spacing:1.5px; opacity:0.75; }
-  #bestPanel .bcell { white-space:nowrap; }
-  #bestPanel .bcell b { color:var(--accent); }
-  #endScreen { position:fixed; inset:0; z-index:8; display:none; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; gap:14px; background:rgba(13,17,23,0.92); padding:24px; }
-  #endScreen h1 { margin:0; font-size:36px; letter-spacing:4px; color:var(--accent); }
-  #endScreen .summary { display:grid; grid-template-columns:1fr 1fr; gap:10px 28px; margin:10px 0; max-width:340px; }
-  #endScreen .srow { text-align:left; }
-  #endScreen .srow .lbl { opacity:0.5; font-size:11px; letter-spacing:2px; }
-  #endScreen .srow b { color:var(--accent); font-size:16px; display:block; }
-  #endScreen button#restartBtn { font-family:inherit; cursor:pointer; font-size:13px; letter-spacing:2px; padding:9px 24px;
-    border-radius:6px; color:var(--fg); background:var(--accent); border:none; }
-  #shareRow { --gamekit-accent:#ff7a3c; }
+  /* start / pause / end screens come from the shared gamekit.menu (MENU_THEME below) */
 </style>
 </head>
 <body>
@@ -73,47 +38,11 @@
   <div class="stat"><span id="hBestLbl" class="lbl">BEST</span><b id="hBest">0</b></div>
 </div>
 
-<div id="overlay">
-  <h1>RANGE</h1>
-  <p>Click targets as fast as possible. Missing costs your combo.</p>
-  <div class="mode-label">TIMED MODE — score in the window</div>
-  <div class="mode-row" id="timedBtns">
-    <button class="mode-btn" data-mode="10">10s</button>
-    <button class="mode-btn" data-mode="20">20s</button>
-    <button class="mode-btn selected" data-mode="30">30s</button>
-    <button class="mode-btn" data-mode="60">60s</button>
-  </div>
-  <div class="mode-label" style="margin-top:6px">SPRINT MODE — hit 100 targets fastest</div>
-  <div class="mode-row">
-    <button class="mode-btn" data-mode="sprint">SPRINT TO 100</button>
-  </div>
-  <div class="opt-row">
-    <button class="opt-toggle" id="movingToggle" type="button" aria-pressed="false">MOVING TARGETS</button>
-  </div>
-  <div id="bestPanel"></div>
-  <p class="hint">CLICK / TAP TO SHOOT</p>
-  <button class="start-btn" id="startBtn">READY UP</button>
-</div>
-
-<div id="endScreen">
-  <h1>RANGE CLEAR</h1>
-  <div class="summary">
-    <div class="srow"><span class="lbl">SCORE</span><b id="eScore">0</b></div>
-    <div class="srow"><span class="lbl">ACCURACY</span><b id="eAcc">--%</b></div>
-    <div class="srow"><span class="lbl">HITS</span><b id="eHits">0</b></div>
-    <div class="srow"><span class="lbl">MISSES</span><b id="eMisses">0</b></div>
-    <div class="srow"><span class="lbl">BEST REACTION</span><b id="eBestReact">--ms</b></div>
-    <div class="srow"><span class="lbl" id="eBestLbl">BEST SCORE</span><b id="eBest">0</b></div>
-  </div>
-  <button id="restartBtn">FIRE AGAIN</button>
-  <div id="shareRow"></div>
-</div>
-
 <script>
 (() => {
   const $ = id => document.getElementById(id);
   const canvas = $('game'), ctx = canvas.getContext('2d');
-  const overlay = $('overlay'), endScreen = $('endScreen');
+  const KIT = window.gamekit;
   // Top headroom the playfield must reserve for the kit's center-top .gamekit-hud pill.
   // Landscape: pill at top:8px → clears ~48px. Portrait (≤560px): pill drops to top:50px
   // below the nav → clears ~92px.
@@ -135,7 +64,7 @@
 
   // ---- Constants ----
   const DEFAULT_SESSION = 30;
-  const SPRINT_TARGET = 100;
+  let SPRINT_TARGET = 100; // selectable in the menu: 10 / 50 / 100
   const TARGET_BASE_R = 34;
   const SPAWN_INTERVAL_INIT = 90;
   const SPAWN_INTERVAL_MIN = 40;
@@ -175,7 +104,7 @@
   let W = 0, H = 0;
 
   // per-mode bests: timed stores best score, sprint stores best time (frames)
-  const bestKey = (m, s) => m === 'sprint' ? 'aim-trainer_sprint' : 'aim-trainer_best_' + s;
+  const bestKey = (m, s) => m === 'sprint' ? ('aim-trainer_sprint_' + SPRINT_TARGET) : 'aim-trainer_best_' + s;
 
   function loadBest(m, s) {
     try { return parseInt(localStorage.getItem(bestKey(m, s)) || '0', 10) || 0; } catch (e) { return 0; }
@@ -301,9 +230,7 @@
     reset();
     _rng = Math.random;
     state = 'playing';
-    overlay.classList.add('hidden');
-    endScreen.style.display = 'none';
-    window.gamekit.showMenuButton(true); // ‹ Menu only during play, not on the mode picker
+    if (KIT) { KIT.menu.hide(); KIT.showMenuButton(true); KIT.showPauseButton(true); }
     spawnTarget();
     updateHud();
   }
@@ -312,32 +239,103 @@
     state = 'over';
     SND.play('end');
     const acc = hits + misses > 0 ? Math.round(hits / (hits + misses) * 100) : 0;
-
-    $('eScore').textContent = score;
-    $('eAcc').textContent = acc + '%';
-    $('eHits').textContent = hits;
-    $('eMisses').textContent = misses;
-    $('eBestReact').textContent = bestReact < Infinity ? bestReact + 'ms' : '--ms';
-
-    if (mode === 'sprint') {
-      const prevBest = loadBest('sprint', 0);
-      const isNew = prevBest === 0 || elapsedFrames < prevBest;
-      if (isNew) saveBest('sprint', 0, elapsedFrames);
-      const displayBest = isNew ? elapsedFrames : prevBest;
-      $('eBestLbl').textContent = 'BEST TIME';
-      $('eBest').textContent = (displayBest / 60).toFixed(2) + 's';
-    } else {
-      const prevBest = loadBest('timed', sessionSeconds);
-      const newBest = Math.max(score, prevBest);
-      if (score > prevBest) saveBest('timed', sessionSeconds, score);
-      $('eBestLbl').textContent = 'BEST SCORE';
-      $('eBest').textContent = newBest;
-    }
-
-    window.gamekit.recordResult('aim-trainer', { mode: mode, score: score, time: elapsedFrames, stats: { accuracy: acc } });
-    endScreen.style.display = 'flex';
+    let isBest = false;
+    if (mode === 'sprint') { const prev = loadBest('sprint', 0); isBest = prev === 0 || elapsedFrames < prev; if (isBest) saveBest('sprint', 0, elapsedFrames); }
+    else { const prev = loadBest('timed', sessionSeconds); isBest = score > prev; if (isBest) saveBest('timed', sessionSeconds, score); }
+    showEnd(acc, isBest);
     updateHud();
   }
+
+  // ---- shared menus (gamekit.menu) — tactical theme + target-range backdrop ----
+  const MENU_THEME = { accent: '#ff7a3c', glow: '0 0 18px rgba(255,122,60,0.45)', bg: 'rgba(13,17,23,0.72)',
+    border: 'rgba(255,122,60,0.3)', overlay: 'rgba(8,11,16,0.6)', title: '#ff9a5c', 'on-accent': '#160a04', 'accent-soft': 'rgba(255,122,60,0.18)' };
+  function menuTarget(g, x, y, R) {
+    g.fillStyle = '#1a2030'; g.beginPath(); g.arc(x, y, R, 0, 7); g.fill();
+    g.strokeStyle = '#ff7a3c'; g.lineWidth = 2.5; g.beginPath(); g.arc(x, y, R, 0, 7); g.stroke();
+    g.strokeStyle = 'rgba(255,122,60,.6)'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, R * .65, 0, 7); g.stroke();
+    g.strokeStyle = '#ff7a3c'; g.beginPath(); g.arc(x, y, R * .35, 0, 7); g.stroke();
+    g.fillStyle = '#ff7a3c'; g.beginPath(); g.arc(x, y, R * .12, 0, 7); g.fill();
+    g.strokeStyle = 'rgba(255,122,60,.5)'; [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(d => { g.beginPath(); g.moveTo(x + d[0] * (R + 3), y + d[1] * (R + 3)); g.lineTo(x + d[0] * (R + 9), y + d[1] * (R + 9)); g.stroke(); });
+  }
+  function menuBackdrop(g, w, h, st, frame) {
+    frame = frame || 0;
+    g.fillStyle = '#0d1117'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#161e2a'; g.lineWidth = 1; for (let x = 0; x < w; x += 48) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); } for (let y = 0; y < h; y += 48) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+    g.strokeStyle = '#1a2535'; g.lineWidth = 2; [.25, .5, .75].forEach(f => { g.beginPath(); g.moveTo(w * f, 0); g.lineTo(w * f, h); g.stroke(); });
+    g.strokeStyle = '#2a3545'; g.beginPath(); g.moveTo(0, h * .82); g.lineTo(w, h * .82); g.stroke();
+    // the targets themselves drift slowly, like the in-game "moving targets" mode
+    [[.2, .32, 26, 0], [.7, .26, 22, 1.6], [.5, .6, 30, 3.1], [.84, .66, 20, 4.5]].forEach(t => {
+      const x = w * (t[0] + 0.045 * Math.sin(frame * 0.010 + t[3]));
+      const y = h * (t[1] + 0.03 * Math.sin(frame * 0.013 + t[3] * 1.4));
+      menuTarget(g, x, y, t[2]);
+    });
+  }
+  function pvRange(g, w, h, variant) {
+    g.fillStyle = '#0d1117'; g.fillRect(0, 0, w, h); g.strokeStyle = '#161e2a'; for (let x = 0; x < w; x += 16) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+    [[w * .28, h * .36], [w * .7, h * .32], [w * .5, h * .72]].forEach(p => menuTarget(g, p[0], p[1], 11));
+    if (variant === 'timed') { g.strokeStyle = '#ffd23f'; g.lineWidth = 2.5; g.beginPath(); g.arc(15, h - 15, 8, -1.3, 3.6); g.stroke(); }
+    else { g.fillStyle = '#ff9a5c'; g.font = '700 13px system-ui'; g.fillText('→' + SPRINT_TARGET, 6, h - 8); }
+  }
+  const rangeParams = () => { const m = rangeLastMode || 'timed'; const p = m === 'sprint' ? { mode: 'sprint', target: SPRINT_TARGET } : { mode: 'timed', secs: sessionSeconds }; p.moving = movingTargets ? 1 : 0; return p; };
+  function shareMsg() {
+    const acc = hits + misses > 0 ? Math.round(hits / (hits + misses) * 100) : 0; const mv = movingTargets ? 'moving targets' : null;
+    return mode === 'sprint'
+      ? KIT.shareText({ verb: 'I cleared', score: SPRINT_TARGET + ' targets', game: 'Range', emoji: '🎯', mode: 'Sprint', extra: [(elapsedFrames / 60).toFixed(1) + 's', acc + '% accuracy', mv] })
+      : KIT.shareText({ score: score, game: 'Range', emoji: '🎯', mode: sessionSeconds + 's Timed', extra: [acc + '% accuracy', mv] });
+  }
+  let rangeLastMode = null;
+  function showStartMenu(m) {
+    m = m || selectedMode || 'timed'; selectedMode = m; rangeLastMode = m;
+    state = 'ready'; if (KIT) { KIT.showMenuButton(false); KIT.showPauseButton(false); }
+    if (!KIT) return;
+    const amounts = m === 'sprint'
+      ? [{ id: '10', label: '10' }, { id: '50', label: '50' }, { id: '100', label: '100' }]
+      : [{ id: '10', label: '10s' }, { id: '30', label: '30s' }, { id: '60', label: '60s' }];
+    KIT.menu.show({ kind: 'start', theme: MENU_THEME, title: 'RANGE', backdrop: menuBackdrop, backdropAnimate: true,
+      groups: [
+        { id: 'mode', label: 'MODE', style: 'cards', default: m, choices: [
+          { id: 'timed', label: 'Timed', mech: ['Beat the clock'], best: st => loadBest('timed', Number(st.amount) || DEFAULT_SESSION), preview: (g, w, h) => pvRange(g, w, h, 'timed') },
+          { id: 'sprint', label: 'Sprint', mech: ['Race to a count'], best: () => { const t = loadBest('sprint', 0); return t > 0 ? (t / 60).toFixed(1) + 's' : '--'; }, preview: (g, w, h) => pvRange(g, w, h, 'sprint') },
+        ] },
+        { id: 'amount', label: m === 'sprint' ? 'TARGETS' : 'DURATION', default: m === 'sprint' ? String(SPRINT_TARGET) : String(sessionSeconds), choices: amounts },
+      ],
+      toggles: [{ id: 'moving', label: 'Moving targets', caption: 'they drift once you warm up', default: movingTargets }],
+      actions: [{ id: 'play', label: 'READY UP', primary: true }],
+      hint: st => st.mode === 'sprint' ? 'Hit the target count as fast as you can.' : 'Score as many hits as you can before time runs out.',
+      onChange: st => {
+        movingTargets = !!st.moving; saveMoving(movingTargets);
+        if (st.mode !== rangeLastMode) { rangeLastMode = st.mode; if (st.mode === 'sprint') SPRINT_TARGET = 100; else sessionSeconds = DEFAULT_SESSION; showStartMenu(st.mode); return; }
+        if (st.mode === 'sprint') SPRINT_TARGET = Number(st.amount) || 100; else sessionSeconds = Number(st.amount) || DEFAULT_SESSION;
+        KIT.stampUrl(rangeParams());
+      },
+      onPlay: st => {
+        mode = st.mode; movingTargets = !!st.moving; saveMoving(movingTargets);
+        if (st.mode === 'sprint') SPRINT_TARGET = Number(st.amount) || 100; else sessionSeconds = Number(st.amount) || DEFAULT_SESSION;
+        KIT.stampUrl(rangeParams()); startGame();
+      },
+    });
+    KIT.stampUrl(rangeParams());
+  }
+  function showEnd(acc, isBest) {
+    if (KIT) { KIT.showMenuButton(false); KIT.showPauseButton(false); }
+    if (!KIT) return;
+    const isSprint = mode === 'sprint';
+    const detail = acc + '% accuracy · ' + hits + ' hits · ' + misses + ' misses' + (bestReact < Infinity ? (' · ' + bestReact + 'ms') : '');
+    const cfg = { kind: 'end', theme: MENU_THEME, backdrop: menuBackdrop, backdropAnimate: true, title: isSprint ? 'SPRINT CLEAR' : "TIME'S UP", lines: [detail],
+      share: { slug: 'aim-trainer', title: 'Range', message: () => shareMsg(), params: () => rangeParams() },
+      record: { slug: 'aim-trainer', mode: mode, score: score, time: elapsedFrames, stats: { accuracy: acc } },
+      actions: [ { id: 'again', label: 'FIRE AGAIN', primary: true }, { id: 'menu', label: 'MENU' } ],
+      onAction: id => { if (id === 'again') startGame(); else if (id === 'menu') toMenu(); } };
+    if (isSprint) { const bt = loadBest('sprint', 0); cfg.score = elapsedFrames; cfg.scoreText = (elapsedFrames / 60).toFixed(2) + 's'; cfg.lines.unshift('Best ' + (bt > 0 ? (bt / 60).toFixed(2) + 's' : '--')); }
+    else { cfg.score = score; cfg.best = loadBest('timed', sessionSeconds); cfg.newBest = isBest; }
+    KIT.menu.show(cfg);
+  }
+  function pauseGame() { if (state !== 'playing' || !KIT) return; state = 'paused';
+    KIT.menu.show({ kind: 'pause', theme: MENU_THEME, title: 'PAUSED',
+      actions: [ { id: 'resume', label: 'RESUME (ESC)', primary: true }, { id: 'menu', label: 'QUIT TO MENU', danger: true } ],
+      onAction: id => { if (id === 'resume') resumeGame(); else if (id === 'menu') toMenu(); }, onEsc: resumeGame }); }
+  function resumeGame() { if (state !== 'paused') return; state = 'playing'; if (KIT) KIT.menu.hide(); }
+  function toMenu() { if (KIT) KIT.menu.hide(); showStartMenu(selectedMode); }
 
   function update() {
     if (state !== 'playing') return;
@@ -579,102 +577,28 @@
     };
   }
 
-  canvas.addEventListener('pointerdown', e => {
-    const { x, y } = getCanvasPos(e);
-    shoot(x, y);
-  });
+  canvas.addEventListener('pointerdown', e => { const { x, y } = getCanvasPos(e); shoot(x, y); });
   canvas.addEventListener('pointermove', e => {
-    if (e.pointerType === 'touch') return; // touch: the crosshair is the last-shot mark only — don't let it drag/lag behind the finger
-    const { x, y } = getCanvasPos(e);
-    reticle.x = x; reticle.y = y;
+    if (e.pointerType === 'touch') return; // touch: the crosshair is the last-shot mark only — don't drag it behind the finger
+    const { x, y } = getCanvasPos(e); reticle.x = x; reticle.y = y;
   });
+  window.addEventListener('keydown', e => { if (e.key === 'Escape' && state === 'playing') { e.preventDefault(); pauseGame(); } });
 
-  // ---- Mode picker ----
+  // ---- mode state (deep-linkable) + top nav (game-kit) ----
   let selectedMode = 'timed';
-  let selectedSeconds = DEFAULT_SESSION;
-
-  function selectMode(m, s) {
-    selectedMode = m;
-    selectedSeconds = s;
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.classList.toggle('selected', btn.dataset.mode === (m === 'sprint' ? 'sprint' : String(s)));
-    });
-  }
-
-  document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const v = btn.dataset.mode;
-      if (v === 'sprint') selectMode('sprint', 0);
-      else selectMode('timed', parseInt(v, 10));
-    });
-  });
-
-  // deep-link: ?mode=sprint  or  ?mode=timed&secs=30 → preselect that mode in the menu
-  (function () {
-    const P = window.gamekit && window.gamekit.param; if (!P) return;
-    const pm = P('mode');
-    if (pm === 'sprint') selectMode('sprint', 0);
-    else if (pm === 'timed') { const s = parseInt(P('secs'), 10); if ([10, 20, 30, 60].indexOf(s) >= 0) selectMode('timed', s); }
-    const mv = P('moving'); if (mv === '0' || mv === '1') { movingTargets = mv === '1'; syncMovingToggle(); }
-  })();
-
-  // ---- Moving-targets toggle ----
-  function syncMovingToggle() {
-    const btn = $('movingToggle');
-    if (!btn) return;
-    btn.setAttribute('aria-pressed', movingTargets ? 'true' : 'false');
-  }
-  {
-    const mt = $('movingToggle');
-    if (mt) mt.addEventListener('click', () => {
-      movingTargets = !movingTargets;
-      saveMoving(movingTargets);
-      syncMovingToggle();
-    });
-    syncMovingToggle();
-  }
-
-  // ---- Top scores panel (per mode) ----
-  function renderBestPanel() {
-    const panel = $('bestPanel');
-    if (!panel) return;
-    const cells = [10, 20, 30, 60].map(s => {
-      const b = loadBest('timed', s);
-      return '<span class="bcell">' + s + 's <b>' + b + '</b></span>';
-    });
-    const st = loadBest('sprint', 0);
-    cells.push('<span class="bcell">SPRINT <b>' + (st > 0 ? (st / 60).toFixed(1) + 's' : '--') + '</b></span>');
-    panel.innerHTML = cells.join('');
-  }
-  renderBestPanel();
-
-  $('startBtn').addEventListener('click', () => {
-    mode = selectedMode;
-    sessionSeconds = selectedSeconds || DEFAULT_SESSION;
-    startGame();
-  });
-
-  $('restartBtn').addEventListener('click', () => {
-    endScreen.style.display = 'none';
-    overlay.classList.remove('hidden');
-    window.gamekit.showMenuButton(false); // back on the mode picker → hide ‹ Menu
-    renderBestPanel();
-  });
-
-  // ---- Share row + top nav (game-kit) ----
-  window.gamekit.shareRow(document.getElementById('shareRow'), {
-    slug: 'aim-trainer', title: 'Range',
-    message: () => {
-      const acc = hits + misses > 0 ? Math.round(hits / (hits + misses) * 100) : 0;
-      const mv = movingTargets ? 'moving targets' : null;
-      return mode === 'sprint'
-        ? window.gamekit.shareText({ verb: 'I sped through', score: '100 targets', game: 'Range', emoji: '🎯', mode: 'Sprint', extra: [(elapsedFrames / 60).toFixed(1) + 's', acc + '% accuracy', mv] })
-        : window.gamekit.shareText({ score: score, game: 'Range', emoji: '🎯', mode: sessionSeconds + 's Timed', extra: [acc + '% accuracy', mv] });
-    },
-    params: () => { const p = mode === 'sprint' ? { mode: 'sprint' } : { mode: 'timed', secs: sessionSeconds }; p.moving = movingTargets ? 1 : 0; return p; },
-  });
-  window.gamekit.nav({ reset: 'aim-trainer_' });
-  window.gamekit.showMenuButton(false); // start on the mode picker → ‹ Menu hidden until play begins
+  { const P = KIT && KIT.param; if (P) {
+      const pm = P('mode');
+      if (pm === 'sprint') { selectedMode = 'sprint'; const t = parseInt(P('target'), 10); if ([10, 50, 100].indexOf(t) >= 0) SPRINT_TARGET = t; }
+      else if (pm === 'timed') { selectedMode = 'timed'; const s = parseInt(P('secs'), 10); if ([10, 30, 60].indexOf(s) >= 0) sessionSeconds = s; }
+      const mv = P('moving'); if (mv === '0' || mv === '1') movingTargets = mv === '1';
+  } }
+  KIT.nav({ reset: 'aim-trainer_', home: '../../', theme: MENU_THEME, challenges: 'aim-trainer', onMenu: () => toMenu(),
+    onPause: () => { if (state === 'playing') pauseGame(); else if (state === 'paused') resumeGame(); },
+    confirmLeave: () => (state === 'playing' || state === 'paused') ? "Leave this run? You'll lose your progress." : false,
+    controls: { title: 'Range — Controls',
+      mouse: [ ['Move', 'Aim'], ['Click', 'Shoot'] ],
+      keyboard: [ ['Esc', 'Pause'] ],
+      touch: [ ['Tap', 'Shoot where you tap'] ] } });
 
   // ---- Test hook ----
   window.__test = {
@@ -705,7 +629,8 @@
       return { W, H, topReserve: HUD_H, spawn, targetsBox: bbox };
     },
     get movingTargets() { return movingTargets; },
-    setMoving(on) { movingTargets = !!on; saveMoving(movingTargets); syncMovingToggle(); },
+    setMoving(on) { movingTargets = !!on; saveMoving(movingTargets); },
+    menu() { return KIT ? KIT.menu.current() : null; },
     get bestScore() {
       if (mode === 'timed') return loadBest('timed', sessionSeconds);
       return 0;
@@ -735,6 +660,7 @@
   resize();
   updateHud();
   loop();
+  showStartMenu(selectedMode); // open the shared start menu (mode/amount/moving preselected from the URL)
 })();
   window.gamekit.pwa();
 </script>
