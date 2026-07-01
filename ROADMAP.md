@@ -68,7 +68,16 @@ sequence around them.
 - **Translations / i18n — implement** (per the analysis spike): wire the `t()` layer into the kit,
   extract + translate strings, language picker + persistence, `hreflang`/meta per language. Sizeable —
   sequence after the spike sets the language list + plan.
-- **Score card / mascot redesign** *(gated on the real mascot)*.
+- **Score card redesign** *(gated on the real mascot)* — bring it up to the **title-ladder shine bar**
+  (approved 2026-07-01): reuse the tier-shine language — gradient text, glow/halo, ~Archmage-or-better
+  richness. **On-screen** card can animate (glints/particles, like the titles). **Shared** card must be a
+  **static PNG** (animation can't survive an image; a GIF/MP4 is too heavy + unsupported by share targets),
+  so bake the glow/gradient/halo into the still (particles won't serialize into the DOM-snapshot + Safari
+  taints → drawn-card fallback; that's fine — gradient + glow reach the bar). **Sharing = image-first,
+  text only as fallback:** image works on native Web Share (files), the Discord webhook, and download/copy;
+  **X / Reddit / Twitter "intent" URLs are link+text only** (you can't attach a locally-generated PNG to an
+  intent) → those fall back to text + link, and better previews there need pre-generated per-game/score **OG
+  images** (server-side → parked). Also refresh `buildScoreCard`/`buildProfileCard` art around the mascot.
 - **Privacy policy signed off** *(external gate — counsel; hard blocker for a broad public launch —
   GA4 + Discord auto-post + EU visitors)*.
 - **Marketing materials** — plan + prepare: promo video / montage (full + Discord preview cuts), per-game
