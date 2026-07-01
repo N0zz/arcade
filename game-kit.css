@@ -66,9 +66,13 @@
   .gamekit-au-btn, .gamekit-au-resetbtn { width: 34px; height: 32px; }
   .gamekit-back { padding: 6px 9px; }
 }
-@media (max-width: 380px) {
+@media (max-width: 400px) {
+  /* the common Android width is 360px — force-collapse the brand label here (don't rely on the JS
+     measurement firing in time on mobile load) and shrink further so the row fits down to ~320px. */
+  .gamekit-home-label { display: none; }
+  .gamekit-back { padding: 6px 8px; font-size: 11px; letter-spacing: .5px; }
   .gamekit-audio { gap: 3px; }
-  .gamekit-au-btn, .gamekit-au-resetbtn { width: 31px; height: 31px; font-size: 13px; }
+  .gamekit-au-btn, .gamekit-au-resetbtn { width: 30px; height: 30px; font-size: 12px; }
 }
 
 /* in-page confirm dialog (reset scores) */
