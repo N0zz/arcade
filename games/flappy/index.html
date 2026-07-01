@@ -103,9 +103,9 @@
   // ---- Audio (game-kit shared engine + global mute) ----
   const SND = window.gamekit.sound;
   SND.define({
-    flap: ({ tone }) => { tone(520, 0.06, 'sine', 0.07); tone(680, 0.04, 'sine', 0.04); },
-    score: ({ tone }) => { [660, 880].forEach((f, i) => setTimeout(() => tone(f, 0.1, 'sine', 0.08), i * 60)); },
-    hit: ({ tone }) => { tone(180, 0.25, 'sawtooth', 0.18); tone(120, 0.3, 'square', 0.1); },
+    flap: (c) => { c.voice({ f: 300, slideTo: 620, dur: 0.09, type: 'sine', gain: 0.12, reverb: 0.1 }); c.noiseHit({ dur: 0.05, gain: 0.03, filter: 'highpass', cutoff: 2000 }); },
+    score: (c) => { [784, 1047].forEach((f, i) => c.voice({ f, dur: 0.14, type: 'sine', gain: 0.1, reverb: 0.24, t: c.now() + i * 0.07 })); },
+    hit: (c) => { c.voice({ f: 220, slideTo: 70, dur: 0.32, type: 'sawtooth', gain: 0.2, filter: 'lowpass', cutoff: 1200, cutoffTo: 200 }); c.noiseHit({ dur: 0.12, gain: 0.12, filter: 'lowpass', cutoff: 600, reverb: 0.15 }); },
   });
 
   // ---- Constants ----
@@ -279,6 +279,7 @@
   function menuBackdrop(g, w, h, tod, frame) {
     frame = frame || 0;
     const night = tod === 'night';
+    const rnd = n => { const s = Math.sin(n * 12.9898) * 43758.5453; return s - Math.floor(s); }; // stable per-index scatter
     if (night) { mGrad(g, w, h, [[0, '#0a0e1e'], [.55, '#1a2040'], [1, '#1a3020']]);
       g.fillStyle = '#fff'; for (let s = 0; s < 50; s++) { g.globalAlpha = .5; g.fillRect((s * 97 + 13) % w, (s * 53 + 7) % (h * .7), (s % 3) ? 1.5 : 2.3, (s % 3) ? 1.5 : 2.3); } g.globalAlpha = 1;
       g.fillStyle = 'rgba(240,235,200,.9)'; g.beginPath(); g.arc(w * .82, h * .16, 22, 0, 7); g.fill(); g.fillStyle = 'rgba(30,40,80,.35)'; g.beginPath(); g.arc(w * .82 + 9, h * .16 - 7, 22, 0, 7); g.fill();
@@ -294,23 +295,25 @@
       g.fillStyle = pg; g.fillRect(px, 0, pw, gy - gap / 2); g.fillRect(px, gy + gap / 2, pw, h - (gy + gap / 2) - 28); g.fillRect(px - 5, gy - gap / 2 - 14, pw + 10, 14); g.fillRect(px - 5, gy + gap / 2, pw + 10, 14);
       [gy - gap / 2, gy + gap / 2].forEach(fy => { g.fillStyle = night ? '#a080e0' : '#f9c0c0'; for (let p = 0; p < 5; p++) { const an = p / 5 * 6.28; g.beginPath(); g.ellipse(px + pw / 2 + Math.cos(an) * 11, fy + Math.sin(an) * 9, 5, 4, an, 0, 7); g.fill(); } g.fillStyle = night ? '#c0a0ff' : '#f9e080'; g.beginPath(); g.arc(px + pw / 2, fy, 4, 0, 7); g.fill(); });
     });
-    if (night) { // fireflies drift + pulse
-      for (let f = 0; f < 12; f++) {
-        const drift = frame * (0.4 + (f % 5) * 0.14);
-        const fx = (((f * 131 + 40) - drift) % (w + 40) + w + 40) % (w + 40) - 20;
-        const fy = (f * 67 + 30) % (h * .55) + h * .1 + Math.sin(frame * 0.05 + f) * 18;
-        const gl = 0.3 + 0.6 * (0.5 + 0.5 * Math.sin(frame * 0.08 + f * 1.3));
-        g.fillStyle = 'rgba(192,255,64,' + (0.22 * gl).toFixed(3) + ')'; g.beginPath(); g.arc(fx, fy, 8, 0, 7); g.fill();
-        g.fillStyle = 'rgba(208,255,96,' + gl.toFixed(3) + ')'; g.beginPath(); g.arc(fx, fy, 2.5, 0, 7); g.fill();
+    if (night) { // fireflies — mirror the in-game look/behaviour (see drawFireflies): scattered start
+      for (let f = 0; f < 14; f++) {          // random x/y, slow left drift, gentle bob, slow pulse, same colours
+        const phase = rnd(f + 3.1) * 6.283, amp = 20 + rnd(f + 5.7) * 20;
+        const baseX = rnd(f + 1) * (w + 40), baseY = h * 0.3 + rnd(f + 7.3) * h * 0.45;
+        const fx = ((baseX - frame * 0.7) % (w + 40) + (w + 40)) % (w + 40) - 20;
+        const fy = baseY + Math.sin(frame * 0.02 + phase) * amp * 0.3;
+        const glow = 0.5 + 0.5 * Math.sin(frame * 0.07 + phase);
+        g.fillStyle = 'rgba(208,255,96,' + (0.3 + 0.7 * glow).toFixed(3) + ')'; g.beginPath(); g.arc(fx, fy, 2.5, 0, 7); g.fill();
+        g.fillStyle = 'rgba(192,255,64,' + (0.12 * glow).toFixed(3) + ')'; g.beginPath(); g.arc(fx, fy, 8, 0, 7); g.fill();
       }
-    } else { // leaves on the wind
-      const lc = ['#8fce5a', '#b0dc80', '#e0b25a', '#c8e08a'];
-      for (let l = 0; l < 9; l++) {
-        const sp = 0.5 + (l % 4) * 0.28;
-        const lx = (((l * 137 + 20) - frame * sp) % (w + 30) + w + 30) % (w + 30) - 15;
-        const ly = h * .18 + (l * 53) % (h * .42) + Math.sin(frame * 0.03 + l) * 16;
-        g.save(); g.translate(lx, ly); g.rotate(frame * 0.02 + l); g.globalAlpha = 0.85;
-        g.fillStyle = lc[l % 4]; g.beginPath(); g.ellipse(0, 0, 6, 3, 0, 0, 7); g.fill();
+    } else { // leaves on the wind — mirror in-game drawLeaves: scattered, varied size/spin/drift + sway bob
+      for (let l = 0; l < 10; l++) {
+        const speed = 1.1 + rnd(l + 2.2) * 1.7, r = 4 + rnd(l + 6.6) * 2.5;
+        const baseX = rnd(l + 1) * (w + 30), baseY = h * 0.15 + rnd(l + 4.4) * h * 0.5;
+        const spin = rnd(l + 3.3) * 6.283 + frame * ((rnd(l + 5.5) - 0.5) * 0.06);
+        const lx = ((baseX - frame * speed) % (w + 30) + (w + 30)) % (w + 30) - 15;
+        const ly = baseY + Math.sin(frame * 0.03 + rnd(l + 8.8) * 6.283) * 10;
+        g.save(); g.translate(lx, ly); g.rotate(spin); g.globalAlpha = 0.8;
+        g.fillStyle = LEAF_COLS[l % 4]; g.beginPath(); g.ellipse(0, 0, r + 2, r - 1, 0, 0, 7); g.fill();
         g.restore(); g.globalAlpha = 1;
       }
     }
@@ -794,11 +797,12 @@
   });
 
   // ---- top nav (game-kit) ----
-  KIT.nav({ reset: 'flappy_', home: '../../', theme: FLAPPY.day, challenges: 'flappy', onMenu: () => toMenu(),
+  KIT.nav({ music: true, reset: 'flappy_', home: '../../', theme: FLAPPY.day, challenges: 'flappy', onMenu: () => toMenu(),
     onPause: () => { if (state === 'playing') pauseGame(); else if (state === 'paused') resumeGame(); },
     confirmLeave: () => (state === 'playing' || state === 'paused') ? "Leave this run? You'll lose your progress." : false,
     controls: { title: 'Meadow Flyer — Controls',
       mouse: [ ['Click', 'Flap'] ], keyboard: [ ['Space · Enter', 'Flap'], ['Esc', 'Pause'] ], touch: [ ['Tap', 'Flap'] ] } });
+  KIT.music.play('meadow');
 
   // ---- Test hook ----
   window.__test = {
