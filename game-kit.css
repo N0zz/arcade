@@ -86,7 +86,9 @@
 .gamekit-menu .gkm-title { flex: 0 0 auto; }
 .gamekit-menu .gkm-title { margin: 0 0 14px; font-size: 26px; letter-spacing: 2px; font-weight: 800; text-wrap: balance;
   color: var(--gkm-title, var(--gkm-text, #eaf2fb)); text-shadow: var(--gkm-glow, none); }
-.gamekit-menu .gkm-sec { margin: 14px 0 6px; font-size: 10px; letter-spacing: 2px; opacity: .55; }
+.gamekit-menu .gkm-sec { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 20px 0 10px;
+  font-size: 11px; font-weight: 700; letter-spacing: 2.5px; opacity: .9; color: var(--gkm-title, var(--gkm-text, #eaf3ff)); }
+.gamekit-menu .gkm-sec::before, .gamekit-menu .gkm-sec::after { content: ""; flex: 1; max-width: 64px; height: 1px; background: var(--gkm-accent, #9fe8ff); opacity: .45; }
 .gamekit-menu .gkm-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .gamekit-menu .gkm-choice { flex: 1 1 auto; min-width: 96px; cursor: pointer; padding: 10px 12px; border-radius: 10px;
   font: 600 13px/1.2 var(--gkm-font, ui-monospace, monospace); letter-spacing: 1px; color: var(--gkm-text, #eaf2fb);
@@ -140,6 +142,90 @@
 .gamekit-menu .gkm-card-mech span { font: 10px/1 var(--gkm-font, ui-monospace, monospace); letter-spacing: .4px; color: #9fb2c9;
   background: rgba(255, 255, 255, 0.05); border: 1px solid var(--gkm-border, rgba(255, 255, 255, 0.16)); border-radius: 999px; padding: 3px 9px; }
 .gamekit-menu .gkm-card-mech span.hot { color: var(--gkm-new, #ffd166); border-color: rgba(255, 209, 102, .4); background: rgba(255, 209, 102, .08); }
+
+/* ---- per-game backdrop art behind a frosted box (cfg.backdrop) ---- */
+/* backdrop stays opaque (so the live game canvas never bleeds through); the kit dims it with a
+   baked-in scrim in paintBackdrop so it reads as a background rather than a vivid full-opacity scene */
+.gamekit-menu .gkm-backdrop { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.gamekit-menu .gkm-box { position: relative; z-index: 1; -webkit-backdrop-filter: blur(9px) saturate(1.08); backdrop-filter: blur(9px) saturate(1.08); }
+/* contrast scrim: a tint behind the box CONTENT (above the frosted glass, below text) so any
+   backdrop is legible by construction. --gkm-scrim defaults dark (light text); light-text-on-dark
+   menus keep it; a light-box menu (e.g. Meadow day, dark text) sets --gkm-scrim to a light tint. */
+.gamekit-menu .gkm-box::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--gkm-scrim, rgba(8, 12, 20, 0.32)); }
+.gamekit-menu .gkm-scroll { overflow-x: hidden; }
+
+/* selector-button highlight: an outer ring deliberately CUT with a vertical line on both sides
+   (clip-path), identical on every button; keyboard focus is a clean inset ring (never clipped) */
+.gamekit-menu .gkm-choice { position: relative; }
+.gamekit-menu .gkm-choice.gkm-on { box-shadow: none; }
+.gamekit-menu .gkm-choice.gkm-focus { outline: none; box-shadow: inset 0 0 0 2px var(--gkm-accent, #9fe8ff); }
+.gamekit-menu .gkm-choice.gkm-on::after { content: ""; position: absolute; inset: -4px; border: 1.6px solid var(--gkm-accent, #9fe8ff);
+  border-radius: 13px; pointer-events: none; -webkit-clip-path: inset(0 6px); clip-path: inset(0 6px); }
+/* a danger action (Quit) focuses in its own red, not the theme accent — avoids e.g. purple-ring-on-red */
+.gamekit-menu .gkm-action.danger.gkm-focus { outline-color: #ff8a8a; }
+
+/* ---- segmented slider (style:'slider') — Snake speed, Keep Defender difficulty ---- */
+.gamekit-menu .gkm-slider { margin: 4px 2px 2px; }
+.gamekit-menu .gkm-sl-hit { padding: 16px 12px 4px; cursor: pointer; touch-action: none; }
+.gamekit-menu .gkm-sl-track { position: relative; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.16); }
+.gamekit-menu .gkm-sl-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; background: var(--gkm-accent, #9fe8ff); }
+.gamekit-menu .gkm-sl-tick { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: rgba(255, 255, 255, 0.32); }
+.gamekit-menu .gkm-sl-thumb { position: absolute; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+  background: var(--gkm-accent, #9fe8ff); box-shadow: var(--gkm-glow, 0 0 12px rgba(159, 232, 255, .5)); }
+.gamekit-menu .gkm-sl-labels { display: flex; justify-content: space-between; margin: 2px 0 0; }
+.gamekit-menu .gkm-sl-label { flex: 1; text-align: center; padding: 7px 2px; cursor: pointer; color: #93a5bd;
+  font: 600 12.5px/1 var(--gkm-font, ui-monospace, monospace); letter-spacing: .5px; }
+.gamekit-menu .gkm-sl-label:first-child { text-align: left; } .gamekit-menu .gkm-sl-label:last-child { text-align: right; }
+.gamekit-menu .gkm-sl-label.gkm-on { color: var(--gkm-accent, #9fe8ff); }
+.gamekit-menu .gkm-sl-label.gkm-focus { color: var(--gkm-text, #eaf3ff); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---- thumbnail grid (style:'grid') — Meadow Flyer flyer picker ---- */
+.gamekit-menu .gkm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 14px; }
+.gamekit-menu .gkm-gcell { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 9px 6px 8px; border-radius: 12px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.05); border: 1.5px solid var(--gkm-border, rgba(255, 255, 255, 0.14)); transition: border-color .14s, box-shadow .14s; }
+.gamekit-menu .gkm-gcell.gkm-on { border-color: var(--gkm-accent, #9fe8ff); background: rgba(255, 255, 255, 0.1); box-shadow: none; }
+.gamekit-menu .gkm-gcell.gkm-focus { outline: none; box-shadow: inset 0 0 0 2px var(--gkm-accent, #9fe8ff); }
+/* same symmetric cut-highlight ring as the selector buttons (cut on both sides) */
+.gamekit-menu .gkm-gcell.gkm-on::after { content: ""; position: absolute; inset: -4px; border: 1.6px solid var(--gkm-accent, #9fe8ff);
+  border-radius: 15px; pointer-events: none; -webkit-clip-path: inset(0 6px); clip-path: inset(0 6px); }
+.gamekit-menu .gkm-gcell.gkm-locked { opacity: 0.55; cursor: default; }
+.gamekit-menu .gkm-gcv { display: block; }
+.gamekit-menu .gkm-gnm { font: 600 12px/1 var(--gkm-font-body, system-ui, sans-serif); color: var(--gkm-text, #eaf3ff); }
+.gamekit-menu .gkm-gsub { font: 600 10.5px/1 var(--gkm-font-body, system-ui, sans-serif); color: var(--gkm-accent, #9fe8ff); }
+.gamekit-menu .gkm-gcell.gkm-locked .gkm-gsub { color: #93a5bd; }
+
+/* ---- map-picker (style:'popup') — Keep Defender ---- */
+.gamekit-menu .gkm-picker { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer;
+  padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); border: 1.5px solid var(--gkm-border, rgba(255, 255, 255, 0.2));
+  color: var(--gkm-text, #eaf3ff); font: 600 15px/1.2 var(--gkm-font-body, system-ui, sans-serif); }
+.gamekit-menu .gkm-picker:hover { border-color: var(--gkm-accent, #9fe8ff); }
+.gamekit-menu .gkm-picker.gkm-focus { outline: none; box-shadow: inset 0 0 0 2px var(--gkm-accent, #9fe8ff); }
+.gamekit-menu .gkm-picker .gkm-picker-cv { border-radius: 6px; flex: 0 0 auto; }
+.gamekit-menu .gkm-picker-nm { flex: 1; } .gamekit-menu .gkm-picker-sub { font: 600 11px/1 system-ui; color: #8ea3bd; } .gamekit-menu .gkm-picker-chev { color: var(--gkm-accent, #9fe8ff); }
+.gkm-picker-modal { position: fixed; inset: 0; z-index: 9300; display: flex; align-items: center; justify-content: center; padding: 70px 16px 20px;
+  background: rgba(4, 7, 12, 0.72); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.gkm-picker-panel { width: min(580px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; border-radius: 16px;
+  background: var(--gkm-bg, rgba(14, 20, 32, 0.98)); border: 1px solid var(--gkm-border, rgba(255, 255, 255, 0.2)); color: var(--gkm-text, #eaf2fb);
+  font-family: var(--gkm-font, ui-monospace, monospace); }
+.gkm-picker-head { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.gkm-picker-head h3 { margin: 0; font: 800 15px/1 var(--gkm-font, ui-monospace, monospace); letter-spacing: 1px; color: var(--gkm-title, var(--gkm-text, #eaf3ff)); }
+.gkm-picker-x { background: none; border: none; color: #9fb2c8; font-size: 20px; cursor: pointer; line-height: 1; }
+.gkm-picker-body { display: grid; grid-template-columns: 1fr 1.2fr; min-height: 0; overflow: hidden; }
+.gkm-picker-list { display: flex; flex-direction: column; padding: 7px; gap: 3px; overflow-y: auto; border-right: 1px solid rgba(255, 255, 255, 0.1); }
+.gkm-picker-item { display: flex; align-items: center; gap: 9px; padding: 8px; border-radius: 9px; cursor: pointer; font: 600 13.5px/1.1 var(--gkm-font-body, system-ui, sans-serif); color: var(--gkm-text, #eaf3ff); }
+.gkm-picker-item:hover, .gkm-picker-item.gkm-hot { background: rgba(255, 255, 255, 0.09); }
+.gkm-picker-item.gkm-on { background: var(--gkm-accent-soft, rgba(159, 232, 255, 0.16)); color: var(--gkm-accent, #9fe8ff); box-shadow: inset 0 0 0 1px var(--gkm-accent, #9fe8ff); }
+.gkm-picker-item .gkm-picker-cv { border-radius: 5px; flex: 0 0 auto; }
+.gkm-picker-desc { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.gkm-picker-desc canvas { border-radius: 10px; margin: 0 auto 12px; box-shadow: 0 3px 14px rgba(0, 0, 0, .4); max-width: 100%; }
+.gkm-picker-desc h4 { margin: 0 0 6px; font: 700 16px/1.1 var(--gkm-font, ui-monospace, monospace); color: var(--gkm-accent, #9fe8ff); }
+.gkm-picker-desc p { margin: 0 0 10px; font: 400 13px/1.5 var(--gkm-font-body, system-ui, sans-serif); color: #b8c6db; }
+.gkm-picker-best { font: 600 11px/1 var(--gkm-font, ui-monospace, monospace); color: #8ea3bd; letter-spacing: .05em; }
+/* phones: stack the map list above its description instead of squeezing two columns (canvas would overflow) */
+@media (max-width: 560px) {
+  .gkm-picker-body { grid-template-columns: 1fr; }
+  .gkm-picker-list { border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.1); max-height: 38vh; }
+}
 
 /* ---- boolean checkbox (toggles) ---- */
 .gamekit-menu .gkm-checkrow { display: flex; justify-content: center; margin-top: 16px; }

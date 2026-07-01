@@ -209,8 +209,13 @@
 
   // ---------- player display name (optional; used for Discord score posts) ----------
   var NAME = 'gamekit_name';
-  function player() { var n = lsGet(NAME); return (n && n.replace(/\s+/g, '')) ? n : 'anonymous'; }
-  function setName(n) { n = (n == null ? '' : String(n)).replace(/\s+/g, ' ').trim().slice(0, 24); lsSet(NAME, n || 'anonymous'); return n || 'anonymous'; }
+  // Default display name is a random, family-friendly nickname (not the player's identity), assigned
+  // once per device and persisted. Players can change it in the menu; clearing it picks a new one.
+  var FN_ADJ = ['Sneaky', 'Turbo', 'Wobbly', 'Sleepy', 'Cosmic', 'Zippy', 'Fuzzy', 'Jolly', 'Mighty', 'Sparkly', 'Bouncy', 'Speedy', 'Cheeky', 'Brave', 'Silly', 'Groovy', 'Nifty', 'Plucky', 'Dizzy', 'Sunny'];
+  var FN_NOUN = ['Otter', 'Pigeon', 'Wizard', 'Narwhal', 'Waffle', 'Pickle', 'Panda', 'Goblin', 'Raccoon', 'Muffin', 'Yeti', 'Llama', 'Ninja', 'Wombat', 'Noodle', 'Penguin', 'Dragon', 'Hamster', 'Robot', 'Taco'];
+  function randomName() { return FN_ADJ[Math.floor(Math.random() * FN_ADJ.length)] + ' ' + FN_NOUN[Math.floor(Math.random() * FN_NOUN.length)]; }
+  function player() { var n = lsGet(NAME); if (n && n.replace(/\s+/g, '')) return n; var gen = randomName(); lsSet(NAME, gen); return gen; }
+  function setName(n) { n = (n == null ? '' : String(n)).replace(/\s+/g, ' ').trim().slice(0, 24); if (!n) n = randomName(); lsSet(NAME, n); return n; }
 
   // ---------- post a score to the public Komyo Games Discord (webhook, intentional/button only) ----------
   var DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1520515996933296378/YlXg2W8ypFcQGMHRf0BvWxp10-m7Z7DggStKrBZfusWo8e_emNF6gLpiVjfb0YIExL24';
@@ -501,7 +506,7 @@
     if (typeof document !== 'undefined' && document.body) {
       var wrap = document.createElement('div'); wrap.className = 'gamekit-nav';
       wrap.innerHTML = '<button class="gamekit-back" id="gamekitMenu" type="button">&#x2039; Menu</button>'
-        + '<a class="gamekit-back" id="gamekitHome" target="_top" href="' + (opts.home || '../../') + '"><span class="gamekit-home-label">Komyo </span>&#x203A;</a>';
+        + '<a class="gamekit-back" id="gamekitHome" href="' + (opts.home || '../../') + '"><span class="gamekit-home-label">Komyo </span>&#x203A;</a>';
       document.body.appendChild(wrap);
       _navEl = wrap;
       var menu = document.getElementById('gamekitMenu');
@@ -532,7 +537,9 @@
         if (!leaveMsg()) return; // no run → let the link navigate normally
         if (e && e.preventDefault) e.preventDefault();
         var href = homeA.getAttribute('href');
-        guarded(function () { try { (window.top || window).location.href = href; } catch (err) { try { location.href = href; } catch (e2) {} } });
+        // navigate the CURRENT frame (not window.top) — works on the normal site AND inside an
+        // embedded iframe (e.g. a Discord Activity, where window.top is Discord's cross-origin frame)
+        guarded(function () { try { location.href = href; } catch (e2) {} });
       });
     }
     audioMenu({ music: !!opts.music, reset: opts.reset, onPause: opts.onPause, controls: opts.controls, challenges: opts.challenges, genres: opts.genres, theme: opts.theme });
@@ -827,6 +834,7 @@
   // --gkm-overlay / --gkm-radius / --gkm-font). A game themes them in its own CSS, or passes a
   // `theme` object to menu.show() (short keys → those vars) for per-screen tweaks.
   var _menuEl = null, _menuKey = null, _menuHandle = null, _menuKind = null;
+  var _bdRaf = 0, _bdFrame = 0, _bdResize = null; // per-menu backdrop canvas: rAF id, frame counter, resize listener
   // deferred service-worker update: never reload mid-run — wait for a safe moment (a start/end menu is
   // open, or the tab is backgrounded). Pause doesn't count (you'll resume on the same version).
   var _pendingReload = false, _swReloaded = false;
@@ -845,6 +853,8 @@
   }
   function menuHide() {
     if (_menuKey) { try { document.removeEventListener('keydown', _menuKey, true); } catch (e) {} _menuKey = null; }
+    if (_bdRaf && typeof cancelAnimationFrame === 'function') { try { cancelAnimationFrame(_bdRaf); } catch (e) {} } _bdRaf = 0;
+    if (_bdResize && typeof window !== 'undefined' && window.removeEventListener) { try { window.removeEventListener('resize', _bdResize); } catch (e) {} } _bdResize = null;
     if (_menuEl) { try { if (_menuEl.parentNode) _menuEl.parentNode.removeChild(_menuEl); } catch (e) {} _menuEl = null; }
     _menuHandle = null; _menuKind = null;
   }
@@ -897,7 +907,18 @@
     function state() { var o = {}, k; for (k in sel) if (has(sel, k)) o[k] = sel[k]; for (k in tog) if (has(tog, k)) o[k] = tog[k]; return o; }
 
     var ov = document.createElement('div'); ov.className = 'gamekit-menu gamekit-menu-' + kind + (hasCards ? ' gkm-wide' : '');
+    var bdCanvas = (typeof cfg.backdrop === 'function') ? mkEl('canvas', 'gkm-backdrop') : null; // per-game art behind a frosted box
+    if (bdCanvas) ov.appendChild(bdCanvas);
     var box = mkEl('div', 'gkm-box'); ov.appendChild(box);
+    function paintBackdrop() {
+      if (!bdCanvas || !bdCanvas.getContext) return;
+      try { var cw = ov.clientWidth || 0, ch = ov.clientHeight || 0; if (bdCanvas.width !== cw) bdCanvas.width = cw; if (bdCanvas.height !== ch) bdCanvas.height = ch;
+        var g2 = bdCanvas.getContext('2d');
+        cfg.backdrop(g2, cw, ch, state(), _bdFrame);
+        // dim toward the menu's own overlay tint so the (opaque) backdrop reads as a background behind glass
+        var scrim = cfg.theme && (cfg.theme.scrim || cfg.theme.overlay);
+        if (scrim && g2.fillRect) { g2.save(); g2.globalAlpha = 0.5; g2.fillStyle = scrim; g2.fillRect(0, 0, cw, ch); g2.restore(); } } catch (e) {}
+    }
 
     if (cfg.title != null) box.appendChild(mkEl('h1', 'gkm-title', cfg.title));
     var scroll = mkEl('div', 'gkm-scroll'); box.appendChild(scroll); // content scrolls; title + actions stay pinned
@@ -906,7 +927,7 @@
       if (cfg.best != null) scroll.appendChild(mkEl('p', 'gkm-best', 'Best: ' + fmtScore(cfg.best) + (cfg.newBest ? ' <span class="gkm-new">★ New best!</span>' : '')));
     }
 
-    var choiceRefs = [], dynamic = []; // dynamic[]: per-card updater(state), re-run on any change
+    var choiceRefs = [], dynamic = [], popupRefs = []; // dynamic[]: per-card updater(state), re-run on any change; popupRefs: map-picker triggers
     groups.forEach(function (g2) {
       if (g2.label != null) scroll.appendChild(mkEl('div', 'gkm-sec', g2.label));
       if (g2.style === 'cards') {
@@ -937,6 +958,83 @@
           });
         });
         scroll.appendChild(list);
+      } else if (g2.style === 'slider') {
+        // segmented slider: a track + thumb driven by selection; each stop label IS a focusable choice
+        var chs = g2.choices || [], nS = chs.length;
+        var sw = mkEl('div', 'gkm-slider'), sh = mkEl('div', 'gkm-sl-hit'), tr = mkEl('div', 'gkm-sl-track');
+        var fl = mkEl('div', 'gkm-sl-fill'); tr.appendChild(fl);
+        chs.forEach(function (c, i) { var tk = mkEl('div', 'gkm-sl-tick'); tk.style.left = (nS > 1 ? i / (nS - 1) * 100 : 0) + '%'; tr.appendChild(tk); });
+        var th = mkEl('div', 'gkm-sl-thumb'); tr.appendChild(th);
+        var labs = mkEl('div', 'gkm-sl-labels');
+        chs.forEach(function (c) {
+          var sp = mkEl('span', 'gkm-sl-label', c.label);
+          var ref = { el: sp, kind: 'choice', grp: g2.id, choice: c.id };
+          sp.addEventListener('click', function () { selectChoice(ref); setFocusEl(sp); });
+          sp.addEventListener('mouseenter', function () { setFocusEl(sp); });
+          choiceRefs.push(ref); labs.appendChild(sp);
+        });
+        var slFromX = function (x) { try { var r = tr.getBoundingClientRect(); if (!r.width) return; var i = Math.round((x - r.left) / r.width * (nS - 1)); i = Math.max(0, Math.min(nS - 1, i)); for (var k = 0; k < choiceRefs.length; k++) if (choiceRefs[k].grp === g2.id && choiceRefs[k].choice === chs[i].id) { selectChoice(choiceRefs[k]); return; } } catch (e) {} };
+        var dn = false;
+        sh.addEventListener('pointerdown', function (e) { dn = true; try { sh.setPointerCapture(e.pointerId); } catch (x) {} slFromX(e.clientX); });
+        sh.addEventListener('pointermove', function (e) { if (dn) slFromX(e.clientX); });
+        sh.addEventListener('pointerup', function () { dn = false; }); sh.addEventListener('pointercancel', function () { dn = false; });
+        sh.appendChild(tr); sw.appendChild(sh); sw.appendChild(labs);
+        dynamic.push(function () { var idx = 0; for (var i = 0; i < chs.length; i++) if (chs[i].id === sel[g2.id]) { idx = i; break; } var p = (nS > 1 ? idx / (nS - 1) : 0) * 100; th.style.left = p + '%'; fl.style.width = p + '%'; });
+        scroll.appendChild(sw);
+      } else if (g2.style === 'grid') {
+        // thumbnail grid: cells with a preview + name + sub-label; supports locked/cost cells (unselectable)
+        var gr = mkEl('div', 'gkm-grid');
+        (g2.choices || []).forEach(function (c) {
+          var cell = mkEl('div', 'gkm-gcell');
+          var cv = mkEl('canvas', 'gkm-gcv'); try { cv.width = c.pvW || 46; cv.height = c.pvH || 40; } catch (e) {}
+          var nm = mkEl('div', 'gkm-gnm', c.label), sub = mkEl('div', 'gkm-gsub');
+          cell.appendChild(cv); cell.appendChild(nm); cell.appendChild(sub);
+          var ref = { el: cell, kind: 'choice', grp: g2.id, choice: c.id, locked: false };
+          cell.addEventListener('click', function () { selectChoice(ref); setFocusEl(cell); });
+          cell.addEventListener('mouseenter', function () { setFocusEl(cell); });
+          choiceRefs.push(ref); gr.appendChild(cell);
+          dynamic.push(function (st) {
+            drawPreview(cv, c.preview, st);
+            var lk = !!evalVal(c.locked, st); ref.locked = lk; if (cell.classList) cell.classList.toggle('gkm-locked', lk);
+            sub.innerHTML = lk ? (c.lockedLabel != null ? evalVal(c.lockedLabel, st) : ('🔒 ' + (evalVal(c.cost, st) || '')))
+              : (c.sub != null ? evalVal(c.sub, st) : (c.best != null ? ('BEST ' + fmtScore(evalVal(c.best, st))) : ''));
+          });
+        });
+        scroll.appendChild(gr);
+      } else if (g2.style === 'popup') {
+        // map-picker: a trigger showing the current choice; opens a modal (list + description) to change it
+        var chsP = g2.choices || [];
+        var find = function (id) { for (var i = 0; i < chsP.length; i++) if (chsP[i].id === id) return chsP[i]; return chsP[0]; };
+        var trig = mkEl('button', 'gkm-picker'); try { trig.type = 'button'; } catch (e) {}
+        var openPicker = function () {
+          var mv = mkEl('div', 'gkm-picker-modal'), pn = mkEl('div', 'gkm-picker-panel');
+          var ph = mkEl('div', 'gkm-picker-head'); ph.appendChild(mkEl('h3', null, g2.pickerTitle || 'Choose')); var xb = mkEl('button', 'gkm-picker-x', '×'); try { xb.type = 'button'; } catch (e) {} ph.appendChild(xb);
+          var pb = mkEl('div', 'gkm-picker-body'), plist = mkEl('div', 'gkm-picker-list'), pdesc = mkEl('div', 'gkm-picker-desc');
+          var closed = false, onKey;
+          var closeP = function () { if (closed) return; closed = true; _modalOpen = Math.max(0, _modalOpen - 1); try { document.removeEventListener('keydown', onKey, true); } catch (e) {} try { if (mv.parentNode) mv.parentNode.removeChild(mv); } catch (e) {} };
+          var renderDesc = function (id) { var c = find(id); pdesc.innerHTML = ''; var big = mkEl('canvas'); try { big.width = c.pvW || 210; big.height = c.pvH || 110; } catch (e) {} drawPreview(big, c.preview, state()); pdesc.appendChild(big); pdesc.appendChild(mkEl('h4', null, c.label)); if (c.desc != null) pdesc.appendChild(mkEl('p', null, evalVal(c.desc, state()))); if (c.best != null) pdesc.appendChild(mkEl('div', 'gkm-picker-best', 'BEST ' + fmtScore(evalVal(c.best, state())))); };
+          chsP.forEach(function (c) {
+            var it = mkEl('div', 'gkm-picker-item' + (c.id === sel[g2.id] ? ' gkm-on' : ''));
+            var cv = mkEl('canvas', 'gkm-picker-cv'); try { cv.width = 34; cv.height = 24; } catch (e) {} drawPreview(cv, c.preview, state());
+            it.appendChild(cv); it.appendChild(mkEl('span', null, c.label));
+            it.addEventListener('mouseenter', function () { var kids = plist.childNodes; for (var i = 0; i < kids.length; i++) if (kids[i].classList) kids[i].classList.remove('gkm-hot'); if (it.classList) it.classList.add('gkm-hot'); renderDesc(c.id); });
+            it.addEventListener('click', function () { sel[g2.id] = c.id; changed(); closeP(); });
+            plist.appendChild(it);
+          });
+          pb.appendChild(plist); pb.appendChild(pdesc); pn.appendChild(ph); pn.appendChild(pb); mv.appendChild(pn);
+          applyMenuTheme(mv, cfg.theme);
+          xb.addEventListener('click', closeP);
+          mv.addEventListener('click', function (e) { if (e.target === mv) closeP(); });
+          onKey = function (e) { if (e && (e.key === 'Escape' || e.key === 'Esc')) { if (e.stopImmediatePropagation) e.stopImmediatePropagation(); closeP(); } };
+          if (typeof document.addEventListener === 'function') document.addEventListener('keydown', onKey, true);
+          _modalOpen++; document.body.appendChild(mv); renderDesc(sel[g2.id]);
+        };
+        var pref = { el: trig, kind: 'popup', open: openPicker };
+        trig.addEventListener('click', function () { setFocusEl(trig); openPicker(); });
+        trig.addEventListener('mouseenter', function () { setFocusEl(trig); });
+        popupRefs.push(pref);
+        dynamic.push(function (st) { var c = find(sel[g2.id]); trig.innerHTML = ''; var cv = mkEl('canvas', 'gkm-picker-cv'); try { cv.width = 40; cv.height = 26; } catch (e) {} drawPreview(cv, c.preview, st); trig.appendChild(cv); trig.appendChild(mkEl('span', 'gkm-picker-nm', c.label)); if (c.sub != null || c.best != null) trig.appendChild(mkEl('span', 'gkm-picker-sub', c.sub != null ? evalVal(c.sub, st) : ('Best ' + fmtScore(evalVal(c.best, st))))); trig.appendChild(mkEl('span', 'gkm-picker-chev', '▾')); });
+        scroll.appendChild(trig);
       } else {
         var row = mkEl('div', 'gkm-row');
         (g2.choices || []).forEach(function (c) {
@@ -984,11 +1082,22 @@
     applyMenuTheme(ov, cfg.theme);
     document.body.appendChild(ov);
     _menuEl = ov; _menuKind = kind;
+    if (bdCanvas) {
+      _bdFrame = 0;
+      _bdResize = function () { paintBackdrop(); };
+      if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('resize', _bdResize);
+      var reduceMotion = false;
+      try { reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+      if (cfg.backdropAnimate && !reduceMotion && typeof requestAnimationFrame === 'function') { // reduced-motion → static frame only
+        var bdLoop = function () { if (_menuEl !== ov) return; _bdFrame++; paintBackdrop(); _bdRaf = requestAnimationFrame(bdLoop); };
+        _bdRaf = requestAnimationFrame(bdLoop);
+      }
+    }
     if (_pendingReload) safeReload(); // a start/end menu is a safe moment to apply a deferred SW update
     if (cfg.record) { try { recordResult(cfg.record.slug || (cfg.share && cfg.share.slug), cfg.record); } catch (e) {} }
     if (shareHost) { try { shareRow(shareHost, cfg.share); } catch (e) {} }
 
-    var focusables = choiceRefs.concat(toggleRefs).concat(actionRefs);
+    var focusables = choiceRefs.concat(toggleRefs).concat(popupRefs).concat(actionRefs);
     var fi = 0;
     function setFocus(i) { if (!focusables.length) return; fi = (i % focusables.length + focusables.length) % focusables.length; for (var k = 0; k < focusables.length; k++) { if (focusables[k].el.classList) focusables[k].el.classList.toggle('gkm-focus', k === fi); } }
     function setFocusEl(el) { for (var k = 0; k < focusables.length; k++) if (focusables[k].el === el) { setFocus(k); return; } }
@@ -1003,20 +1112,20 @@
     }
     function renderDynamic() { var st = state(); for (var k = 0; k < dynamic.length; k++) try { dynamic[k](st); } catch (e) {} }
     function renderHint() { if (hintEl) { try { hintEl.textContent = cfg.hint(state()); } catch (e) {} } }
-    function refresh() { paintChoices(); paintToggles(); renderDynamic(); renderHint(); }
+    function refresh() { paintChoices(); paintToggles(); renderDynamic(); renderHint(); paintBackdrop(); }
     function changed() { refresh(); if (typeof cfg.onChange === 'function') { try { cfg.onChange(state()); } catch (e) {} } }
-    function selectChoice(ref) { sel[ref.grp] = ref.choice; changed(); }
+    function selectChoice(ref) { if (ref.locked) return; sel[ref.grp] = ref.choice; changed(); }
     function toggleOne(ref) { if (ref.disabled) return; tog[ref.id] = !tog[ref.id]; changed(); }
     function fireAction(a) {
       var go = function () { if (a.id === 'play' && typeof cfg.onPlay === 'function') cfg.onPlay(state()); else if (typeof cfg.onAction === 'function') cfg.onAction(a.id, state()); };
       var cm = a.confirm ? (typeof a.confirm === 'function' ? a.confirm() : a.confirm) : null;
       if (cm) confirmDialog(cm, go, a.confirmYes || 'Leave', null); else go();
     }
-    function activate(ref) { if (!ref) return; if (ref.kind === 'choice') selectChoice(ref); else if (ref.kind === 'toggle') toggleOne(ref); else fireAction(ref.action); }
+    function activate(ref) { if (!ref) return; if (ref.kind === 'choice') selectChoice(ref); else if (ref.kind === 'toggle') toggleOne(ref); else if (ref.kind === 'popup') ref.open(); else fireAction(ref.action); }
     function stop(ev) { if (ev.preventDefault) ev.preventDefault(); if (ev.stopPropagation) ev.stopPropagation(); }
 
     refresh();
-    var primIdx = 0; for (var p = 0; p < actionRefs.length; p++) { if (actionRefs[p].action.primary) { primIdx = choiceRefs.length + toggleRefs.length + p; break; } }
+    var primIdx = 0; for (var p = 0; p < actionRefs.length; p++) { if (actionRefs[p].action.primary) { primIdx = choiceRefs.length + toggleRefs.length + popupRefs.length + p; break; } }
     setFocus(primIdx);
 
     var keyFn = function (e) {
