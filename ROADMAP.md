@@ -203,6 +203,22 @@ from day one.
   supported → build a branded one (mascot + search / back-to-catalogue; ties into the mascot reuse).
   Other codes (403 / 5xx) are served by GitHub/Fastly and **aren't customizable** on a static Pages
   site — confirm the limits and document what we can/can't do.
+- **"My profile" modal + shareable stats card** *(idea)* — a profile the player opens from the catalogue
+  (☰ menu, next to Settings) that summarizes THIS device's play: total games played + total game-modes
+  played, and the best score across everything. Below the summary, per-game high-score tables/lists
+  **sorted by game**, showing each mode's PB. **Only list games where the player has a PB** — if every
+  mode of a game is 0/empty, hide that game entirely (so a fresh device shows little/nothing, and it
+  fills in as they play). Data is already on-device: per-game `*_best*` localStorage keys + the kit's
+  `recordResult`/`lastResult` history — no backend. **Key requirement: a Share button** that renders the
+  *exact view shown in the modal* as a **score-card image** (reuse `gamekit.scoreCard`/`buildScoreCard`)
+  and shares it (Native/X/Reddit/Copy + Discord), so the shared image matches what the user sees. Pairs
+  with the global Settings page and the score-card redesign (gate the visual on the real mascot).
+- **Sitemap coverage — add the static pages** *(SEO fix)* — `sitemap.xml` currently lists only the
+  catalogue + each live game, not `tos.html` / `privacy.html` (nor any future standalone pages). Decide
+  whether these belong in the sitemap (they're indexable, low-churn, low-priority) — likely **yes, add
+  them** with a low `<priority>` so search engines can discover them; also cross-check `llms.txt` and
+  `robots.txt` list what we intend. One-time audit + a note in CLAUDE.md's "when a page goes live" step
+  so new standalone pages get added going forward.
 ### Platforms
 
 - **TV & controller support** (Android/Google TV · remote · gamepad) — full design at
