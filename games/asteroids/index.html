@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="../../game-kit.css">
 <script src="../../version.js"></script>
 <script src="../../game-kit.js"></script>
+<script src="../../challenges.js"></script>
 <style>
   html, body { margin:0; padding:0; height:100%; background:#05060a; overflow:hidden; font-family:"Courier New",monospace; color:#cfe8ff; }
   #game { display:block; width:100vw; height:100vh; }
@@ -194,12 +195,10 @@
     KIT.menu.show({ kind:'start', theme:MENU_THEME, title:'ASTEROIDS',
       groups:[ { id:'mode', label:'MODE', style:'cards', default: ENHANCED ? 'enh' : 'classic', choices:[
         { id:'classic', label:'CLASSIC', preview:pvClassic,
-          desc:'The original. One weapon, a whole field of drifting rocks, and a screen that wraps around the edges.',
-          mech: st => ['1 weapon','Screen wrap','3 lives', goalChip(st)],
+          mech: st => ['Endless','One weapon','Screen wraps', goalChip(st)],
           best: st => st.speedrun ? bestTime('classic') : bestScore('classic') },
         { id:'enh', label:'CLASSIC+', tag:'UPGRADES', preview:pvEnh,
-          desc:'Score to power up: the cannon grows to Twin at 500, then a 3-way Spread at 1,500. Same rocks, more firepower.',
-          mech: st => ['Weapon tiers','Upgrades 500 / 1,500', goalChip(st)],
+          mech: st => ['Endless','Weapon tiers', goalChip(st)],
           best: st => st.speedrun ? bestTime('classic-enhanced') : bestScore('classic-enhanced') },
       ]} ],
       toggles:[ { id:'speedrun', label:'SPEEDRUN', caption:'— race to '+SR_TARGET_SCORE+' pts against the clock', default: SPEEDRUN } ],
@@ -337,7 +336,7 @@
   // game-kit nav: top-left ‹ Menu + top-right sound menu (SFX + Music + Reset). ‹ Menu and the komyo ›
   // home link both ask to confirm while a run is live (game pauses behind the confirm); ‹ Menu returns
   // to the start menu in-place.
-  if (KIT) { KIT.nav({ music: true, reset: 'asteroids_', home: '../../', theme: MENU_THEME, onMenu: () => toMenu(),
+  if (KIT) { KIT.nav({ music: true, reset: 'asteroids_', home: '../../', theme: MENU_THEME, challenges: 'asteroids', onMenu: () => toMenu(),
     onPause: () => { if (state==='playing') pauseGame(); else if (state==='paused') resumeGame(); },
     confirmLeave: () => (state==='playing' || state==='paused') ? "Leave this run? You'll lose your progress." : false,
     controls: { title: 'Asteroids — Controls',
