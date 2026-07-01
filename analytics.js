@@ -4,17 +4,23 @@
 (function () {
   var GA_ID = 'G-S4JQPYNDNM';
   var loaded = false;
+  // Inside a Discord Activity everything is served from <app>.discordsays.com and external hosts must go
+  // through the /.proxy/<prefix> mappings. Load gtag via /.proxy/gtm and point its hit transport at
+  // /.proxy/ga (gtag's own transport_url knob) so event/click counts land. (Storage doesn't persist in an
+  // Activity, so the client_id / unique-user count is unreliable — we only care about aggregate events.)
+  var IN_ACTIVITY = false;
+  try { IN_ACTIVITY = /(^|\.)discordsays\.com$/i.test(location.hostname); } catch (e) {}
   window.gamekitLoadGA = function () {
     if (loaded) return;
     loaded = true;
     var s = document.createElement('script');
     s.async = true;
-    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+    s.src = (IN_ACTIVITY ? '/.proxy/gtm' : 'https://www.googletagmanager.com') + '/gtag/js?id=' + GA_ID;
     document.head.appendChild(s);
     window.dataLayer = window.dataLayer || [];
     window.gtag = function () { window.dataLayer.push(arguments); };
     window.gtag('js', new Date());
-    window.gtag('config', GA_ID);
+    window.gtag('config', GA_ID, IN_ACTIVITY ? { transport_url: location.origin + '/.proxy/ga' } : {});
     pingAudioState();
   };
 

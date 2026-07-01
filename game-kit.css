@@ -350,6 +350,9 @@
 .gamekit-share .sbtn:hover { color: #fff !important; border-color: var(--gamekit-accent) !important; background: rgba(8, 12, 20, 0.8) !important; }
 .gamekit-share .sbtn.ok { color: #7fe0a0 !important; border-color: #7fe0a0 !important; }
 .gamekit-share .sbtn[data-act="discord"]:hover { color: #fff !important; border-color: #5865F2 !important; background: #5865F2 !important; }
+/* Discord Activity: X / Reddit open other sites (can't proxy without the SDK) → hide them. Copy, the
+   Discord post (proxied webhook) and native share (only shown when supported) stay. */
+.in-activity .gamekit-share .sbtn[data-act="x"], .in-activity .gamekit-share .sbtn[data-act="reddit"] { display: none !important; }
 .gamekit-share .sbtn:disabled { opacity: 0.55 !important; cursor: default !important; }
 
 /* "rotate your phone" overlay (gamekit.layout.requireOrientation) — for games locked to one orientation */

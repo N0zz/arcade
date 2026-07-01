@@ -378,6 +378,21 @@
   function player() { var n = lsGet(NAME); if (n && n.replace(/\s+/g, '')) return n; var gen = randomName(); lsSet(NAME, gen); return gen; }
   function setName(n) { n = (n == null ? '' : String(n)).replace(/\s+/g, ' ').trim().slice(0, 24); if (!n) n = randomName(); lsSet(NAME, n); return n; }
 
+  // ---------- Discord Activity: served from <app-id>.discordsays.com; external hosts must be reached
+  // through the /.proxy/<prefix> mappings declared in the Dev Portal. Detect once, tag <html> so CSS can
+  // hide un-proxyable external links, and expose a URL rewriter for our own fetches. Works on the
+  // catalogue AND inside a game iframe (both live on discordsays.com). No-op everywhere else. ----------
+  var IN_ACTIVITY = false;
+  try { IN_ACTIVITY = /(^|\.)discordsays\.com$/i.test(location.hostname); } catch (e) {}
+  try { if (IN_ACTIVITY && typeof document !== 'undefined' && document.documentElement) document.documentElement.classList.add('in-activity'); } catch (e) {}
+  function proxyUrl(u) {
+    if (!IN_ACTIVITY || !u) return u;
+    return String(u)
+      .replace('https://app.kit.com', '/.proxy/kit')
+      .replace('https://api.web3forms.com', '/.proxy/w3f')
+      .replace('https://discord.com', '/.proxy/dhook');
+  }
+
   // ---------- post a score to the public Komyo Games Discord (webhook, intentional/button only) ----------
   var DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1520515996933296378/YlXg2W8ypFcQGMHRf0BvWxp10-m7Z7DggStKrBZfusWo8e_emNF6gLpiVjfb0YIExL24';
   function postDiscord(text, url) {
@@ -391,7 +406,7 @@
       if (url) content += '\n[▶ Play this game on Komyo](' + String(url) + ')';
       var payload = { username: 'Komyo Games', content: content.slice(0, 1800), allowed_mentions: { parse: [] } };
       fd.append('payload_json', JSON.stringify(payload));
-      fetch(DISCORD_WEBHOOK, { method: 'POST', body: fd })['catch'](function () {}); // multipart = no CORS preflight; fire-and-forget
+      fetch(proxyUrl(DISCORD_WEBHOOK), { method: 'POST', body: fd })['catch'](function () {}); // multipart = no CORS preflight; fire-and-forget (proxied in a Discord Activity)
     } catch (e) {}
   }
 
@@ -1471,7 +1486,7 @@
   }
   var menu = { show: menuShow, hide: menuHide, current: function () { return _menuHandle; } };
 
-  var api = { sound: sound, music: music, nav: nav, audioMenu: audioMenu, resetScores: resetScores, confirm: confirmDialog, menu: menu, stampUrl: stampUrl, shareRow: shareRow, shareUrls: shareUrls, shareText: shareText, param: param, pwa: pwa, player: player, setName: setName, postDiscord: postDiscord, layout: layout, recordResult: recordResult, lastResult: lastResult, playedToday: playedToday, profile: profile, best: getBest, bestScore: getBestScore, saveBest: saveBest, utcDateStr: utcDateStr, utcDayNumber: utcDayNumber, scoreCard: buildScoreCard, profileCard: buildProfileCard, shareCard: shareCardBlob, embedModal: embedModal, isPaused: isPaused, setPaused: setPaused, togglePause: togglePause, showMenuButton: showMenuButton, showPauseButton: showPauseButton, controls: controlsModal, challengesPanel: challengesPanel, activeChallenge: chActiveSlug, versionTag: versionTag };
+  var api = { sound: sound, music: music, nav: nav, audioMenu: audioMenu, resetScores: resetScores, confirm: confirmDialog, menu: menu, stampUrl: stampUrl, shareRow: shareRow, shareUrls: shareUrls, shareText: shareText, param: param, pwa: pwa, player: player, setName: setName, postDiscord: postDiscord, inActivity: IN_ACTIVITY, proxyUrl: proxyUrl, layout: layout, recordResult: recordResult, lastResult: lastResult, playedToday: playedToday, profile: profile, best: getBest, bestScore: getBestScore, saveBest: saveBest, utcDateStr: utcDateStr, utcDayNumber: utcDayNumber, scoreCard: buildScoreCard, profileCard: buildProfileCard, shareCard: shareCardBlob, embedModal: embedModal, isPaused: isPaused, setPaused: setPaused, togglePause: togglePause, showMenuButton: showMenuButton, showPauseButton: showPauseButton, controls: controlsModal, challengesPanel: challengesPanel, activeChallenge: chActiveSlug, versionTag: versionTag };
   var g = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : this);
   g.gamekit = api;
   if (typeof window !== 'undefined') window.gamekit = api;

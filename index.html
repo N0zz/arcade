@@ -248,6 +248,9 @@
   .act-bar button { font:600 13px/1 var(--mono,ui-monospace,monospace); letter-spacing:1px; color:#fff; background:rgba(8,12,20,0.66); border:1px solid var(--border); border-radius:8px; padding:8px 12px; cursor:pointer; }
   .act-bar button:hover { border-color:#9fe8ff; }
   .act-frame iframe { flex:1 1 auto; width:100%; border:0; display:block; }
+  /* Discord Activity: hide links that navigate to OTHER sites (can't be proxied without the SDK's
+     openExternalLink) — Buy me a coffee, GitHub, the Discord invite. Proxied features stay. */
+  .in-activity .coffee, .in-activity .ghlink, .in-activity .ditem[href*="discord.gg"] { display:none !important; }
   /* FAQ modal (reuses .about container) */
   #faqModal { width:min(560px,94vw); }
   .faq { max-height:80vh; overflow-y:auto; }
@@ -1235,7 +1238,8 @@
       e.preventDefault();
       fbSubmit.disabled = true; fbStatus.className = 'fb-status'; fbStatus.textContent = 'Sending…';
       try {
-        const res = await fetch('https://api.web3forms.com/submit', {
+        const w3f = (window.gamekit && window.gamekit.proxyUrl) ? window.gamekit.proxyUrl('https://api.web3forms.com/submit') : 'https://api.web3forms.com/submit';
+        const res = await fetch(w3f, {
           method: 'POST', headers: { 'Accept': 'application/json' }, body: new FormData(fbForm)
         });
         const data = await res.json();
@@ -1271,7 +1275,8 @@
       if (document.getElementById('nlHp').value) return; // honeypot
       nlSubmit.disabled = true; nlStatus.className = 'fb-status'; nlStatus.textContent = 'Subscribing…';
       try {
-        const res = await fetch('https://app.kit.com/forms/9615603/subscriptions', {
+        const kitUrl = (window.gamekit && window.gamekit.proxyUrl) ? window.gamekit.proxyUrl('https://app.kit.com/forms/9615603/subscriptions') : 'https://app.kit.com/forms/9615603/subscriptions';
+        const res = await fetch(kitUrl, {
           method: 'POST', headers: { 'Accept': 'application/json' }, body: new URLSearchParams({ email_address: nlEmail.value.trim() })
         });
         const data = await res.json().catch(() => ({}));
