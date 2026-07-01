@@ -10,6 +10,8 @@ let pass = 0, fail = 0;
 const fails = [];
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
 function section(t) { console.log('\n=== ' + t + ' ==='); }
+// bests now live in the shared kit store (gamekit_pb), keyed by the capitalized mode label
+const pbScore = (store, mode) => { try { return ((JSON.parse(store['gamekit_pb'] || '{}').bubbles || {})[mode] || {}).score || 0; } catch (e) { return 0; } };
 
 function makeCtx2d() {
   return new Proxy({}, {
@@ -252,8 +254,8 @@ section('Bubble Pop: best persists in localStorage');
     T6().step(1);
   }
   ok(T6().state === 'over', 'game over for best-persist test');
-  const stored = parseInt(g6.store['bubbles_best_arcade'] || '0', 10);
-  ok(stored >= 500, 'best score persisted to localStorage (score=500, stored=' + stored + ')');
+  const stored = pbScore(g6.store, 'Arcade');
+  ok(stored >= 500, 'best score persisted to profile store (score=500, stored=' + stored + ')');
 }
 
 section('Bubble Pop: zen mode has no descent');

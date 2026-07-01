@@ -514,24 +514,14 @@
 
   // Per-map × per-difficulty records: { score, wave }. Score is the primary metric; keeping records
   // separate per difficulty keeps them fair (a Hard run never competes against an Easy one).
-  function bestKey(i, diff) { return 'tower-defense_best_' + i + '_' + (diff || diffLevel); }
-  function getMapBest(i, diff) {
-    try {
-      const raw = localStorage.getItem(bestKey(i, diff));
-      if (raw) { const o = JSON.parse(raw); return { score: o.score | 0, wave: o.wave | 0 }; }
-    } catch (e) {}
-    return { score: 0, wave: 0 };
-  }
+  // one label per map × difficulty — the single key for bests (menu + profile) AND the record
+  function mapModeLabel(i, diff) { return MAPS[i].name + ' · ' + (DIFFICULTY[diff || diffLevel] || DIFFICULTY.medium).label; }
+  function getMapBest(i, diff) { const b = KIT ? KIT.best('tower-defense', mapModeLabel(i, diff)) : { score: 0, stats: {} }; return { score: b.score || 0, wave: (b.stats && b.stats.wave) || 0 }; }
   function loadBest() { bestScore = getMapBest(mapIndex, diffLevel).score; }
   function saveBest() {
-    try {
-      const cur = getMapBest(mapIndex, diffLevel);
-      if (score > cur.score || wave > cur.wave) {
-        const rec = { score: Math.max(score, cur.score), wave: Math.max(wave, cur.wave) };
-        localStorage.setItem(bestKey(mapIndex, diffLevel), JSON.stringify(rec));
-        bestScore = rec.score;
-      }
-    } catch (e) {}
+    const cur = getMapBest(mapIndex, diffLevel);
+    if (KIT && (score > cur.score || wave > cur.wave)) KIT.saveBest('tower-defense', mapModeLabel(mapIndex, diffLevel), { score: score, stats: { wave: wave } });
+    bestScore = Math.max(score, cur.score);
   }
 
   function updateHud() {
@@ -1158,7 +1148,7 @@
   function gameOver() {
     state = 'over';
     saveBest();
-    KIT.recordResult('tower-defense', { mode: DIFF().label, score: score, stats: { wave: wave, difficulty: diffLevel } });
+    KIT.recordResult('tower-defense', { mode: MAPS[mapIndex].name + ' · ' + DIFF().label, score: score, stats: { wave: wave, difficulty: diffLevel } });
     SND.play('over');
     enemies = []; shots = []; spawnQ = [];
     showEnd();

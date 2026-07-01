@@ -89,8 +89,10 @@
   const now = () => (window.performance && performance.now) ? performance.now() : Date.now();
   let srElapsed=0, srPrev=0, srDone=false;
   function fmtTime(ms){ const m=Math.floor(ms/60000), s=Math.floor((ms%60000)/1000), cs=Math.floor((ms%1000)/10); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+String(cs).padStart(2,'0'); }
-  function saveBest(ms){ try{ const p=localStorage.getItem(BEST_KEY); if(p==null||ms<parseInt(p,10)){ localStorage.setItem(BEST_KEY,String(Math.floor(ms))); return true; } }catch(e){} return false; }
-  function saveBestScore(v){ try{ const p=localStorage.getItem(SCORE_KEY); if(p==null||v>parseInt(p,10)){ localStorage.setItem(SCORE_KEY,String(v)); return true; } }catch(e){} return false; }
+  // single-source best labels (kit store): normal keeps best SCORE, speedrun keeps best TIME (min)
+  function keyLabel(kk, sr){ const base = kk === 'classic-enhanced' ? 'Classic+' : 'Classic'; return sr ? (base + ' Speedrun') : base; }
+  function saveBest(ms){ return KIT ? KIT.saveBest('asteroids', keyLabel(KEY, true), { time: Math.floor(ms) }).isBest : false; }
+  function saveBestScore(v){ return KIT ? KIT.saveBest('asteroids', keyLabel(KEY, false), { score: v }).isBest : false; }
   function readStat(k){ try{ const p=localStorage.getItem(k); return p==null?null:parseInt(p,10); }catch(e){ return null; } }
   // apply a mode in-place: weapon HUD (Enhanced only), speedrun timer, and the per-variant storage keys.
   function applyMode(v, speedrun){
@@ -196,8 +198,8 @@
     state='menu'; SND.startMusic(); if(KIT){ KIT.showMenuButton(false); KIT.showPauseButton(false); } overlay.classList.add('hidden');
     if(!KIT) return;
     genMenuRocks();
-    const bestScore = k => { const v=readStat('asteroids_score_'+k); return v==null?'—':v; };
-    const bestTime  = k => { const v=readStat('asteroids_best_'+k);  return v==null?'—':fmtTime(v); };
+    const bestScore = k => { const v = KIT ? KIT.bestScore('asteroids', keyLabel(k, false)) : 0; return v > 0 ? v : '—'; };
+    const bestTime  = k => { const t = KIT ? KIT.best('asteroids', keyLabel(k, true)).time : 0; return t > 0 ? fmtTime(t) : '—'; };
     const goalChip  = st => st.speedrun ? { label:'Goal '+SR_TARGET_SCORE, hot:true } : null;
     const modeParams = st => { const v = st.mode==='enh' ? 'enh' : 'classic'; return st.speedrun ? { v, speedrun:'1' } : { v }; };
     KIT.menu.show({ kind:'start', theme:MENU_THEME, title:'ASTEROIDS', backdrop:menuBackdrop, backdropAnimate:true,
@@ -228,12 +230,12 @@
   // end screen (game over + speedrun complete) — kit-rendered; reuses recordResult + the shared share row.
   function showEnd(win){
     SND.stopMusic(); SND.play(win ? 'level' : 'over'); if(KIT){ KIT.showMenuButton(false); KIT.showPauseButton(false); }
-    const record = { mode: SPEEDRUN ? 'speedrun' : KEY, score: score, time: SPEEDRUN ? srElapsed : 0, stats: { wave: level } };
+    const record = { mode: keyLabel(KEY, SPEEDRUN), score: score, time: (SPEEDRUN && win) ? srElapsed : 0, stats: { wave: level } };
     let title, scoreText, best=null, newBest=false, lines=[];
     if (SPEEDRUN) {
-      if (win) { newBest = saveBest(srElapsed); title='COMPLETE'; scoreText=fmtTime(srElapsed); best=fmtTime(readStat(BEST_KEY)); lines=[SR_TARGET_SCORE + ' points reached']; }
+      if (win) { newBest = saveBest(srElapsed); title='COMPLETE'; scoreText=fmtTime(srElapsed); best=fmtTime((KIT ? KIT.best('asteroids', keyLabel(KEY, true)).time : 0) || srElapsed); lines=[SR_TARGET_SCORE + ' points reached']; }
       else { title='GAME OVER'; scoreText=String(score); lines=['Speedrun — run failed at ' + fmtTime(srElapsed)]; }
-    } else { newBest = saveBestScore(score); title='GAME OVER'; scoreText=String(score); best=readStat(SCORE_KEY); lines=['Reached wave ' + level]; }
+    } else { newBest = saveBestScore(score); title='GAME OVER'; scoreText=String(score); best=(KIT ? KIT.bestScore('asteroids', keyLabel(KEY, false)) : 0); lines=['Reached wave ' + level]; }
     if(!KIT) return;
     KIT.menu.show({ kind:'end', theme:MENU_THEME, title, backdrop:menuBackdrop, backdropAnimate:true, score:score, scoreText, best, newBest, lines,
       share:{ slug:'asteroids', title:'Asteroids', message: ()=>shareMsg(score), params: ()=> (SPEEDRUN ? { v: ENHANCED?'enh':'classic', speedrun:'1' } : { v: ENHANCED?'enh':'classic' }) },

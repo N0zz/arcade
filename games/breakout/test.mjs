@@ -10,6 +10,8 @@ let pass = 0, fail = 0;
 const fails = [];
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
 function section(t) { console.log('\n=== ' + t + ' ==='); }
+// bests now live in the shared kit store (gamekit_pb), keyed by the capitalized mode label
+const pbScore = (store, mode) => { try { return ((JSON.parse(store['gamekit_pb'] || '{}').breakout || {})[mode] || {}).score || 0; } catch (e) { return 0; } };
 
 function makeCtx2d() {
   return new Proxy({}, {
@@ -175,8 +177,8 @@ while (T2().state === 'playing' && g2guard++ < 500) {
 ok(T2().state === 'over', 'game over before checking best');
 // If we scored anything, best should be persisted
 if (sc2 > 0) {
-  const stored = parseInt(g2.store['breakout_best_classic'] || '0', 10);
-  ok(stored >= sc2, 'best score persisted to localStorage (score=' + sc2 + ', stored=' + stored + ')');
+  const stored = pbScore(g2.store, 'Classic');
+  ok(stored >= sc2, 'best score persisted to profile store (score=' + sc2 + ', stored=' + stored + ')');
 } else {
   // No bricks were hit — acceptable to skip persistence check
   ok(true, 'best score persisted (score was 0, nothing to store)');
@@ -351,7 +353,7 @@ section('Breakout: best score per mode persists in localStorage');
   while (Tb().state === 'playing' && gbg++ < 500) { Tb().setBall(640, 790, 0, 10); Tb().step(10); }
   ok(Tb().state === 'over', 'classic game over for best-score test');
   if (classicScore > 0) {
-    const stored = parseInt(gb.store['breakout_best_classic'] || '0', 10);
+    const stored = pbScore(gb.store, 'Classic');
     ok(stored >= classicScore, 'classic best persisted (score=' + classicScore + ', stored=' + stored + ')');
   } else {
     ok(true, 'classic best check skipped (score=0)');
@@ -368,7 +370,7 @@ section('Breakout: best score per mode persists in localStorage');
   let gb2g = 0;
   while (Tb2().state === 'playing' && gb2g++ < 500) { Tb2().setBall(640, 790, 0, 10); Tb2().step(10); }
   if (endlessScore > 0) {
-    const stored2 = parseInt(gb2.store['breakout_best_endless'] || '0', 10);
+    const stored2 = pbScore(gb2.store, 'Endless');
     ok(stored2 >= endlessScore, 'endless best persisted (score=' + endlessScore + ', stored=' + stored2 + ')');
   } else {
     ok(true, 'endless best check skipped (score=0)');
@@ -388,7 +390,7 @@ section('Breakout: game over shows the kit end menu; Play Again restarts');
   while (Te().state === 'playing' && eg++ < 500) { Te().setBall(640, 790, 0, 10); Te().step(10); }
   ok(Te().state === 'over', 'reached game over');
   ok(Te().menu() != null, 'kit end menu is shown on game over');
-  ok(Number(ge.store['breakout_best_classic'] || 0) >= sc, 'best persisted >= final score (' + ge.store['breakout_best_classic'] + ' >= ' + sc + ')');
+  ok(pbScore(ge.store, 'Classic') >= sc, 'best persisted >= final score (' + pbScore(ge.store, 'Classic') + ' >= ' + sc + ')');
   // Play again via the end menu's primary action
   Te().menu().activate('again');
   ok(Te().state === 'playing', 'Play Again starts a new game');
@@ -428,9 +430,7 @@ section('Breakout: 2× speed sub-steps collisions cleanly (no tunnelling)');
 section('Breakout: best(mode) reflects stored per-mode bests');
 {
   const gm = runGame();
-  gm.store['breakout_best_classic'] = '250';
-  gm.store['breakout_best_endless'] = '99';
-  gm.store['breakout_best_survival'] = '7';
+  gm.store['gamekit_pb'] = JSON.stringify({ breakout: { 'Classic': { score: 250, plays: 1 }, 'Endless': { score: 99, plays: 1 }, 'Survival': { score: 7, plays: 1 } } });
   ok(gm.T().best('classic') === 250, 'classic best 250 (got ' + gm.T().best('classic') + ')');
   ok(gm.T().best('endless') === 99, 'endless best 99 (got ' + gm.T().best('endless') + ')');
   ok(gm.T().best('survival') === 7, 'survival best 7 (got ' + gm.T().best('survival') + ')');

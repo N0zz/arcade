@@ -10,6 +10,8 @@ let pass = 0, fail = 0;
 const fails = [];
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
 function section(t) { console.log('\n=== ' + t + ' ==='); }
+// bests now live in the shared kit store (gamekit_pb), keyed by the human combo label (speed · walls[ · size])
+const pbScore = (store, mode) => { try { return ((JSON.parse(store['gamekit_pb'] || '{}').snake || {})[mode] || {}).score || 0; } catch (e) { return 0; } };
 
 function makeCtx2d() {
   return new Proxy({}, {
@@ -247,8 +249,8 @@ section('best score persists');
   let guard = 0;
   while (T.state === 'playing' && guard++ < 50) T.step(1);
   ok(T.state === 'over', 'game ended (state=' + T.state + ')');
-  const saved = parseInt(g.store['snake_best'] || '0', 10);
-  ok(saved >= scoreAfterEat, 'best score persisted to localStorage (' + saved + ' >= ' + scoreAfterEat + ')');
+  const saved = pbScore(g.store, 'Normal · Walls');
+  ok(saved >= scoreAfterEat, 'best score persisted to profile store (' + saved + ' >= ' + scoreAfterEat + ')');
 }
 
 section('__test API surface');
@@ -453,12 +455,9 @@ section('per-mode best scores');
   T.turn('up');
   let guard = 0;
   while (T.state === 'playing' && guard++ < 50) T.step(1);
-  const bestsRaw = g.store['snake_bests'];
-  ok(bestsRaw != null, 'snake_bests map saved to localStorage');
-  const bests = JSON.parse(bestsRaw);
-  ok(bests['solid:slow:medium'] >= slowScore, 'best keyed by mode solid:slow:medium (got ' + bests['solid:slow:medium'] + ')');
+  ok(pbScore(g.store, 'Slow · Walls') >= slowScore, 'best keyed by mode "Slow · Walls" (got ' + pbScore(g.store, 'Slow · Walls') + ')');
   // A different mode should NOT inherit that best.
-  ok(!('solid:fast:large' in bests) || bests['solid:fast:large'] === 0, 'different mode has independent best');
+  ok(pbScore(g.store, 'Fast · Walls · Large') === 0, 'different mode has independent best');
 }
 
 section('per-combo best via best(opts)');

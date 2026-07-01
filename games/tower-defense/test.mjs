@@ -174,7 +174,8 @@ function run() {
   P().selectMap(1); P().start();
   let guard6 = 0; while (P().hp > 0 && guard6++ < 60000) { if (P().state === 'build') P().startWave(); P().step(1); }
   ok(P().state === 'over', 'ran a map-1 game to game over');
-  ok(Object.keys(g6.store).some(k => k.startsWith('tower-defense_best_1_')), 'per-map/difficulty best key written for map 1 (got ' + Object.keys(g6.store).filter(k => k.startsWith('tower-defense_best_1')).join(',') + ')');
+  const tdPb = () => { try { return JSON.parse(g6.store['gamekit_pb'] || '{}')['tower-defense'] || {}; } catch (e) { return {}; } };
+  ok(Object.keys(tdPb()).some(k => k.startsWith('Ice · ')), 'per-map/difficulty best written for map 1 (Ice) (got ' + Object.keys(tdPb()).join(',') + ')');
 
   section('tower icons + tooltips (TASK 1/2)');
   const g7 = runInline('index.html'); const I = () => g7.test();

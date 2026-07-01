@@ -10,6 +10,9 @@ let pass = 0, fail = 0;
 const fails = [];
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
 function section(t) { console.log('\n=== ' + t + ' ==='); }
+// bests now live in the shared kit store (gamekit_pb), keyed by the human mode label
+const pbScore = (store, mode) => { try { return ((JSON.parse(store['gamekit_pb'] || '{}').stacker || {})[mode] || {}).score || 0; } catch (e) { return 0; } };
+const pbHas = (store, mode) => { try { return !!(JSON.parse(store['gamekit_pb'] || '{}').stacker || {})[mode]; } catch (e) { return false; } };
 
 function makeCtx2d() {
   return new Proxy({}, {
@@ -212,8 +215,8 @@ for (let i = 0; i < 8; i++) T4().dropPerfect();
 const sc4 = T4().score;
 ok(sc4 > 0, 'score > 0 after 8 perfect drops (got ' + sc4 + ')');
 // Check localStorage — classic mode key
-const stored4 = g4.store['stacker_best_classic'];
-ok(stored4 != null && parseInt(stored4, 10) >= sc4, 'best score persisted to stacker_best_classic (stored=' + stored4 + ', score=' + sc4 + ')');
+const stored4 = pbScore(g4.store, 'Classic');
+ok(stored4 >= sc4 && stored4 > 0, 'best score persisted (Classic) in profile store (stored=' + stored4 + ', score=' + sc4 + ')');
 
 section('game over → overlay appears');
 const g5 = runStacker();
@@ -269,10 +272,10 @@ const TT2 = () => gt2.test();
 for (let i = 0; i < 5; i++) TT2().dropPerfect();
 const sc_t = TT2().score;
 ok(sc_t > 0, 'time mode score > 0 after drops (got ' + sc_t + ')');
-ok(gt2.store['stacker_best_time'] != null, 'stacker_best_time key written to localStorage');
-ok(parseInt(gt2.store['stacker_best_time'], 10) >= sc_t, 'stacker_best_time value >= score (stored=' + gt2.store['stacker_best_time'] + ')');
+ok(pbHas(gt2.store, 'Time Attack'), 'Time Attack best written to profile store');
+ok(pbScore(gt2.store, 'Time Attack') >= sc_t, 'Time Attack best >= score (stored=' + pbScore(gt2.store, 'Time Attack') + ')');
 // Classic key should NOT be written
-ok(gt2.store['stacker_best_classic'] == null, 'stacker_best_classic not written during time mode');
+ok(!pbHas(gt2.store, 'Classic'), 'Classic not written during time mode');
 
 // ---- Mode: Zen ----
 
@@ -294,8 +297,8 @@ ok(TZ().combo >= 2, 'zen mode builds combo on perfect drops (got ' + TZ().combo 
 section('Zen — best score persisted under correct key');
 const sc_z = TZ().score;
 ok(sc_z > 0, 'zen mode score > 0 (got ' + sc_z + ')');
-ok(gz.store['stacker_best_zen'] != null, 'stacker_best_zen key written to localStorage');
-ok(parseInt(gz.store['stacker_best_zen'], 10) >= sc_z, 'stacker_best_zen value >= score');
+ok(pbHas(gz.store, 'Zen'), 'Zen best written to profile store');
+ok(pbScore(gz.store, 'Zen') >= sc_z, 'Zen best >= score');
 
 section('Zen — no time limit, can play indefinitely');
 // Step many frames — should not game-over from time
@@ -315,8 +318,8 @@ gi.test().startMode('zen');
 const TI_z = () => gi.test();
 for (let i = 0; i < 3; i++) TI_z().dropPerfect();
 // zen gives score too; both keys should exist independently
-ok(gi.store['stacker_best_classic'] != null, 'classic key survives after zen session');
-ok(gi.store['stacker_best_zen'] != null, 'zen key set after zen session');
+ok(pbHas(gi.store, 'Classic'), 'Classic best survives after zen session');
+ok(pbHas(gi.store, 'Zen'), 'Zen best set after zen session');
 ok(gi.store['stacker_best_classic'] !== gi.store['stacker_best_zen'] || true,
   'classic and zen keys are distinct (both exist)');
 
@@ -331,8 +334,7 @@ ok(TM().best('classic') === 0 && TM().best('time') === 0 && TM().best('zen') ===
 
 section('Menu — best(mode) reflects persisted scores');
 const gm2 = runStacker();
-gm2.store['stacker_best_classic'] = '42';
-gm2.store['stacker_best_zen'] = '7';
+gm2.store['gamekit_pb'] = JSON.stringify({ stacker: { 'Classic': { score: 42, plays: 1 }, 'Zen': { score: 7, plays: 1 } } });
 const TM2 = () => gm2.test();
 ok(TM2().best('classic') === 42, 'classic best = 42 from storage (got ' + TM2().best('classic') + ')');
 ok(TM2().best('zen') === 7, 'zen best = 7 from storage (got ' + TM2().best('zen') + ')');

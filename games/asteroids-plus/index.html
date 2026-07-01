@@ -165,7 +165,9 @@
     stopMusic(){ /* music persists across menu/pause — one continuous menu + in-game bed */ },
   };
   function fmtTime(ms){ const m=Math.floor(ms/60000), s=Math.floor((ms%60000)/1000), cs=Math.floor((ms%1000)/10); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+String(cs).padStart(2,'0'); }
-  function saveBest(ms){ try{ const p=localStorage.getItem(BEST_KEY); if(p==null||ms<parseInt(p,10)){ localStorage.setItem(BEST_KEY,String(Math.floor(ms))); return true; } }catch(e){} return false; }
+  // single-source best labels (kit store): normal keeps best SCORE (+ wave stat), speedrun keeps best TIME (min)
+  function progLabel(prog, sr){ const base = { levelup:'Level-up', milestones:'Milestones', shop:'Wave Shop' }[prog] || 'Level-up'; return sr ? (base + ' Speedrun') : base; }
+  function saveBest(ms){ return KIT ? KIT.saveBest('asteroids-plus', progLabel(PROGRESSION, true), { time: Math.floor(ms) }).isBest : false; }
   function readStat(key){ try{ const v=localStorage.getItem(key); return v==null?null:parseInt(v,10); }catch(e){ return null; } }
 
   // mode-specific HUD element visibility — called at boot and whenever a run's mode is chosen (no reload)
@@ -345,15 +347,15 @@
   }
   function flash(msg){ flashEl.textContent=msg; flashEl.style.opacity='1'; flashTimer=80; }
   // quit a run back to the start menu, in-place (no reload). Save the score best first (non-speedrun).
-  function quitToMenu(){ if(!SPEEDRUN && (state==='playing'||state==='paused'||state==='levelup'||state==='shop')){ saveStat('asteroids_score_'+KEY,score); saveStat('asteroids_wave_'+KEY,wave); } SND.stopMusic(); if(KIT) KIT.menu.hide(); showStartMenu(); }
+  function quitToMenu(){ if(!SPEEDRUN && KIT && (state==='playing'||state==='paused'||state==='levelup'||state==='shop')){ KIT.saveBest('asteroids-plus', progLabel(PROGRESSION, false), { score: score, stats: { wave: wave } }); } SND.stopMusic(); if(KIT) KIT.menu.hide(); showStartMenu(); }
   // unified start menu (mode picker) — kit-rendered, themed, one screen. Play applies the mode + starts
   // in-place (no reload); the address bar reflects the picks so refresh/share reopen the same mode.
   function showStartMenu(){
     state='menu'; SND.startMusic(); if(KIT){ KIT.showMenuButton(false); KIT.showPauseButton(false); } overlay.classList.add('hidden');
     if(!KIT) return;
     genMenuRocks();
-    const bestScore = k => { const v=readStat('asteroids_score_roguelite-'+k); return v==null?'—':v; };
-    const bestTime  = k => { const v=readStat('asteroids_best_roguelite-'+k);  return v==null?'—':fmtTime(v); };
+    const bestScore = k => { const v = KIT ? KIT.bestScore('asteroids-plus', progLabel(k, false)) : 0; return v > 0 ? v : '—'; };
+    const bestTime  = k => { const t = KIT ? KIT.best('asteroids-plus', progLabel(k, true)).time : 0; return t > 0 ? fmtTime(t) : '—'; };
     const goalChip  = st => st.speedrun ? { label:'Clear W'+SR_TARGET_WAVE, hot:true } : null;
     const modeParams= st => st.speedrun ? { prog: st.mode, speedrun:'1' } : { prog: st.mode };
     KIT.menu.show({ kind:'start', theme:MENU_THEME, title:'ASTEROIDS+', backdrop:menuBackdrop, backdropAnimate:true,
@@ -384,7 +386,7 @@
     KIT.menu.show({ kind:'end', theme:MENU_THEME, title:o.title, backdrop:menuBackdrop, backdropAnimate:true,
       score:score, scoreText:o.scoreText, best:o.best, newBest:o.newBest, lines:o.lines,
       share:{ slug:'asteroids-plus', title:'Asteroids+', message:()=>shareMsg(score, o.won), params:()=> (SPEEDRUN ? { prog:PROGRESSION, speedrun:'1' } : { prog:PROGRESSION }) },
-      record:{ slug:'asteroids-plus', mode:o.mode, score:score, time:o.time||0, stats:o.stats||{wave:wave} },
+      record:{ slug:'asteroids-plus', mode:progLabel(PROGRESSION, SPEEDRUN), score:score, time:0, stats:o.stats||{wave:wave} },
       actions:[ {id:'again',label:'PLAY AGAIN',primary:true}, {id:'menu',label:'MENU'} ],
       onAction:(id)=>{ if(id==='again') startGame(); else if(id==='menu') quitToMenu(); } });
   }
@@ -526,17 +528,17 @@
   }
   function saveStat(key,v){ try{ const p=localStorage.getItem(key); if(p==null||v>parseInt(p,10)){ localStorage.setItem(key,String(v)); return true; } }catch(e){} return false; }
   function die(){ state='dead'; if(SPEEDRUN) srDone=true; burst(ship.x,ship.y,'255,160,120',50,5); SND.play('over');
-    let newBest=false; if(!SPEEDRUN){ newBest=saveStat('asteroids_score_'+KEY,score); saveStat('asteroids_wave_'+KEY,wave); }
-    showEnd({ title:'GAME OVER', scoreText:String(score), best: SPEEDRUN?null:readStat('asteroids_score_'+KEY), newBest,
+    let newBest=false; if(!SPEEDRUN && KIT){ newBest = KIT.saveBest('asteroids-plus', progLabel(PROGRESSION, false), { score: score, stats: { wave: wave } }).isBest; }
+    showEnd({ title:'GAME OVER', scoreText:String(score), best: SPEEDRUN ? null : (KIT ? KIT.bestScore('asteroids-plus', progLabel(PROGRESSION, false)) : 0), newBest,
       lines: SPEEDRUN ? ['Speedrun — run failed at '+fmtTime(srElapsed)] : ['Reached wave '+wave],
       won:false, mode: SPEEDRUN?'speedrun':'', time: SPEEDRUN?srElapsed:0 }); }
   function winRun(){ srDone=true; state='won'; SND.play('level'); const newBest=saveBest(srElapsed);
-    showEnd({ title:'WAVE '+SR_TARGET_WAVE+' CLEARED', scoreText:fmtTime(srElapsed), best:fmtTime(readStat(BEST_KEY)), newBest,
+    showEnd({ title:'WAVE '+SR_TARGET_WAVE+' CLEARED', scoreText:fmtTime(srElapsed), best:fmtTime((KIT ? KIT.best('asteroids-plus', progLabel(PROGRESSION, true)).time : 0) || srElapsed), newBest,
       lines:['score '+score], won:false, mode:'speedrun', time:srElapsed }); }
   // beat the wave-30 dual-boss finale (non-speedrun) → the run is won and over
   function victoryRun(){ state='won'; SND.play('level'); burst(ship.x,ship.y,'255,220,150',60,5);
-    const newBest=saveStat('asteroids_score_'+KEY,score); saveStat('asteroids_wave_'+KEY,wave);
-    showEnd({ title:'VICTORY', scoreText:String(score), best:readStat('asteroids_score_'+KEY), newBest,
+    const newBest = KIT ? KIT.saveBest('asteroids-plus', progLabel(PROGRESSION, false), { score: score, stats: { wave: wave } }).isBest : false;
+    showEnd({ title:'VICTORY', scoreText:String(score), best: (KIT ? KIT.bestScore('asteroids-plus', progLabel(PROGRESSION, false)) : 0), newBest,
       lines:['You cleared all '+RUN_END_WAVE+' waves and broke the dual-boss finale.'],
       won:true, mode:({levelup:'Level-up',milestones:'Milestones',shop:'Wave shop'}[PROGRESSION]||'Roguelite'), stats:{wave:wave,victory:1} }); }
 

@@ -10,6 +10,11 @@ let pass = 0, fail = 0;
 const fails = [];
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
 function section(t) { console.log('\n=== ' + t + ' ==='); }
+// bests now live in the shared kit store (gamekit_pb): normal keeps score, speedrun keeps time (per progression)
+const pbG = (store) => { try { return JSON.parse(store['gamekit_pb'] || '{}')['asteroids-plus'] || {}; } catch (e) { return {}; } };
+const plabel = (prog, sr) => { const b = { levelup: 'Level-up', milestones: 'Milestones', shop: 'Wave Shop' }[prog] || 'Level-up'; return sr ? b + ' Speedrun' : b; };
+const pbScore = (store, mode) => (pbG(store)[mode] || {}).score || 0;
+const pbTime = (store, mode) => (pbG(store)[mode] || {}).time || 0;
 
 function makeCtx2d() {
   return new Proxy({}, {
@@ -284,8 +289,8 @@ function testSpeedrunWin(file, prog) {
   ok(g.el('timer').style.display === 'block', file + ' timer visible');
   T().killBossNow(); g.step(2);
   ok(T().state === 'won', file + ' clearing wave-5 boss wins the speedrun (got ' + T().state + ')');
-  const best = g.store['asteroids_best_roguelite-' + prog];
-  ok(best != null && parseInt(best, 10) > 0, file + ' best time saved (' + best + ')');
+  const best = pbTime(g.store, plabel(prog, true));
+  ok(best > 0, file + ' best time saved (' + best + ')');
   // a cleared speedrun shares the TIME as the result, not the score or a Roguelite/Victory line
   const sm = T().shareMsg();
   ok(/Speedrun/.test(sm) && /\d\d:\d\d\.\d\d/.test(sm) && !/VICTORY|Roguelite|Level-up/.test(sm),
@@ -465,7 +470,7 @@ function testSaveOnQuit(file, prog) {
   T().start(); g.step(2);
   T().addScore(500); g.step(1);
   T().quitToMenu();                      // quit mid-run (never died)
-  const sc = parseInt(g.store['asteroids_score_roguelite-' + prog] || '0', 10);
+  const sc = pbScore(g.store, plabel(prog, false));
   ok(sc >= 500, file + ' score persisted on quit (' + sc + ')');
 }
 

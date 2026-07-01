@@ -147,25 +147,9 @@
   let score = 0;
   let obsSpeed = OBS_SPEED_DAY;
 
-  // ---- Best (shared across modes) ----
-  // One key for both Day & Night. Migrate/merge any legacy per-mode bests into it once.
-  const BEST_KEY = 'flappy_best';
-  function migrateBest() {
-    const legacy = ['flappy_best_day', 'flappy_best_night'];
-    let merged = parseInt(localStorage.getItem(BEST_KEY) || '0', 10);
-    let found = false;
-    for (const k of legacy) {
-      const v = localStorage.getItem(k);
-      if (v !== null) { found = true; merged = Math.max(merged, parseInt(v || '0', 10)); }
-    }
-    if (found) {
-      localStorage.setItem(BEST_KEY, merged);
-      for (const k of legacy) localStorage.removeItem(k);
-    }
-  }
-  migrateBest();
-  function getBest() { return parseInt(localStorage.getItem(BEST_KEY) || '0', 10); }
-  function saveBest(v) { localStorage.setItem(BEST_KEY, v); }
+  // ---- Best (single — shared across Day & Night; lives in the shared kit store, one source of truth) ----
+  function getBest() { return KIT ? KIT.bestScore('flappy', '') : 0; }
+  function saveBest(v) { if (KIT) KIT.saveBest('flappy', '', { score: v }); }
   let best = getBest();
 
   // ---- Cash + bird unlocks ----

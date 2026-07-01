@@ -118,12 +118,8 @@
   let timeLeft = 0;      // seconds remaining (float)
   let timeTick = 0;      // frames accumulated for countdown
 
-  function getBest(m) { return parseInt(localStorage.getItem(MODE_CFG[m].storageKey) || '0', 10); }
-  function saveBest() {
-    const key = MODE_CFG[mode].storageKey;
-    const cur = parseInt(localStorage.getItem(key) || '0', 10);
-    if (score > cur) localStorage.setItem(key, String(score));
-  }
+  function getBest(m) { return KIT ? KIT.bestScore('stacker', MODE_CFG[m].label) : 0; }
+  function saveBest() { if (KIT) KIT.saveBest('stacker', MODE_CFG[mode].label, { score: score }); }
   function currentBest() { return getBest(mode); }
 
   function updateHud() {
@@ -240,7 +236,7 @@
     state = 'over';
     SND.play(reason === 'time' ? 'timeup' : 'over');
     const prevBest = currentBest(); saveBest(); const isBest = score > prevBest;
-    KIT.recordResult('stacker', { mode: mode, score: score });
+    KIT.recordResult('stacker', { mode: MODE_CFG[mode].label, score: score });
     setTimeout(() => showEnd(reason, isBest), 400);
   }
 

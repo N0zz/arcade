@@ -94,9 +94,9 @@
   function loadSpeedPref() { try { return localStorage.getItem(SPEED_KEY) === '1'; } catch(_){ return false; } }
   function saveSpeedPref(on) { try { localStorage.setItem(SPEED_KEY, on ? '1' : '0'); } catch(_){} }
 
-  function storageKey(mode) { return 'breakout_best_' + (mode || gameMode); }
-  function loadBest(mode) { try { return parseInt(localStorage.getItem(storageKey(mode)) || '0', 10) || 0; } catch(_){ return 0; } }
-  function saveBest() { try { const k = storageKey(); const cur = loadBest(); if (score > cur) localStorage.setItem(k, String(score)); } catch(_){} }
+  const modeLabel = m => { m = m || gameMode; return m.charAt(0).toUpperCase() + m.slice(1); };
+  function loadBest(mode) { return KIT ? KIT.bestScore('breakout', modeLabel(mode)) : 0; }
+  function saveBest() { if (KIT) KIT.saveBest('breakout', modeLabel(gameMode), { score: score }); }
 
   function resize() {
     W = canvas.width = window.innerWidth;
@@ -295,7 +295,7 @@
   function showEnd() {
     if (KIT) { KIT.showMenuButton(false); KIT.showPauseButton(false); }
     if (!KIT) return;
-    KIT.recordResult('breakout', { mode: gameMode, score: score });
+    KIT.recordResult('breakout', { mode: modeLabel(gameMode), score: score });
     KIT.menu.show({ kind: 'end', theme: MENU_THEME, title: 'GAME OVER', backdrop: menuBackdrop,
       score: score, best: best, newBest: score >= best && score > 0, lines: [gameMode.toUpperCase() + ' · level ' + level],
       share: { slug: 'breakout', title: 'Brick Breaker', message: () => shareMsg(), params: () => modeParams({ mode: gameMode, speed2x: speedMult === 2 }) },

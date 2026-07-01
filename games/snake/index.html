@@ -164,28 +164,10 @@
 
   // ---- Per-mode best scores ----
   // Bests are keyed by the full mode (walls + speed + size) and stored as a map in localStorage.
-  function modeKey(o) { return (o.walls) + ':' + (o.speed) + ':' + (o.size); }
-  function loadBests() {
-    try { const raw = localStorage.getItem('snake_bests'); const m = raw ? JSON.parse(raw) : null; return (m && typeof m === 'object') ? m : {}; }
-    catch (_) { return {}; }
-  }
-  function loadBest() {
-    const m = loadBests();
-    let v = m[modeKey(opts)];
-    // Migrate the old single global best into the current mode on first run.
-    if (!(modeKey(opts) in m)) {
-      try { const legacy = parseInt(localStorage.getItem('snake_best') || '0', 10) || 0; if (legacy > 0) v = legacy; } catch (_) {}
-    }
-    return parseInt(v || 0, 10) || 0;
-  }
-  function saveBest(v) {
-    try {
-      const m = loadBests();
-      m[modeKey(opts)] = v;
-      localStorage.setItem('snake_bests', JSON.stringify(m));
-      localStorage.setItem('snake_best', String(v)); // keep legacy key for back-compat
-    } catch (_) {}
-  }
+  // one label per walls·speed·size combo — the single key used for bests (menu + profile) AND the record
+  function modeLabel(o) { const c = s => s.charAt(0).toUpperCase() + s.slice(1); const a = [c(o.speed), o.walls === 'wrap' ? 'Wrap' : 'Walls']; if (o.size !== 'medium') a.push(c(o.size)); return a.join(' · '); }
+  function loadBest() { return KIT ? KIT.bestScore('snake', modeLabel(opts)) : 0; }
+  function saveBest(v) { if (KIT) KIT.saveBest('snake', modeLabel(opts), { score: v }); }
 
   function applyGridSize() {
     const g = GRID_SIZES[opts.size] || GRID_SIZES.medium;
@@ -366,7 +348,7 @@
   }
   const SPD_LABEL = { slow: 'Slow', normal: 'Normal', fast: 'Fast' };
   const SZ_LABEL = { small: 'Small', medium: 'Medium', large: 'Large' };
-  function comboBest(o) { const m = loadBests(); return parseInt(m[modeKey(o)], 10) || 0; }
+  function comboBest(o) { return KIT ? KIT.bestScore('snake', modeLabel(o)) : 0; }
   function showStartMenu() {
     state = 'ready'; showDpad(false); if (KIT) { KIT.showMenuButton(false); KIT.showPauseButton(false); }
     if (!KIT) return;
@@ -397,7 +379,7 @@
     KIT.menu.show({ kind: 'end', theme: MENU_THEME, title: 'GAME OVER', backdrop: menuBackdrop,
       score: score, best: best, newBest: newBest, lines: ['Length ' + (snake ? snake.length : 1) + ' · ' + SPD_LABEL[opts.speed] + ' · ' + SZ_LABEL[opts.size] + ' · ' + (opts.walls === 'wrap' ? 'Wrap' : 'Solid')],
       share: { slug: 'snake', title: 'Neon Snake', message: () => shareMsg(), params: () => ({ walls: opts.walls, speed: opts.speed, size: opts.size }) },
-      record: { slug: 'snake', mode: '', score: score, stats: { length: snake ? snake.length : 1 } },
+      record: { slug: 'snake', mode: modeLabel(opts), score: score, stats: { length: snake ? snake.length : 1 } },
       actions: [ { id: 'again', label: 'PLAY AGAIN', primary: true }, { id: 'menu', label: 'MENU' } ],
       onAction: id => { if (id === 'again') startGame(); else if (id === 'menu') toMenu(); } });
   }

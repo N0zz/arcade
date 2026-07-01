@@ -10,6 +10,11 @@ let pass = 0, fail = 0;
 const fails = [];
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
 function section(t) { console.log('\n=== ' + t + ' ==='); }
+// bests now live in the shared kit store (gamekit_pb): Timed keeps score, Sprint keeps time (per amount)
+const pbG = (store) => { try { return JSON.parse(store['gamekit_pb'] || '{}')['aim-trainer'] || {}; } catch (e) { return {}; } };
+const pbScore = (store, mode) => (pbG(store)[mode] || {}).score || 0;
+const pbTime = (store, mode) => (pbG(store)[mode] || {}).time || 0;
+const pbHas = (store, mode) => !!pbG(store)[mode];
 
 function makeCtx2d() {
   return new Proxy({}, {
@@ -281,8 +286,8 @@ section('sprint: best time persists to localStorage');
     const tgt = Ts2().targets[0];
     if (tgt) Ts2().shootAt(tgt.x, tgt.y);
   }
-  const savedTime = parseInt(gsp2.store['aim-trainer_sprint_100'] || '0', 10); // sprint best is now keyed per target count
-  ok(savedTime > 0, 'sprint best time saved to localStorage (got ' + savedTime + ')');
+  const savedTime = pbTime(gsp2.store, 'Sprint · 100 targets'); // sprint best time, keyed per target count
+  ok(savedTime > 0, 'sprint best time saved to profile store (got ' + savedTime + ')');
   ok(Ts2().bestTime === savedTime, 'bestTime getter matches localStorage (bestTime=' + Ts2().bestTime + ', saved=' + savedTime + ')');
 }
 
@@ -300,8 +305,8 @@ for (let i = 0; i < 10; i++) {
 const scoreAfterHits = T2().score;
 T2().step(30 * 60 + 5);
 ok(T2().state === 'over', 'game over in fresh instance');
-const savedBest = parseInt(g2.store['aim-trainer_best_30'] || '0', 10);
-ok(savedBest >= scoreAfterHits, 'best score written to localStorage (saved=' + savedBest + ', score=' + scoreAfterHits + ')');
+const savedBest = pbScore(g2.store, 'Timed · 30s');
+ok(savedBest >= scoreAfterHits, 'best score written to profile store (saved=' + savedBest + ', score=' + scoreAfterHits + ')');
 
 section('new session loads saved best');
 const g4 = (() => {
@@ -311,7 +316,7 @@ const g4 = (() => {
   const modeBtns = makeModeBtns();
   const elCache = {};
   const getEl = (id) => (elCache[id] ||= makeEl(id));
-  const store = { 'aim-trainer_best_30': '9999' };
+  const store = { 'gamekit_pb': JSON.stringify({ 'aim-trainer': { 'Timed · 30s': { score: 9999, plays: 1 } } }) };
   const win = { innerWidth: 1280, innerHeight: 800, addEventListener: () => {}, removeEventListener: () => {} };
   const sandbox = {
     window: win,
@@ -349,7 +354,7 @@ section('per-mode best isolation: different timed durations use different keys')
     if (tt) Tiso().shootAt(tt.x, tt.y);
   }
   Tiso().step(10 * 60 + 5);
-  const score10 = parseInt(giso.store['aim-trainer_best_10'] || '0', 10);
+  const score10 = pbScore(giso.store, 'Timed · 10s');
 
   // play 30s mode and end it
   Tiso().startMode(30);
@@ -359,11 +364,11 @@ section('per-mode best isolation: different timed durations use different keys')
     if (tt) Tiso().shootAt(tt.x, tt.y);
   }
   Tiso().step(30 * 60 + 5);
-  const score30 = parseInt(giso.store['aim-trainer_best_30'] || '0', 10);
+  const score30 = pbScore(giso.store, 'Timed · 30s');
 
-  ok(giso.store['aim-trainer_best_10'] !== undefined, '10s mode saves to aim-trainer_best_10');
-  ok(giso.store['aim-trainer_best_30'] !== undefined, '30s mode saves to aim-trainer_best_30');
-  ok(!('aim-trainer_best' in giso.store), 'old key aim-trainer_best not written');
+  ok(pbHas(giso.store, 'Timed · 10s'), '10s mode saves under "Timed · 10s"');
+  ok(pbHas(giso.store, 'Timed · 30s'), '30s mode saves under "Timed · 30s"');
+  ok(!pbHas(giso.store, 'Timed · 60s'), 'an unplayed duration (60s) has no best — per-duration isolation');
 }
 
 section('portrait HUD clearance: targets spawn below nav + HUD band');

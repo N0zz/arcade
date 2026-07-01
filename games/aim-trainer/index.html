@@ -104,13 +104,18 @@
   let W = 0, H = 0;
 
   // per-mode bests: timed stores best score, sprint stores best time (frames)
-  const bestKey = (m, s) => m === 'sprint' ? ('aim-trainer_sprint_' + SPRINT_TARGET) : 'aim-trainer_best_' + s;
-
+  // one label per mode+amount — the single key for bests (menu + profile) AND the record.
+  // Timed keeps the best SCORE (max); Sprint keeps the best TIME (min). Moving is a toggle, not its own board.
+  const modeLabel = (m, amt) => m === 'sprint' ? ('Sprint · ' + amt + ' targets') : ('Timed · ' + amt + 's');
   function loadBest(m, s) {
-    try { return parseInt(localStorage.getItem(bestKey(m, s)) || '0', 10) || 0; } catch (e) { return 0; }
+    if (!KIT) return 0;
+    return m === 'sprint' ? KIT.best('aim-trainer', modeLabel('sprint', SPRINT_TARGET)).time
+                          : KIT.best('aim-trainer', modeLabel('timed', s || sessionSeconds)).score;
   }
   function saveBest(m, s, val) {
-    try { localStorage.setItem(bestKey(m, s), String(val)); } catch (e) {}
+    if (!KIT) return;
+    if (m === 'sprint') KIT.saveBest('aim-trainer', modeLabel('sprint', SPRINT_TARGET), { time: val });
+    else KIT.saveBest('aim-trainer', modeLabel('timed', s || sessionSeconds), { score: val });
   }
 
   // bestScore used by HUD and __test — means: best score for timed, 0 for sprint (sprint uses bestTime)
@@ -323,7 +328,7 @@
     const detail = acc + '% accuracy · ' + hits + ' hits · ' + misses + ' misses' + (bestReact < Infinity ? (' · ' + bestReact + 'ms') : '');
     const cfg = { kind: 'end', theme: MENU_THEME, backdrop: menuBackdrop, backdropAnimate: true, title: isSprint ? 'SPRINT CLEAR' : "TIME'S UP", lines: [detail],
       share: { slug: 'aim-trainer', title: 'Range', message: () => shareMsg(), params: () => rangeParams() },
-      record: { slug: 'aim-trainer', mode: mode, score: score, time: elapsedFrames, stats: { accuracy: acc } },
+      record: { slug: 'aim-trainer', mode: modeLabel(mode, mode === 'sprint' ? SPRINT_TARGET : sessionSeconds), score: score, time: elapsedFrames, stats: { accuracy: acc } },
       actions: [ { id: 'again', label: 'FIRE AGAIN', primary: true }, { id: 'menu', label: 'MENU' } ],
       onAction: id => { if (id === 'again') startGame(); else if (id === 'menu') toMenu(); } };
     if (isSprint) { const bt = loadBest('sprint', 0); cfg.score = elapsedFrames; cfg.scoreText = (elapsedFrames / 60).toFixed(2) + 's'; cfg.lines.unshift('Best ' + (bt > 0 ? (bt / 60).toFixed(2) + 's' : '--')); }

@@ -330,16 +330,10 @@
   }
 
   // ---- localStorage ----
-  function bestKey() { return 'bubbles_best_' + mode; }
-  function loadBest() {
-    try { const v = localStorage.getItem(bestKey()); bestScore = v ? (parseInt(v, 10) || 0) : 0; } catch(e) {}
-  }
-  function saveBest() {
-    try { if (score > bestScore) { bestScore = score; localStorage.setItem(bestKey(), String(score)); } } catch(e) {}
-  }
-  function bestFor(m) {
-    try { const v = localStorage.getItem('bubbles_best_' + m); return v ? (parseInt(v, 10) || 0) : 0; } catch(e) { return 0; }
-  }
+  const modeLabel = m => { m = m || mode; return m.charAt(0).toUpperCase() + m.slice(1); };
+  function loadBest() { bestScore = KIT ? KIT.bestScore('bubbles', modeLabel(mode)) : 0; }
+  function saveBest() { if (score > bestScore) { bestScore = score; if (KIT) KIT.saveBest('bubbles', modeLabel(mode), { score: score }); } }
+  function bestFor(m) { return KIT ? KIT.bestScore('bubbles', modeLabel(m)) : 0; }
 
   // ---- Start / modes ----
   function startMode(m, timed) {
@@ -424,7 +418,7 @@
     KIT.menu.show({ kind:'end', theme:MENU_THEME, title: won ? 'CLEARED! ✨' : 'GAME OVER',
       score: score, best: bestScore, newBest: isBest, lines: [ won ? ('Level ' + level + ' · all levels cleared') : ('Reached level ' + level) ],
       share: { slug:'bubbles', title:'Bubble Pop', message: ()=>shareMsg(), params: ()=> modeParams({ mode: mode, timed: timeDescent }) },
-      record: { slug:'bubbles', mode: mode, score: score },
+      record: { slug:'bubbles', mode: modeLabel(mode), score: score },
       actions:[ {id:'again',label:'PLAY AGAIN',primary:true}, {id:'menu',label:'MENU'} ],
       onAction:(id)=>{ if(id==='again') startMode(mode); else if(id==='menu') toMenu(); } });
   }

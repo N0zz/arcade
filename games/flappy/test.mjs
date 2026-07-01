@@ -10,6 +10,8 @@ let pass = 0, fail = 0;
 const fails = [];
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
 function section(t) { console.log('\n=== ' + t + ' ==='); }
+// best now lives in the shared kit store (gamekit_pb) under flappy's single '' mode
+const pbScore = (store, mode) => { try { return ((JSON.parse(store['gamekit_pb'] || '{}').flappy || {})[mode || ''] || {}).score || 0; } catch (e) { return 0; } };
 
 function makeCtx2d() {
   return new Proxy({}, {
@@ -226,11 +228,11 @@ while (T().score < 1 && T().state === 'playing' && persistGuard++ < 800) {
   T().step(1);
 }
 if (T().score > 0) {
-  ok(g.store['flappy_best'] !== undefined && parseInt(g.store['flappy_best'], 10) >= T().score,
-    'best saved to shared localStorage key (stored=' + g.store['flappy_best'] + ', score=' + T().score + ')');
+  ok(pbScore(g.store) >= T().score,
+    'best saved to shared kit store (stored=' + pbScore(g.store) + ', score=' + T().score + ')');
 } else {
   T().setBest(5);
-  ok(g.store['flappy_best'] === '5', 'setBest writes to shared best key');
+  ok(pbScore(g.store) === 5, 'setBest writes to shared kit store');
 }
 
 // (h) over → start() restarts
@@ -282,15 +284,14 @@ section('Day mode default');
 section('Night mode');
 {
   g = runGame();
-  g.store['flappy_best'] = '0';
   T().startMode('night');
   ok(T().mode === 'night', 'startMode("night") sets mode to night');
   ok(T().state === 'playing', 'night mode starts playing');
 
-  // Best is shared — night setBest writes the single shared key
+  // Best is shared — night setBest writes the single shared kit store
   T().setBest(7);
-  ok(g.store['flappy_best'] === '7', 'setBest in night mode writes shared flappy_best');
-  ok(g.store['flappy_best_night'] === undefined, 'no per-mode night key is created');
+  ok(pbScore(g.store) === 7, 'setBest in night mode writes the shared best');
+  ok(pbScore(g.store, 'Night') === 0, 'no per-mode night best is created (single best)');
 }
 
 // (m) startMode('day') switches back to day
@@ -340,14 +341,12 @@ section('End menu restart');
   ok(T().state === 'playing', 'Play Again restarts');
 }
 
-// (q) shared best: legacy per-mode keys migrate/merge into flappy_best on boot
-section('Shared best migration');
+// (q) best is read from the shared kit store on boot
+section('Best from shared store');
 {
-  // Boot with pre-seeded legacy per-mode bests so migrateBest() runs at startup.
-  g = runGame({ flappy_best_day: '12', flappy_best_night: '20' });
-  ok(g.store['flappy_best'] === '20', 'merges max of legacy day/night into flappy_best (got ' + g.store['flappy_best'] + ')');
-  ok(g.store['flappy_best_day'] === undefined && g.store['flappy_best_night'] === undefined, 'legacy per-mode keys removed after migration');
-  ok(T().best === 20, '__test.best reflects migrated shared best');
+  g = runGame({ gamekit_pb: JSON.stringify({ flappy: { '': { score: 20, plays: 1 } } }) });
+  ok(pbScore(g.store) === 20, 'kit store holds the seeded best (got ' + pbScore(g.store) + ')');
+  ok(T().best === 20, '__test.best reflects the seeded shared best');
 }
 
 // (r) cash: passing a pipe banks cash; persists in flappy_cash
