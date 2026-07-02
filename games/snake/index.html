@@ -184,12 +184,11 @@
   }
 
   function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
+    W = window.innerWidth;
+    H = window.innerHeight;
+    KIT.fitCanvas(canvas, W, H);
     // In portrait the HUD drops below the nav row (see CSS @media), so reserve more headroom.
-    let portrait = false;
-    try { portrait = window.innerHeight > window.innerWidth && W <= 560; } catch (_) {}
-    const hud = portrait ? 92 : 48;
+    const hud = KIT.layout.hudTop();
     // reserve room for the D-pad: a bottom strip in portrait, a side strip in landscape (so the
     // arena stays large in landscape instead of being squeezed vertically)
     const landscape = W > H;
@@ -316,7 +315,6 @@
   // ---- shared menus (gamekit.menu) — neon theme + a live-grid snake backdrop ----
   const MENU_THEME = { accent: '#00ffdc', glow: '0 0 18px rgba(0,255,220,0.5)', bg: 'rgba(6,12,16,0.72)',
     border: 'rgba(0,220,255,0.32)', overlay: 'rgba(4,8,12,0.6)', title: '#7dfff0', 'on-accent': '#03140f', 'accent-soft': 'rgba(0,255,220,0.16)' };
-  function roundRectM(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
   // a live "demo" snake wandering the menu grid: it moves on a timer and turns at random every ~1–3s
   var mb = null;
   function mbInit(cols, rows) {
@@ -348,7 +346,7 @@
     }
     g.fillStyle = '#f0f'; g.shadowColor = '#f0f'; g.shadowBlur = 16; g.beginPath(); g.arc(mb.food[0] * cs + cs / 2, mb.food[1] * cs + cs / 2, cs * .28, 0, 7); g.fill(); g.shadowBlur = 0;
     const n = mb.cells.length; g.save();
-    for (let k = 0; k < n; k++) { const t = (n - 1 - k) / n; g.fillStyle = 'rgb(0,' + Math.round(255 - 45 * t) + ',' + Math.round(220 - 140 * t) + ')'; g.shadowColor = 'rgba(0,255,220,.6)'; g.shadowBlur = (k === n - 1) ? 18 : 7; const px = mb.cells[k][0] * cs, py = mb.cells[k][1] * cs; roundRectM(g, px + cs * .06, py + cs * .06, cs * .88, cs * .88, cs * .3); g.fill(); }
+    for (let k = 0; k < n; k++) { const t = (n - 1 - k) / n; g.fillStyle = 'rgb(0,' + Math.round(255 - 45 * t) + ',' + Math.round(220 - 140 * t) + ')'; g.shadowColor = 'rgba(0,255,220,.6)'; g.shadowBlur = (k === n - 1) ? 18 : 7; const px = mb.cells[k][0] * cs, py = mb.cells[k][1] * cs; KIT.roundRect(g, px + cs * .06, py + cs * .06, cs * .88, cs * .88, cs * .3); g.fill(); }
     g.restore();
   }
   function pvWall(g, w, h, wrap) {
@@ -472,7 +470,7 @@
         else { ctx.shadowBlur = 8 * t; ctx.shadowColor = 'rgba(0,220,120,0.5)'; }
         ctx.fillStyle = col;
         ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(sx, sy, sw, sh, r) : ctx.rect(sx, sy, sw, sh);
+        ctx.roundRect(sx, sy, sw, sh, r);
         ctx.fill();
         ctx.restore();
 
@@ -689,9 +687,7 @@
     // HUD headroom the arena must clear so the score pill never overlaps the board.
     get layout() {
       const landscape = W > H;
-      let portrait = false;
-      try { portrait = window.innerHeight > window.innerWidth && W <= 560; } catch (_) {}
-      const topReserve = portrait ? 92 : 48;
+      const topReserve = KIT.layout.hudTop();
       const rBottom = (dpadReserve && !landscape) ? dpadReserve : 0;
       const rSide = (dpadReserve && landscape) ? dpadReserve : 0;
       return {
@@ -723,7 +719,7 @@
   };
 
   // ---- top nav (game-kit) ----
-  KIT.nav({ music: true, reset: 'snake_', home: '../../', theme: MENU_THEME, challenges: 'snake', onMenu: () => toMenu(),
+  KIT.nav({ slug: 'snake', music: true, home: '../../', theme: MENU_THEME, onMenu: () => toMenu(),
     onPause: () => { if (state === 'playing') pauseGame(); else if (state === 'paused') resumeGame(); },
     confirmLeave: () => (state === 'playing' || state === 'paused') ? "Leave this run? You'll lose your progress." : false,
     controls: { title: 'Neon Snake — Controls',
