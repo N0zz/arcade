@@ -235,7 +235,6 @@
     state = 'over';
     SND.play(reason === 'time' ? 'timeup' : 'over');
     const prevBest = currentBest(); saveBest(); const isBest = score > prevBest;
-    KIT.recordResult('stacker', { mode: MODE_CFG[mode].label, score: score });
     setTimeout(() => showEnd(reason, isBest), 400);
   }
 
@@ -270,8 +269,8 @@
     for (let i = 0; i < n; i++) {
       const y = down ? yBase + i * gapY : yBase - i * gapY;
       g.fillStyle = blkC(c0 + i, t); g.strokeStyle = blkS(c0 + i, t); g.lineWidth = 1.5;
-      roundRect(g, bx, y, bw, blockH, 4); g.fill(); g.stroke();
-      g.fillStyle = 'rgba(255,255,255,0.32)'; roundRect(g, bx + 3, y + 2, Math.max(2, bw - 6), Math.min(5, blockH - 4), 2); g.fill();
+      KIT.roundRect(g, bx, y, bw, blockH, 4); g.fill(); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.32)'; KIT.roundRect(g, bx + 3, y + 2, Math.max(2, bw - 6), Math.min(5, blockH - 4), 2); g.fill();
       const s = shrinks[i % shrinks.length], nbw = Math.max(bw0 * 0.28, bw - s);
       bx = (i % 2 === 0) ? bx : bx + (bw - nbw); // flush-alternate so it zig-zags as it tapers
       bw = nbw;
@@ -317,6 +316,7 @@
     if (KIT) { KIT.showMenuButton(false); KIT.showPauseButton(false); }
     if (!KIT) return;
     KIT.menu.show({ kind: 'end', theme: MENU_THEME, title: reason === 'time' ? "TIME'S UP!" : 'OOPS!', backdrop: menuBackdrop,
+      record: { slug: 'stacker', mode: MODE_CFG[mode].label, score: score },
       score: score, best: currentBest(), newBest: isBest, lines: [MODE_CFG[mode].label],
       share: { slug: 'stacker', accent: '#ff9aa2', icon: '🧊', title: 'Stack', message: () => shareMsg(), params: () => menuParams({ mode: mode, theme: theme }) },
       actions: [ { id: 'again', label: 'Play Again', primary: true }, { id: 'menu', label: 'Menu' } ],
@@ -420,13 +420,13 @@
       const stroke = blockStroke(i);
 
       ctx.fillStyle = color;
-      roundRect(ctx, b.x, cy, b.w, BLOCK_H, 5);
+      KIT.roundRect(ctx, b.x, cy, b.w, BLOCK_H, 5);
       ctx.fill();
       ctx.strokeStyle = stroke;
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      roundRect(ctx, b.x + 2, cy + 2, b.w - 4, 6, 3);
+      KIT.roundRect(ctx, b.x + 2, cy + 2, b.w - 4, 6, 3);
       ctx.fill();
     }
 
@@ -434,7 +434,7 @@
     for (const f of fallPieces) {
       ctx.globalAlpha = Math.max(0, f.life);
       ctx.fillStyle = f.color;
-      roundRect(ctx, f.x, f.y, f.w, BLOCK_H, 4);
+      KIT.roundRect(ctx, f.x, f.y, f.w, BLOCK_H, 4);
       ctx.fill();
       ctx.globalAlpha = 1;
     }
@@ -449,17 +449,17 @@
       // Shadow below mover showing where it'll land
       const topBlock = blocks[blocks.length - 1];
       ctx.fillStyle = TH().shadow;
-      roundRect(ctx, mover.x, worldToCanvas(topBlock.y), mover.w, BLOCK_H, 5);
+      KIT.roundRect(ctx, mover.x, worldToCanvas(topBlock.y), mover.w, BLOCK_H, 5);
       ctx.fill();
 
       ctx.fillStyle = color;
-      roundRect(ctx, mover.x, my, mover.w, BLOCK_H, 5);
+      KIT.roundRect(ctx, mover.x, my, mover.w, BLOCK_H, 5);
       ctx.fill();
       ctx.strokeStyle = stroke;
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      roundRect(ctx, mover.x + 2, my + 2, mover.w - 4, 6, 3);
+      KIT.roundRect(ctx, mover.x + 2, my + 2, mover.w - 4, 6, 3);
       ctx.fill();
     }
 
@@ -474,26 +474,12 @@
     ctx.globalAlpha = 1;
   }
 
-  function roundRect(ctx, x, y, w, h, r) {
-    r = Math.min(r, w / 2, h / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-  }
-
   // ---- Resize ----
   function resize() {
     const oldPFX = PF_X;
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
+    W = window.innerWidth;
+    H = window.innerHeight;
+    KIT.fitCanvas(canvas, W, H);
     // Constrain play column so block traversal feels snappy
     PF_W = Math.max(340, Math.min(Math.round(W * 0.27), MAX_PLAY_W, W));
     PF_X = (W - PF_W) / 2;
@@ -501,8 +487,8 @@
     // every placed block (and the moving block) by the same delta instead of leaving them off-side
     const dx = PF_X - oldPFX;
     if (dx && blocks.length) { for (let i = 0; i < blocks.length; i++) blocks[i].x += dx; if (mover) mover.x += dx; }
-    // Reserve headroom for the kit center-top HUD: top:8px landscape, top:50px portrait (≤560px)
-    TOP_PAD = W <= 560 ? 92 : 48;
+    // Reserve headroom for the kit center-top HUD
+    TOP_PAD = KIT.layout.hudTop();
   }
   window.gamekit.layout.on(resize); // resize + orientationchange + visualViewport, debounced
 
@@ -567,7 +553,7 @@
     toMenu() { toMenu(); },
   };
 
-  KIT.nav({ music: true, reset: 'stacker_', home: '../../', theme: MENU_THEME, challenges: 'stacker', onMenu: () => toMenu(),
+  KIT.nav({ slug: 'stacker', music: true, home: '../../', theme: MENU_THEME, onMenu: () => toMenu(),
     onPause: () => { if (state === 'playing') pauseGame(); else if (state === 'paused') resumeGame(); },
     confirmLeave: () => (state === 'playing' || state === 'paused') ? "Leave this run? You'll lose your progress." : false,
     controls: { title: 'Stack — Controls',
