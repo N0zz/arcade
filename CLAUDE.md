@@ -166,8 +166,8 @@ When the change is visual/interactive, offer the user this local URL to verify b
 
 ## Git & deploy
 
-- **Per-game commits** for clean history. End commit messages with the
-  `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>` line.
+- **Per-game commits** for clean history. End commit messages with a
+  `Co-Authored-By:` line for the Claude model that authored them (no pinned model name here).
 - **Batch pushes.** GitHub Pages soft-limits builds (~10/hr) and every push triggers a build +
   Action run, so commit per topic locally but **push several commits together**, not after each one.
 - Hosting: **GitHub Pages from `main`** (built-in Fastly CDN — no Cloudflare). Custom domain
