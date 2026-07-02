@@ -100,6 +100,7 @@
   <div><div class="lbl">SCORE</div><b id="scoreEl">0</b></div>
   <div><div class="lbl">BEST</div><b id="bestEl">0</b></div>
   <div><div class="lbl">LENGTH</div><b id="lenEl">1</b></div>
+  <div style="opacity:.75"><div class="lbl">MODE</div><b id="modeEl">—</b></div>
 </div>
 
 <script>
@@ -110,6 +111,7 @@
   const scoreEl = document.getElementById('scoreEl');
   const bestEl = document.getElementById('bestEl');
   const lenEl = document.getElementById('lenEl');
+  const modeEl = document.getElementById('modeEl');
 
   // ---- Audio (game-kit shared engine + global mute) ----
   const SND = window.gamekit.sound;
@@ -194,7 +196,10 @@
     const landscape = W > H;
     const rBottom = (dpadReserve && !landscape) ? dpadReserve : 0;
     const rSide = (dpadReserve && landscape) ? dpadReserve : 0;
-    const avW = W - rSide, avH = H - hud - rBottom;
+    // Pad the vertical ends: the border glow draws ~2px outside the grid and the HUD pill can dip
+    // past its reserve — a flush fit clipped the bottom wall / tucked the top under the score bar.
+    const PAD_T = 8, PAD_B = 4;
+    const avW = W - rSide, avH = H - hud - rBottom - PAD_T - PAD_B;
     cellW = Math.floor(avW / COLS);
     cellH = Math.floor(avH / ROWS);
     const cell = Math.min(cellW, cellH);
@@ -202,8 +207,8 @@
     offX = Math.floor((avW - COLS * cell) / 2); // arena hugs the left; D-pad sits in the right strip (landscape)
     // vertical position = centered, plus the player's saved up/down shift, clamped so the arena always
     // clears the HUD on top and the D-pad reserve on the bottom (write the clamp back so it can't run past).
-    const baseOffY = hud + Math.floor((avH - ROWS * cell) / 2);
-    const minOffY = hud, maxOffY = Math.max(hud, H - rBottom - ROWS * cell);
+    const baseOffY = hud + PAD_T + Math.floor((avH - ROWS * cell) / 2);
+    const minOffY = hud + PAD_T, maxOffY = Math.max(minOffY, H - rBottom - PAD_B - ROWS * cell);
     offY = Math.max(minOffY, Math.min(maxOffY, baseOffY + boardShiftY));
     boardShiftY = offY - baseOffY;
     layoutDpad();
@@ -241,6 +246,7 @@
     if (scoreEl) scoreEl.textContent = score;
     if (bestEl) bestEl.textContent = best;
     if (lenEl) lenEl.textContent = snake.length;
+    if (modeEl) modeEl.textContent = modeLabel(opts);
   }
 
   // ---- Particles ----
