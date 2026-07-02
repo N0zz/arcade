@@ -214,9 +214,11 @@ const T4 = () => g4.test();
 for (let i = 0; i < 8; i++) T4().dropPerfect();
 const sc4 = T4().score;
 ok(sc4 > 0, 'score > 0 after 8 perfect drops (got ' + sc4 + ')');
-// Check localStorage — classic mode key
+// Best must not be written mid-run (that bug hid the "New best!" banner), only when the run ends
+ok(pbScore(g4.store, 'Classic') === 0, 'best not written mid-run (stored=' + pbScore(g4.store, 'Classic') + ')');
+T4().toMenu();
 const stored4 = pbScore(g4.store, 'Classic');
-ok(stored4 >= sc4 && stored4 > 0, 'best score persisted (Classic) in profile store (stored=' + stored4 + ', score=' + sc4 + ')');
+ok(stored4 >= sc4 && stored4 > 0, 'best score persisted (Classic) in profile store on run end (stored=' + stored4 + ', score=' + sc4 + ')');
 
 section('game over → overlay appears');
 const g5 = runStacker();
@@ -272,6 +274,7 @@ const TT2 = () => gt2.test();
 for (let i = 0; i < 5; i++) TT2().dropPerfect();
 const sc_t = TT2().score;
 ok(sc_t > 0, 'time mode score > 0 after drops (got ' + sc_t + ')');
+TT2().toMenu();
 ok(pbHas(gt2.store, 'Time Attack'), 'Time Attack best written to profile store');
 ok(pbScore(gt2.store, 'Time Attack') >= sc_t, 'Time Attack best >= score (stored=' + pbScore(gt2.store, 'Time Attack') + ')');
 // Classic key should NOT be written
@@ -294,16 +297,17 @@ for (let i = 0; i < 10; i++) TZ().dropPerfect();
 ok(TZ().blocks >= 10, 'zen mode allows placing 10+ blocks with dropPerfect (got ' + TZ().blocks + ')');
 ok(TZ().combo >= 2, 'zen mode builds combo on perfect drops (got ' + TZ().combo + ')');
 
-section('Zen — best score persisted under correct key');
-const sc_z = TZ().score;
-ok(sc_z > 0, 'zen mode score > 0 (got ' + sc_z + ')');
-ok(pbHas(gz.store, 'Zen'), 'Zen best written to profile store');
-ok(pbScore(gz.store, 'Zen') >= sc_z, 'Zen best >= score');
-
 section('Zen — no time limit, can play indefinitely');
 // Step many frames — should not game-over from time
 for (let i = 0; i < 3600; i++) TZ().step(1);
 ok(TZ().state === 'playing', 'zen mode still playing after 3600 frames with no drops');
+
+section('Zen — best score persisted under correct key');
+const sc_z = TZ().score;
+ok(sc_z > 0, 'zen mode score > 0 (got ' + sc_z + ')');
+TZ().toMenu();
+ok(pbHas(gz.store, 'Zen'), 'Zen best written to profile store');
+ok(pbScore(gz.store, 'Zen') >= sc_z, 'Zen best >= score');
 
 // ---- Mode isolation: separate best scores ----
 
@@ -313,10 +317,12 @@ gi.test().startMode('classic');
 const TI_c = () => gi.test();
 for (let i = 0; i < 3; i++) TI_c().dropPerfect();
 const sc_classic = TI_c().score;
+TI_c().toMenu();
 
 gi.test().startMode('zen');
 const TI_z = () => gi.test();
 for (let i = 0; i < 3; i++) TI_z().dropPerfect();
+TI_z().toMenu();
 // zen gives score too; both keys should exist independently
 ok(pbHas(gi.store, 'Classic'), 'Classic best survives after zen session');
 ok(pbHas(gi.store, 'Zen'), 'Zen best set after zen session');
@@ -346,6 +352,7 @@ const TM3 = () => gm3.test();
 TM3().startMode('classic');
 for (let i = 0; i < 6; i++) TM3().dropPerfect();
 const playedScore = TM3().score;
+TM3().toMenu();
 ok(TM3().best('classic') === playedScore, 'classic best reflects the just-played score ' + playedScore + ' (got ' + TM3().best('classic') + ')');
 
 // ---- Layout: fits the screen across viewports ----
