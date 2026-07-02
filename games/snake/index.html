@@ -188,8 +188,8 @@
     H = canvas.height = window.innerHeight;
     // In portrait the HUD drops below the nav row (see CSS @media), so reserve more headroom.
     let portrait = false;
-    try { portrait = !!(window.matchMedia && window.matchMedia('(orientation:portrait)').matches) && W <= 560; } catch (_) {}
-    const hud = portrait ? 90 : 48;
+    try { portrait = window.innerHeight > window.innerWidth && W <= 560; } catch (_) {}
+    const hud = portrait ? 92 : 48;
     // reserve room for the D-pad: a bottom strip in portrait, a side strip in landscape (so the
     // arena stays large in landscape instead of being squeezed vertically)
     const landscape = W > H;
@@ -690,8 +690,8 @@
     get layout() {
       const landscape = W > H;
       let portrait = false;
-      try { portrait = !!(window.matchMedia && window.matchMedia('(orientation:portrait)').matches) && W <= 560; } catch (_) {}
-      const topReserve = portrait ? 90 : 48;
+      try { portrait = window.innerHeight > window.innerWidth && W <= 560; } catch (_) {}
+      const topReserve = portrait ? 92 : 48;
       const rBottom = (dpadReserve && !landscape) ? dpadReserve : 0;
       const rSide = (dpadReserve && landscape) ? dpadReserve : 0;
       return {
