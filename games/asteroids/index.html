@@ -346,7 +346,7 @@
   // game-kit nav: top-left ‹ Menu + top-right sound menu (SFX + Music + Reset). ‹ Menu and the komyo ›
   // home link both ask to confirm while a run is live (game pauses behind the confirm); ‹ Menu returns
   // to the start menu in-place.
-  if (KIT) { KIT.nav({ music: true, reset: 'asteroids_', home: '../../', theme: MENU_THEME, challenges: 'asteroids', onMenu: () => toMenu(),
+  if (KIT) { KIT.nav({ slug: 'asteroids', music: true, home: '../../', theme: MENU_THEME, onMenu: () => toMenu(),
     onPause: () => { if (state==='playing') pauseGame(); else if (state==='paused') resumeGame(); },
     confirmLeave: () => (state==='playing' || state==='paused') ? "Leave this run? You'll lose your progress." : false,
     controls: { title: 'Asteroids — Controls',
@@ -369,7 +369,7 @@
     // canvas px too. Only JS-computed values are exposed; the HUD pill itself is CSS-positioned.
     get layout(){
       const m=Math.min(window.innerWidth,window.innerHeight); const S=m<640?Math.min(2.6,900/m):1;
-      const hudTop=(KIT&&KIT.layout&&KIT.layout.hudTop)?KIT.layout.hudTop():(window.innerHeight>window.innerWidth?92:48);
+      const hudTop=KIT.layout.hudTop();
       const o={ W, H, S, topReserve:hudTop*S };
       if(ship){ o.shipLeft=ship.x-ship.r; o.shipRight=ship.x+ship.r; o.shipTop=ship.y-ship.r; o.shipBottom=ship.y+ship.r; }
       return o;
