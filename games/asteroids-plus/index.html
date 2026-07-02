@@ -180,7 +180,7 @@
   let W,H,SCALE=1;
   function resize(){ const m=Math.min(window.innerWidth,window.innerHeight); const S=m<640?Math.min(2.6,900/m):1; SCALE=S; W=canvas.width=Math.round(window.innerWidth*S); H=canvas.height=Math.round(window.innerHeight*S); buildStars(); }
   // top headroom in CANVAS px reserved for the center HUD pill (kit hudTop is CSS px → ×SCALE).
-  function hudReserve(){ const css=(KIT&&KIT.layout&&KIT.layout.hudTop)?KIT.layout.hudTop():((window.innerHeight>window.innerWidth||window.innerWidth<=560)?92:48); return Math.round(css*SCALE); }
+  function hudReserve(){ return Math.round(KIT.layout.hudTop()*SCALE); }
   (window.gamekit && window.gamekit.layout) ? window.gamekit.layout.on(resize) : window.addEventListener('resize', resize);
 
   let stars=[];
@@ -845,7 +845,7 @@
   if(isTouch){ document.body.classList.add('touch'); buildTouch(); }
 
   // game-kit nav: top-left ‹ Menu (quits to the start menu, in-place) + top-right sound menu (SFX + Music + Reset)
-  if (KIT) { KIT.nav({ music: true, reset: 'asteroids-plus_', home: '../../', theme: MENU_THEME, challenges: 'asteroids-plus',
+  if (KIT) { KIT.nav({ slug: 'asteroids-plus', music: true, home: '../../', theme: MENU_THEME,
     confirmLeave: () => (state==='playing'||state==='paused'||state==='levelup'||state==='shop') ? 'Leave this run? You’ll lose your progress.' : false,
     onMenu: () => quitToMenu(), onPause: () => { if (state==='playing') pauseGame(); else if (state==='paused') resumeGame(); } }); KIT.showMenuButton(false); KIT.showPauseButton(false); KIT.pwa(); }
 
