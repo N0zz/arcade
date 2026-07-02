@@ -243,6 +243,10 @@
     best = getBest();
     selectedBird = getSelectedBird();
     seedRng(Date.now());
+    // wide screens (landscape/desktop): pre-fill pipes from a fair fixed distance so the run
+    // doesn't open with a long empty flight to the far screen edge; on portrait the first slot
+    // is already past the edge, so nothing changes
+    for (let px = BIRD_X + 520; px <= W; px += OBS_W + OBS_INTERVAL) spawnObstacle(px);
     updateHud();
   }
 
@@ -341,7 +345,7 @@
     if (!KIT) return;
     const h = KIT.menu.show({ kind: 'end', title: 'Oh no!', theme: FLAPPY[mode], backdropAnimate: true, backdrop: (g, w, hh, st, frame) => menuBackdrop(g, w, hh, mode, frame),
       score: score, best: getBest(), newBest: isBest,
-      share: { slug: 'flappy', title: 'Meadow Flyer', message: () => shareMsg(), params: () => ({ bird: selectedBird.id, mode: mode }) },
+      share: { slug: 'flappy', accent: '#8fd3a6', icon: '🐤', title: 'Meadow Flyer', message: () => shareMsg(), params: () => ({ bird: selectedBird.id, mode: mode }) },
       record: { slug: 'flappy', mode: '', score: score },
       actions: [ { id: 'again', label: 'FLY AGAIN', primary: true }, { id: 'menu', label: 'MENU' } ],
       onAction: id => { if (id === 'again') startGame(); else if (id === 'menu') toMenu(); } });
@@ -423,7 +427,7 @@
   }
 
   // ---- Spawn obstacle ----
-  function spawnObstacle() {
+  function spawnObstacle(atX) {
     const gap = currentGap();
     const margin = H * 0.12;
     const lo = Math.max(margin, topInset), hi = H - margin - gap;
@@ -437,8 +441,9 @@
     }
     pendingGapY = null;
     lastGapY = gapY;
-    obstacles.push({ x: W + OBS_W, gapY, gap, passed: false });
-    maybeSpawnCollectible(gapY, gap);
+    const px = (atX != null) ? atX : W + OBS_W;
+    obstacles.push({ x: px, gapY, gap, passed: false });
+    maybeSpawnCollectible(gapY, gap, px);
   }
 
   // ---- Collectibles (coins / fruit between pipes) ----
@@ -448,12 +453,12 @@
     { emoji: '🍓', val: 3 },
     { emoji: '⭐', val: 5 },
   ];
-  function maybeSpawnCollectible(gapY, gap) {
+  function maybeSpawnCollectible(gapY, gap, pipeX) {
     if (rng() > 0.55) return; // only some gaps carry a treat
     const c = COLLECTIBLES[(rng() * COLLECTIBLES.length) | 0];
     // place it between this pipe and the next, vertically within the gap
     const y = gapY + 18 + rng() * Math.max(10, gap - 36);
-    collectibles.push({ x: W + OBS_W + OBS_INTERVAL * 0.5, y, r: 14, emoji: c.emoji, val: c.val, taken: false });
+    collectibles.push({ x: (pipeX != null ? pipeX : W + OBS_W) + OBS_INTERVAL * 0.5, y, r: 14, emoji: c.emoji, val: c.val, taken: false });
   }
   function collectAt(idx) {
     const c = collectibles[idx];

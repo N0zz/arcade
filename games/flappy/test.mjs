@@ -166,6 +166,7 @@ section('Gap scoring');
 g = runGame();
 T().seed(42);
 T().start();
+T().obstacles.length = 0; // drop the wide-screen pre-filled pipes — the controlled gap must arrive first
 // Place gap at a safe vertical position
 const H = 800;
 const gapY = H * 0.38;   // 304
@@ -196,7 +197,9 @@ section('Collision hitbox alignment');
   T().step(1); // trigger spawn if needed
   const obs = T().obstacles;
   if (obs.length > 0) {
+    obs.length = 1; // only the pipe under test (wide screens pre-fill extra pipes at run start)
     obs[0].x = obsX;
+    obs[0].gapY = T().bird.y - obs[0].gap / 2; // gap centered on the bird — only the stem inset is under test
     T().step(1);
     ok(T().state === 'playing', 'bird outside stem inset survives (hitbox matches stem, not full column)');
   } else {
@@ -217,6 +220,7 @@ g = runGame();
 T().setBest(0);
 T().start();
 T().seed(99);
+T().obstacles.length = 0; // same: the controlled gap must be the first pipe
 const persistGapY = H * 0.38;
 const persistBirdTarget = persistGapY + 92;
 T().spawnGapAt(persistGapY);
@@ -258,10 +262,12 @@ section('Easier survival');
 {
   // Flap every 36 frames — an easy resting rhythm calibrated to the gentler GRAVITY=0.28/FLAP_VY=-6.0.
   // This would be fatal under the original hard tuning (GRAVITY=0.38, FLAP_VY=-7.2 overshoots ceiling).
-  // No obstacles can reach the bird within 300 frames (grace period + slow OBS_SPEED_DAY=2.1).
+  // Pre-filled pipes (wide-screen head start) are cleared — this checks the flap rhythm only; the
+  // edge-spawned pipe can't reach the bird within 300 frames (grace period + slow OBS_SPEED_DAY).
   g = runGame();
   T().seed(1234);
   T().start();
+  T().obstacles.length = 0;
   let flapGuard = 0;
   while (T().state === 'playing' && flapGuard < 300) {
     if (flapGuard % 36 === 0) T().flap();
@@ -376,6 +382,7 @@ section('Collectibles');
   g = runGame();
   T().setCash(0);
   T().start();
+  T().obstacles.length = 0; T().collectibles.length = 0; // drop pre-filled pipes + their treats
   const s0 = T().score, c0 = T().cash;
   // Drop a coin right on the bird so the overlap fires next step.
   T().spawnCollectibleAt(T().bird.x, T().bird.y, 3);
@@ -458,6 +465,7 @@ section('Meadow Flyer: layout fits the screen across viewports');
     g = runGame();
     T().start();
     g.resize(vp.w, vp.h);
+    T().obstacles.length = 0; // drop pipes pre-filled before the resize — their gaps used the old H
     T().step(1);
     const L = T().layout;
     // Step past the spawn grace period (frame >= 60) to surface a real pipe, keeping the bird
