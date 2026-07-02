@@ -24,6 +24,9 @@ window.CHANGELOG = [
     'Fix: Keep Defender’s speed button now reads 1x/2x honestly (there is no 3x), and the Marsh map no longer secretly weakens your archers — it plays exactly as its description says.',
     'Fix: “Reset all data” on the home page keeps your chosen player name.',
     'Fix: the “Have 3 good runs today” and “10 good runs this week” challenges now actually track your good runs and award their points — they could never complete before. Challenge progress also can’t double-count a run anymore.',
+    'Improved: Keep Defender score now rewards difficulty — points count ×1.5 on Medium and ×2 on Hard, so a hard run isn’t out-scored by a cruisy easy one (gold rewards are unchanged).',
+    'Fix: Keep Defender bosses were nearly unkillable on Hard — they now have half the health, lumber 20% slower, and no longer get the hidden speed boost from the threat meter (regular enemies still do).',
+    'Improved: Keep Defender stays readable and audible late-game — with a board full of towers, spell/blast effects thin out past a visual budget and rapid-fire sounds are rate-limited instead of stacking into noise.',
   ] },
   { date: '2026-07-01', title: 'Roll the dice 🎲', items: [
     'New: a 🎲 Random button on the home page picks a game for you — it leans toward ones you haven’t tried yet, an easy way to discover something new.',
