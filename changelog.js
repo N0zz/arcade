@@ -28,6 +28,7 @@ window.CHANGELOG = [
     'Fix: Keep Defender bosses were nearly unkillable on Hard — they now have half the health on Hard and 30% less on Medium (Easy bosses are unchanged), lumber 20% slower, and no longer get the hidden speed boost from the threat meter (regular enemies still do).',
     'Improved: Keep Defender stays readable and audible late-game — with a board full of towers, spell/blast effects thin out past a visual budget and rapid-fire sounds are rate-limited instead of stacking into noise.',
     'Improved: Discord score posts now follow your privacy choices — nothing is sent unless you accept the cookie banner, posts are anonymous by default, and a new ⚙️ Settings toggle shows your nickname only if you want the glory. Posts are also limited to about one per minute.',
+    'Fix: on high-refresh screens (90/120/144 Hz phones and monitors) five games ran up to twice too fast — Meadow Flyer, Stack, Range, Bubble Pop and Keep Defender now play at the intended speed on every screen. Range’s recorded reaction and sprint times are accurate there too, and Stack’s Time Attack lasts its full 60 seconds.',
   ] },
   { date: '2026-07-01', title: 'Roll the dice 🎲', items: [
     'New: a 🎲 Random button on the home page picks a game for you — it leans toward ones you haven’t tried yet, an easy way to discover something new.',
