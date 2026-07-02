@@ -32,6 +32,7 @@
   #hp { font-size:22px; letter-spacing:3px; color:#ff7b7b; text-shadow:0 0 8px rgba(255,120,120,0.6); }
   #shield { font-size:16px; letter-spacing:3px; color:#7fd0ff; margin-top:4px; }
   #timer { font-size:17px; letter-spacing:2px; color:#ffd166; text-shadow:0 0 8px rgba(255,209,102,0.6); display:none; }
+  #modeTag { font-size:12px; letter-spacing:1px; opacity:0.5; }
   @media (max-width:560px) { #topHud { top:50px; max-width:calc(100vw - 16px); gap:8px 20px; } }
   /* short screens (landscape phones): make the HUD a slim top bar instead of a tall box (~30% → ~10%) */
   @media (max-height:560px) {
@@ -110,7 +111,7 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="topHud"><div id="hudL"><div class="label">SCORE</div><div id="score">0</div><div id="wave">WAVE 1</div><div id="credits" style="display:none">◈ 0</div></div><div id="hudR"><div id="hp">♥♥♥</div><div id="shield"></div></div><div id="timer"><div id="timerVal">00:00.00</div><div class="goal" id="timerGoal"></div></div></div>
+<div id="topHud"><div id="hudL"><div class="label">SCORE</div><div id="score">0</div><div id="wave">WAVE 1</div><div id="credits" style="display:none">◈ 0</div></div><div id="hudR"><div id="hp">♥♥♥</div><div id="shield"></div></div><div id="timer"><div id="timerVal">00:00.00</div><div class="goal" id="timerGoal"></div></div><div id="modeTag">Level-up</div></div>
 <div class="hud" id="xpwrap"><div id="xpbar"><div id="xpfill"></div></div><div id="xplabel">LV 1</div></div>
 <div id="flash"></div>
 
@@ -134,7 +135,7 @@
   const canvas=$('game'), ctx=canvas.getContext('2d');
   const overlay=$('overlay'), flashEl=$('flash');
   const scoreEl=$('score'), waveEl=$('wave'), creditsEl=$('credits'), hpEl=$('hp'), shieldEl=$('shield');
-  const timerEl=$('timer'), timerVal=$('timerVal'), timerGoal=$('timerGoal');
+  const timerEl=$('timer'), timerVal=$('timerVal'), timerGoal=$('timerGoal'), modeTagEl=$('modeTag');
   const xpwrap=$('xpwrap'), xpfill=$('xpfill'), xplabel=$('xplabel');
   const modeHint=$('modeHint'), modeTitle=$('modeTitle');
 
@@ -174,6 +175,7 @@
     creditsEl.style.display= (PROGRESSION==='shop')    ? 'block' : 'none';
     timerEl.style.display  = SPEEDRUN ? 'block' : 'none';
     if (SPEEDRUN) timerGoal.textContent = 'GOAL: CLEAR WAVE '+SR_TARGET_WAVE;
+    modeTagEl.textContent = progLabel(PROGRESSION, SPEEDRUN);
   }
   applyModeHud();
 

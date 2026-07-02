@@ -39,6 +39,7 @@
   <div class="stat"><span class="lbl">BEST</span> <b id="best">0</b></div>
   <div class="stat"><span class="lbl">HEIGHT</span> <b id="height">0</b></div>
   <div class="stat" id="timer-stat" style="display:none"><span class="lbl">TIME</span> <b id="timer">60</b></div>
+  <div class="stat" style="opacity:.75"><span class="lbl">MODE</span> <b id="modeStat">Classic</b></div>
 </div>
 <div id="combo"></div>
 
@@ -126,6 +127,7 @@
     document.getElementById('score').textContent = score;
     document.getElementById('best').textContent = currentBest();
     document.getElementById('height').textContent = blocks.length > 1 ? blocks.length - 1 : 0;
+    document.getElementById('modeStat').textContent = MODE_CFG[mode].label;
     if (mode === 'time') {
       timerStat.style.display = '';
       timerEl.textContent = Math.ceil(timeLeft);

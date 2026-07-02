@@ -26,6 +26,7 @@
   #weapon { font-size:13px; margin-top:4px; color:#ffc878; opacity:0.85; }
   #lives { font-size:22px; letter-spacing:4px; color:#7fffb0; text-shadow:0 0 8px rgba(120,255,170,0.6); }
   #timer { font-size:18px; letter-spacing:2px; color:#ffd166; text-shadow:0 0 8px rgba(255,209,102,0.6); display:none; }
+  #modeTag { font-size:12px; letter-spacing:1px; opacity:0.5; }
   @media (max-width:560px) { #topHud { top:50px; max-width:calc(100vw - 16px); gap:8px 18px; } }
   /* short screens (landscape phones): slim the HUD so it doesn't eat the playfield */
   @media (max-height:560px) { #topHud { padding:2px 12px; gap:14px; } #hud { font-size:16px; } #hud .label { font-size:9px; } #weapon { font-size:10px; margin-top:1px; } #lives { font-size:16px; } }
@@ -68,7 +69,7 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="topHud"><div id="hud"><div class="label">SCORE</div><div id="score">0</div><div id="weapon">WEAPON I</div></div><div id="lives"></div><div id="timer"><div id="timerVal">00:00.00</div><div class="goal" id="timerGoal"></div></div></div>
+<div id="topHud"><div id="hud"><div class="label">SCORE</div><div id="score">0</div><div id="weapon">WEAPON I</div></div><div id="lives"></div><div id="timer"><div id="timerVal">00:00.00</div><div class="goal" id="timerGoal"></div></div><div id="modeTag">Classic</div></div>
 <div id="flash"></div>
 
 <!-- menus (start / pause / end) are rendered by gamekit.menu; #overlay is kept only as a hidden anchor -->
@@ -80,6 +81,7 @@
   const scoreEl=document.getElementById('score'), weaponEl=document.getElementById('weapon');
   const livesEl=document.getElementById('lives'), overlay=document.getElementById('overlay'), flashEl=document.getElementById('flash');
   const timerEl=document.getElementById('timer'), timerVal=document.getElementById('timerVal'), timerGoal=document.getElementById('timerGoal');
+  const modeTagEl=document.getElementById('modeTag');
 
   // ---- Mode: chosen on the start menu, applied IN-PLACE (no reload) and stamped into the URL so a
   //      refresh/share reopens the same mode. ?v=classic|enh and ?speedrun=1 just seed the picker. ----
@@ -100,6 +102,7 @@
     KEY = ENHANCED ? 'classic-enhanced' : 'classic'; BEST_KEY = 'asteroids_best_' + KEY; SCORE_KEY = 'asteroids_score_' + KEY;
     if (weaponEl) weaponEl.style.display = ENHANCED ? '' : 'none';
     if (timerEl) { timerEl.style.display = SPEEDRUN ? 'block' : 'none'; if (SPEEDRUN && timerGoal) timerGoal.textContent = 'GOAL: ' + SR_TARGET_SCORE + ' PTS'; }
+    if (modeTagEl) modeTagEl.textContent = keyLabel(KEY, SPEEDRUN);
   }
 
 
