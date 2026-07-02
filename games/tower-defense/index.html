@@ -341,8 +341,9 @@
   const SIDEBAR = 132; // landscape: width reserved on the LEFT for the vertical toolbar strip
   let topReserve = 78; // top headroom reserved for the .gamekit-hud (recomputed each resize)
   function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
+    W = window.innerWidth;
+    H = window.innerHeight;
+    KIT.fitCanvas(canvas, W, H);
     const portrait = H > W;
     // Reserve top room for the (center-top, possibly 2-row) HUD. Portrait drops the HUD to its
     // own row under the nav, so it needs more headroom.
@@ -520,6 +521,7 @@
     if (KIT) KIT.showMenuButton(false);
     if (!KIT) return;
     KIT.menu.show({ kind: 'end', theme: MENU_THEME, title: 'THE KEEP HAS FALLEN', backdrop: (g, w, h) => menuMapRender(g, w, h, MAPS[mapIndex]),
+      record: { slug: 'tower-defense', mode: MAPS[mapIndex].name + ' · ' + DIFF().label, score: score, stats: { wave: wave, difficulty: diffLevel } },
       score: score, best: bestScore, newBest: score >= bestScore && score > 0,
       lines: ['Waves survived: ' + wave + ' · ' + MAPS[mapIndex].name + ' · ' + DIFF().label],
       share: { slug: 'tower-defense', accent: '#e0b25a', icon: '🏰', title: 'Keep Defender', message: () => KIT.shareText({ score: score, game: 'Keep Defender', emoji: '🏰', mode: MAPS[mapIndex].name + ' · ' + DIFF().label, extra: ['wave ' + wave] }), params: () => ({ map: mapIndex, diff: diffLevel }) },
@@ -1170,7 +1172,6 @@
   function gameOver() {
     state = 'over';
     saveBest();
-    KIT.recordResult('tower-defense', { mode: MAPS[mapIndex].name + ' · ' + DIFF().label, score: score, stats: { wave: wave, difficulty: diffLevel } });
     SND.play('over');
     enemies = []; shots = []; spawnQ = [];
     showEnd();
@@ -1590,7 +1591,7 @@
   { const tb = $('targetBtn'); if (tb) tb.addEventListener('click', () => { if (selTower) cycleTarget(selTower); }); }
   const spdBtn = $('speedBtn');
   if (spdBtn) spdBtn.addEventListener('click', () => { gameSpeed = gameSpeed === 1 ? 2 : 1; refreshToolbar(); });
-  KIT.nav({ music: true, reset: 'tower-defense_', home: '../../', theme: MENU_THEME, challenges: 'tower-defense', onMenu: () => toMenu(),
+  KIT.nav({ slug: 'tower-defense', music: true, home: '../../', theme: MENU_THEME, onMenu: () => toMenu(),
     confirmLeave: () => (state === 'build' || state === 'wave') ? "Leave this run? You'll lose your progress." : false,
     controls: { title: 'Keep Defender — Controls',
       mouse: [ ['Pick a tower', 'Select to build'], ['Click grass', 'Place tower'], ['Click a tower', 'Upgrade / sell / targeting'] ],
