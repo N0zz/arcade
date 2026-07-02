@@ -1379,11 +1379,11 @@
       if (d) d.addEventListener('click', () => decide('denied'));
     })();
 
-    // ---- Reset all game data (every game's scores/progress + favorites; keeps consent + audio prefs) ----
+    // ---- Reset all game data (every game's scores/progress + favorites; keeps consent + audio prefs + name) ----
     (function () {
       const btn = document.getElementById('resetAll');
       if (!btn) return;
-      const KEEP = { gamekit_consent: 1, gamekit_sfx_muted: 1, gamekit_sfx_vol: 1, gamekit_music_muted: 1, gamekit_music_vol: 1 };
+      const KEEP = { gamekit_consent: 1, gamekit_sfx_muted: 1, gamekit_sfx_vol: 1, gamekit_music_muted: 1, gamekit_music_vol: 1, gamekit_name: 1 };
       const wipe = () => {
         try {
           const keys = [];
