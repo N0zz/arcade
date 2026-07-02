@@ -766,12 +766,6 @@
     drawBird();
   }
 
-  function loop() {
-    requestAnimationFrame(loop);
-    if (window.gamekit && window.gamekit.isPaused && window.gamekit.isPaused()) return; // kit pause
-    try { update(); render(); } catch (e) { if (window.console) console.error(e); }
-  }
-
   // ---- Input ----
   canvas.addEventListener('pointerdown', () => flap());
   document.addEventListener('keydown', e => {
@@ -843,7 +837,7 @@
     setScore(v) { score = v; updateHud(); },
   };
 
-  resize(); updateHud(); loop();
+  resize(); updateHud(); KIT.loop(update, render);
   // deep-link ?bird= / ?mode= → preselect before opening the menu
   { const P = KIT && KIT.param; if (P) { const pb = P('bird'); if (pb && BIRDS.some(b => b.id === pb) && selectBird(pb)) selectedBird = getSelectedBird(); const pm = P('mode'); if (pm === 'day' || pm === 'night') { mode = pm; saveMode(mode); } } }
   showStartMenu(); // open the shared start menu (bird/day-night preselected from the URL)
