@@ -322,6 +322,44 @@ function run() {
   ok(Dh2().diffConfig.hpBase > easyMaxHp, 'hard hpBase exceeds easy hpBase (' + Dh2().diffConfig.hpBase + ' > ' + easyMaxHp + ')');
   ok(Math.abs(Dh().waveHpK() - Dh().diffConfig.hpBase) < 1e-9, 'waveHpK at wave 1 equals hpBase (geometric, ' + Dh().waveHpK().toFixed(3) + ')');
 
+  section('score rewards difficulty (scoreMul, decoupled from gold)');
+  const gS = runInline('index.html'); const Sc = () => gS.test();
+  Sc().selectMap(0); Sc().setDifficultyLevel('hard'); Sc().start(); Sc().startWave(); Sc().step(120);
+  ok(Sc().enemies > 0, 'wave 1 spawned enemies for the score test');
+  let rewH = 0; for (let i = 0; i < Sc().enemies; i++) rewH += Sc().enemyInfo(i).reward;
+  const sH0 = Sc().score, gH0 = Sc().gold;
+  Sc().killAll();
+  ok(Sc().score - sH0 === rewH * 2, 'hard kills score 2× their gold reward (' + (Sc().score - sH0) + ' = 2×' + rewH + ')');
+  ok(Sc().gold - gH0 === rewH, 'gold economy is untouched by scoreMul (+' + (Sc().gold - gH0) + 'g)');
+  const gSe = runInline('index.html'); const Se = () => gSe.test();
+  Se().selectMap(0); Se().setDifficultyLevel('easy'); Se().start(); Se().startWave(); Se().step(120);
+  let rewE = 0; for (let i = 0; i < Se().enemies; i++) rewE += Se().enemyInfo(i).reward;
+  const sE0 = Se().score;
+  Se().killAll();
+  ok(Se().score - sE0 === rewE, 'easy kills score 1× (scoreMul 1.0, got +' + (Se().score - sE0) + ')');
+
+  section('boss rebalance (half HP base, slower, no threat speed nudge)');
+  const gB = runInline('index.html'); const Bs = () => gB.test();
+  Bs().selectMap(0); Bs().setDifficultyLevel('hard'); Bs().start();
+  for (let w = 1; w <= 4; w++) { Bs().startWave(); let gd = 0; while (Bs().state === 'wave' && gd++ < 3000) { Bs().step(10); Bs().killAll(); } }
+  ok(Bs().state === 'build' && Bs().wave === 4, 'cleared waves 1–4 (state ' + Bs().state + ', wave ' + Bs().wave + ')');
+  Bs().setDifficulty(3.0); // pin the adaptive threat high so the boss speed exemption is observable
+  Bs().startWave();
+  let boss = null, bGuard = 0;
+  while (!boss && bGuard++ < 2000) {
+    Bs().step(5);
+    for (let i = 0; i < Bs().enemies; i++) { const e = Bs().enemyInfo(i); if (e && e.type === 'boss') { boss = e; break; } }
+  }
+  ok(!!boss, 'wave 5 spawns a boss');
+  if (boss) {
+    const expHp = Math.round(200 * Bs().waveHpK() * 3.0); // map 0 diff = 1.0
+    ok(boss.maxHp === expHp, 'boss HP uses the halved 200 base (got ' + boss.maxHp + ', expected ' + expHp + ')');
+    ok(Math.abs(boss.speed - 0.4) < 1e-9, 'boss walks at 0.4 and ignores the threat speed nudge (got ' + boss.speed + ')');
+    let other = null;
+    for (let i = 0; i < Bs().enemies; i++) { const e = Bs().enemyInfo(i); if (e && e.type !== 'boss') { other = e; break; } }
+    if (other) ok(other.speed > boss.speed, 'non-boss enemies in the same wave keep the threat speed nudge (' + other.speed.toFixed(2) + ' > 0.4)');
+  }
+
   section('targeting priority (per-tower mode)');
   const gT = runInline('index.html'); const Tg = () => gT.test();
   Tg().selectMap(0); Tg().start(); Tg().addGold(500);

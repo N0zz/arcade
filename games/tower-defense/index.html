@@ -185,14 +185,27 @@
     win: (c) => c.play('victory'),
     sell: (c) => c.voice({ f: 660, slideTo: 520, dur: 0.08, type: 'sine', gain: 0.1, reverb: 0.1 }),
   });
+  // Combat SFX rate limit: with a tower-carpeted board every frame fires shots/impacts and the
+  // mix collapses into noise. Per-sound minimum gap (ms) — UI/stinger sounds stay uncapped.
+  const SND_GAP = { shoot: 90, hit: 70, boom: 130, leak: 200 };
+  const sndLast = {};
+  function playCapped(name) {
+    const gap = SND_GAP[name];
+    if (gap) {
+      const now = Date.now();
+      if (sndLast[name] && now - sndLast[name] < gap) return;
+      sndLast[name] = now;
+    }
+    SND.play(name);
+  }
 
   // ---- Difficulty levels (FIRST-PASS playtesting knobs — easy to find & dial) ----
   // hpBase/hpGrow drive GEOMETRIC per-enemy HP scaling (waveHpK); the economy fields starve
   // income (lower start gold, lower interest + cap, smaller bounties via rewardMul).
   const DIFFICULTY = {
-    easy:   { label:'Easy',   hpBase:2.0, hpGrow:1.17, startGold:90, interestRate:0.015, interestCap:12, rewardMul:0.75 },
-    medium: { label:'Medium', hpBase:2.3, hpGrow:1.22, startGold:80, interestRate:0.010, interestCap:8,  rewardMul:0.65 },
-    hard:   { label:'Hard',   hpBase:2.6, hpGrow:1.26, startGold:70, interestRate:0.008, interestCap:6,  rewardMul:0.55 },
+    easy:   { label:'Easy',   hpBase:2.0, hpGrow:1.17, startGold:90, interestRate:0.015, interestCap:12, rewardMul:0.75, scoreMul:1.0 },
+    medium: { label:'Medium', hpBase:2.3, hpGrow:1.22, startGold:80, interestRate:0.010, interestCap:8,  rewardMul:0.65, scoreMul:1.5 },
+    hard:   { label:'Hard',   hpBase:2.6, hpGrow:1.26, startGold:70, interestRate:0.008, interestCap:6,  rewardMul:0.55, scoreMul:2.0 },
   };
   const DIFF_KEY = 'tower-defense_diff';
   let diffLevel = 'medium';
@@ -208,6 +221,9 @@
   }
   // Geometric per-enemy HP multiplier for the current wave (excludes map-diff + adaptive threat).
   function waveHpK() { return DIFF().hpBase * Math.pow(DIFF().hpGrow, wave - 1); }
+  // Score rewards difficulty (scoreMul) — decoupled from the gold economy, which pays LESS on
+  // harder settings (rewardMul); without this an easy run always out-scores a hard one.
+  function addScore(n) { score += Math.round(n * (DIFF().scoreMul || 1)); }
 
   // ---- Maps (distinct layout + theme each) ----
   // theme: g1/g2 = terrain checker, road = path fill, edge = road border,
@@ -367,7 +383,7 @@
     grunt:   { hp: 36,  speed: 1.05, reward: 3,   color: '#9a6a44', rr: 0.30, leak: 1 },
     runner:  { hp: 22,  speed: 2.0,  reward: 3,   color: '#d8b24a', rr: 0.25, leak: 1 },
     brute:   { hp: 140, speed: 0.62, reward: 8,   color: '#7a7a88', rr: 0.40, leak: 2 },
-    boss:    { hp: 400, speed: 0.5,  reward: 90,  color: '#b04141', rr: 0.55, leak: 6 },
+    boss:    { hp: 200, speed: 0.4,  reward: 90,  color: '#b04141', rr: 0.55, leak: 6 },
     armored: { hp: 78,  speed: 0.85, reward: 10,  color: '#6a8a6a', rr: 0.35, leak: 1, armored: true },
     swarm:   { hp: 11,  speed: 1.8,  reward: 1,   color: '#c09040', rr: 0.20, leak: 1 },
   };
@@ -628,8 +644,9 @@
     const dm = MAPS[mapIndex].diff || 1;
     const k = waveHpK() * dm * difficulty;
     const hpv = Math.max(1, Math.round(b.hp * k));
-    // surface affects movement; difficulty also nudges speed up (capped so it stays playable)
-    const spd = b.speed * surfaceMul() * (1 + (difficulty - 1) * 0.25);
+    // surface affects movement; difficulty also nudges speed up (capped so it stays playable) —
+    // except bosses: slow-and-tanky is their archetype, and threat already scales their HP
+    const spd = b.speed * surfaceMul() * (type === 'boss' ? 1 : (1 + (difficulty - 1) * 0.25));
     const e = {
       type, maxHp: hpv, hp: hpv,
       speed: spd, reward: Math.max(1, Math.round(b.reward * DIFF().rewardMul)), color: b.color, rr: b.rr, leak: b.leak,
@@ -829,7 +846,11 @@
     return tgt;
   }
 
+  // Soft particle budget: past it new bursts thin out (rings dropped, few sparks) so a
+  // tower-carpeted late game stays readable + fast. View-only — the sim never reads particles.
+  const PART_BUDGET = 400;
   function spawnParticles(x, y, col) {
+    if (particles.length > PART_BUDGET) return;
     const count = 5 + Math.floor(Math.random() * 3);
     for (let i = 0; i < count; i++) {
       particles.push({ x, y, vx: (Math.random() - 0.5) * 3.5, vy: (Math.random() - 0.5) * 3.5, life: 1, col: col || '#e0b25a' });
@@ -838,8 +859,9 @@
 
   // Richer AoE burst: an expanding shockwave ring + flung sparks. Headless-safe (pure data).
   function spawnSplash(x, y, col, pxRadius, sparkCol) {
-    particles.push({ x, y, ring: true, r: pxRadius * 0.25, maxR: pxRadius, life: 1, decay: 0.06, col });
-    const n = 9 + Math.floor(Math.random() * 4);
+    const over = particles.length > PART_BUDGET;
+    if (!over) particles.push({ x, y, ring: true, r: pxRadius * 0.25, maxR: pxRadius, life: 1, decay: 0.06, col });
+    const n = over ? 3 : 9 + Math.floor(Math.random() * 4);
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + Math.random() * 0.4;
       const sp = 2.5 + Math.random() * 3.5;
@@ -907,7 +929,7 @@
     if (!d) return false;
     if (d.event) {
       const ev = EVENTS[d.event];
-      if (d.amount > 0) { gold += d.amount; score += Math.round(d.amount / 2); float(d.x, d.y, '+' + d.amount + 'g', '#ffe066'); }
+      if (d.amount > 0) { gold += d.amount; addScore(d.amount / 2); float(d.x, d.y, '+' + d.amount + 'g', '#ffe066'); }
       if (d.event === 'rally' || d.event === 'relic') hasteTicks = Math.max(hasteTicks, 360);
       if (d.event === 'freeze') { for (const e of enemies) e.slow = Math.max(e.slow, 150); float(d.x, d.y - 14, '❄ FROZEN!', '#9ee0ff'); }
       if (d.event === 'meteor') {
@@ -924,7 +946,7 @@
       }
       if (d.event === 'bog') { spawnBogBeast(); float(d.x, d.y - 14, '🐸 mud-beast!', '#8fbf6f'); }
       spawnParticles(d.x, d.y, ev.col);
-    } else if (d.kind === 'gold') { gold += d.amount; score += Math.round(d.amount / 2); float(d.x, d.y, '+' + d.amount + 'g', '#ffe066'); spawnParticles(d.x, d.y, '#ffe066'); }
+    } else if (d.kind === 'gold') { gold += d.amount; addScore(d.amount / 2); float(d.x, d.y, '+' + d.amount + 'g', '#ffe066'); spawnParticles(d.x, d.y, '#ffe066'); }
     else { hasteTicks = Math.max(hasteTicks, 480); float(d.x, d.y, '⚡ HASTE!', '#ffe066'); spawnParticles(d.x, d.y, '#ffe066'); }
     drops.splice(drops.indexOf(d), 1);
     updateHud(); refreshToolbar();
@@ -973,7 +995,7 @@
           hp -= e.leak;
           waveLeaked = true; waveMaxFrac = 1; // a leak pushes threat DOWN at wave end
           enemies.splice(i, 1);
-          SND.play('leak');
+          playCapped('leak');
           float(e.x, e.y, '-' + e.leak, '#ff8a8a');
           updateHud();
           if (hp <= 0) { gameOver(); break; } // keep fell — enemies[] is now cleared, stop iterating
@@ -1017,7 +1039,7 @@
             any = true;
           }
         }
-        if (any) { t.cd = fcd; SND.play('shoot'); }
+        if (any) { t.cd = fcd; playCapped('shoot'); }
         continue;
       }
 
@@ -1025,7 +1047,7 @@
       if (tgt) {
         shots.push({ x: t.x, y: t.y, gx: t.c, gy: t.r, tx: tgt.x, ty: tgt.y, tgt, dmg: dmg0, kind: t.kind, splash: t.splash, col: TOWERS[t.type].color, t: 0, src: t });
         t.cd = fcd;
-        SND.play('shoot');
+        playCapped('shoot');
       }
     }
 
@@ -1046,7 +1068,7 @@
             }
           }
           spawnSplash(aimx, aimy, '#ff8a3a', SR, '#ffd070');
-          SND.play('boom');
+          playCapped('boom');
         } else if (s.kind === 'mage') {
           const SR = (s.splash || 1) * ts * 0.8;
           for (const e of enemies) {
@@ -1058,14 +1080,14 @@
             }
           }
           spawnSplash(aimx, aimy, '#c080ff', SR, '#e6c0ff');
-          SND.play('hit');
+          playCapped('hit');
         } else {
           if (s.tgt && s.tgt.hp > 0) {
             const dmg = effectiveDmg(s.dmg, s.tgt, s.kind);
             s.tgt.hp -= dmg;
             if (s.tgt.hp <= 0) { if (s.src) s.src.kills++; killEnemy(s.tgt); }
           }
-          SND.play('hit');
+          playCapped('hit');
         }
         shots.splice(i, 1);
       } else {
@@ -1118,7 +1140,7 @@
       let bonus = 0;
       if (victory) bonus = Math.round(base * 0.5);
       gold += base + bonus + interest;
-      score += wave * 10;
+      addScore(wave * 10);
       float(W / 2, H / 2 - 40, 'Wave ' + wave + ' cleared! +' + (base + bonus) + 'g', '#e0b25a');
       float(W / 2, H / 2 - 20, 'Interest +' + interest + 'g', '#f0d080');
       if (wave >= 10 && !victory) {
@@ -1138,7 +1160,7 @@
     const i = enemies.indexOf(e); if (i < 0) return;
     enemies.splice(i, 1);
     gold += e.reward;
-    score += e.reward;
+    addScore(e.reward);
     spawnParticles(e.x, e.y, e.color);
     float(e.x, e.y, '+' + e.reward, '#e0b25a');
     updateHud();
@@ -1629,6 +1651,7 @@
     towerDmg(i) { const t = towers[i]; return t ? (t.eDmg ?? t.dmg) : null; },
     towerRange(i) { const t = towers[i]; return t ? (t.eRange ?? t.range) : null; }, // EFFECTIVE range = drawn ring (TASK 3)
     enemyPx(i) { const e = enemies[i]; return e ? { x: e.x, y: e.y } : null; },
+    enemyInfo(i) { const e = enemies[i]; return e ? { type: e.type, hp: e.hp, maxHp: e.maxHp, speed: e.speed, reward: e.reward } : null; },
     get geom() { return { ts, ox, oy, W, H }; },
     // JS-computed layout snapshot in canvas/px space (used by the on-screen regression test).
     // topReserve = top headroom reserved for the .gamekit-hud; everything board-side must clear it.
