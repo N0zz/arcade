@@ -1,105 +1,10 @@
-// Headless tests for Bubble Pop.
-// Mocks DOM/canvas, runs the inline script in a vm sandbox, drives via window.__test.
-import fs from 'node:fs';
-import vm from 'node:vm';
-import path from 'node:path';
+// Headless tests for Bubble Pop — boots via the shared harness, drives window.__test.
+import { bootGame, ok, section, summary, runLayoutSuite } from '../../test-harness.mjs';
 
-const DIR = path.dirname(new URL(import.meta.url).pathname);
-const KIT = fs.readFileSync(path.join(DIR, '../../game-kit.js'), 'utf8'); // shared kit, loaded before the game
-let pass = 0, fail = 0;
-const fails = [];
-function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
-function section(t) { console.log('\n=== ' + t + ' ==='); }
-// bests now live in the shared kit store (gamekit_pb), keyed by the capitalized mode label
+const FILE = 'games/bubbles/index.html';
+const runGame = (opts) => bootGame(FILE, opts);
+// bests live in the shared kit store (gamekit_pb), keyed by the capitalized mode label
 const pbScore = (store, mode) => { try { return ((JSON.parse(store['gamekit_pb'] || '{}').bubbles || {})[mode] || {}).score || 0; } catch (e) { return 0; } };
-
-function makeCtx2d() {
-  return new Proxy({}, {
-    get: (_, p) => {
-      if (p === 'canvas') return { width: 800, height: 600 };
-      if (p === 'createRadialGradient') return () => ({ addColorStop: () => {} });
-      if (p === 'createLinearGradient') return () => ({ addColorStop: () => {} });
-      return () => {};
-    },
-    set: () => true,
-  });
-}
-
-function makeEl(id) {
-  const classes = new Set();
-  const el = {
-    id, textContent: '', value: '', dataset: {}, children: [],
-    style: new Proxy({}, { get: (t, p) => t[p] ?? '', set: (t, p, v) => { t[p] = v; return true; } }),
-    classList: {
-      add: (...c) => c.forEach(x => classes.add(x)),
-      remove: (...c) => c.forEach(x => classes.delete(x)),
-      toggle: (c, f) => { const has = classes.has(c); const want = f === undefined ? !has : !!f; if (want) classes.add(c); else classes.delete(c); return want; },
-      contains: c => classes.has(c),
-    },
-    _l: {},
-    addEventListener: (type, fn) => { (el._l[type] ||= []).push(fn); },
-    removeEventListener: () => {},
-    fire: (type, ev = {}) => (el._l[type] || []).forEach(fn => fn({ preventDefault() {}, stopPropagation() {}, ...ev })),
-    appendChild: (c) => { el.children.push(c); return c; },
-    querySelectorAll: () => [], querySelector: () => null,
-    getContext: () => makeCtx2d(),
-    focus: () => {}, setAttribute() {}, getAttribute() { return null; },
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
-  };
-  let _html = '';
-  Object.defineProperty(el, 'innerHTML', { get: () => _html, set: v => { _html = String(v ?? ''); if (!v) el.children = []; } });
-  return el;
-}
-
-function runGame() {
-  const html = fs.readFileSync(path.join(DIR, 'index.html'), 'utf8');
-  const m = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
-  if (!m) throw new Error('no inline script found in index.html');
-  const code = m[1];
-
-  const elCache = {};
-  const getEl = (id) => (elCache[id] ||= makeEl(id));
-  const handlers = {};
-  const store = {};
-
-  const win = {
-    innerWidth: 800, innerHeight: 600,
-    addEventListener: (type, fn) => { (handlers[type] ||= []).push(fn); },
-    removeEventListener: () => {},
-    __test: undefined,
-  };
-  const documentMock = {
-    getElementById: getEl,
-    createElement: (tag) => makeEl('new-' + tag),
-    addEventListener: () => {},
-    querySelectorAll: () => [],
-    body: makeEl('body'),
-  };
-  const sandbox = {
-    window: win, document: documentMock,
-    location: { search: '', reload: () => {} },
-    navigator: {},
-    localStorage: {
-      getItem: k => (k in store ? store[k] : null),
-      setItem: (k, v) => { store[k] = String(v); },
-      removeItem: k => { delete store[k]; },
-    },
-    requestAnimationFrame: () => 0, cancelAnimationFrame: () => {},
-    setTimeout: (fn) => 0, setInterval: () => 0, clearInterval: () => {},
-    matchMedia: () => ({ matches: false }),
-    URLSearchParams, Math, JSON, String, Number, Array, Object, parseInt, parseFloat,
-    isFinite, isNaN, Date, console,
-  };
-  sandbox.globalThis = sandbox;
-  const ctx = vm.createContext(sandbox);
-
-  let bootErr = null;
-  try { vm.runInContext(KIT, ctx, { filename: 'game-kit.js' }); vm.runInContext(code, ctx, { filename: 'index.html' }); }
-  catch (e) { bootErr = e.stack; }
-
-  function resize(w, h) { if (win.gamekit && win.gamekit.layout && win.gamekit.layout.__emit) win.gamekit.layout.__emit(w, h); else { win.innerWidth = w; win.innerHeight = h; } }
-  return { getEl, win, store, bootErr, resize, T: () => win.__test };
-}
 
 // ---- Tests ----
 
@@ -340,57 +245,48 @@ section('Bubble Pop: setShotColor / aimAngle API');
   T().step(5);
 }
 
+// ---- Layout: everything on-screen + no overlap with the HUD, in portrait / landscape / desktop ----
 section('Bubble Pop: layout fits the screen (portrait / landscape / desktop)');
-{
-  const VIEWPORTS = [
-    { name: 'portrait phone', w: 390, h: 780 },
-    { name: 'landscape phone', w: 780, h: 390 },
-    { name: 'desktop', w: 1280, h: 800 },
-  ];
-  for (const vp of VIEWPORTS) {
-    const gl = runGame();
-    gl.resize(vp.w, vp.h);
-    gl.T().startMode('arcade'); // fresh full grid for this viewport
+runLayoutSuite(
+  () => { const gl = runGame(); gl.T().startMode('arcade'); return gl; }, // fresh full grid for this viewport
+  (gl, v, L0) => {
     gl.T().step(1);
     const L = gl.T().layout;
-
-    ok(L.W === vp.w && L.H === vp.h,
-      `${vp.name}: canvas matches viewport (${L.W}x${L.H} vs ${vp.w}x${vp.h})`);
-    ok(L.grid != null, `${vp.name}: grid is populated`);
+    ok(L.grid != null, `${v.name}: grid is populated`);
 
     // Grid bounding box stays fully on-screen
     ok(L.grid.left >= 0 && L.grid.right <= L.W,
-      `${vp.name}: grid within 0..W (left=${L.grid.left.toFixed(1)} right=${L.grid.right.toFixed(1)} W=${L.W})`);
+      `${v.name}: grid within 0..W (left=${L.grid.left.toFixed(1)} right=${L.grid.right.toFixed(1)} W=${L.W})`);
     ok(L.grid.top >= 0 && L.grid.bottom <= L.H,
-      `${vp.name}: grid within 0..H (top=${L.grid.top.toFixed(1)} bottom=${L.grid.bottom.toFixed(1)} H=${L.H})`);
+      `${v.name}: grid within 0..H (top=${L.grid.top.toFixed(1)} bottom=${L.grid.bottom.toFixed(1)} H=${L.H})`);
 
     // Grid top row clears the HUD headroom (no overlap with the score pill)
     ok(L.grid.top >= L.topReserve,
-      `${vp.name}: grid top clears HUD reserve (top=${L.grid.top.toFixed(1)} >= ${L.topReserve})`);
+      `${v.name}: grid top clears HUD reserve (top=${L.grid.top.toFixed(1)} >= ${L.topReserve})`);
 
     // Walls bound the play column: grid sits inside [walls.left, walls.right], below the ceiling,
     // and the walls themselves are inset from the screen edges (room for the wall + margin).
-    ok(L.walls != null, `${vp.name}: walls exposed`);
+    ok(L.walls != null, `${v.name}: walls exposed`);
     ok(L.grid.left >= L.walls.left - 0.5 && L.grid.right <= L.walls.right + 0.5,
-      `${vp.name}: grid within walls (grid ${L.grid.left.toFixed(1)}..${L.grid.right.toFixed(1)} vs walls ${L.walls.left.toFixed(1)}..${L.walls.right.toFixed(1)})`);
+      `${v.name}: grid within walls (grid ${L.grid.left.toFixed(1)}..${L.grid.right.toFixed(1)} vs walls ${L.walls.left.toFixed(1)}..${L.walls.right.toFixed(1)})`);
     ok(L.grid.top >= L.walls.ceiling - 0.5,
-      `${vp.name}: grid top below the ceiling (top=${L.grid.top.toFixed(1)} >= ceiling=${L.walls.ceiling.toFixed(1)})`);
+      `${v.name}: grid top below the ceiling (top=${L.grid.top.toFixed(1)} >= ceiling=${L.walls.ceiling.toFixed(1)})`);
     ok(L.walls.left - L.walls.thickness >= 0 && L.walls.right + L.walls.thickness <= L.W,
-      `${vp.name}: walls (incl. thickness) fit on-screen`);
+      `${v.name}: walls (incl. thickness) fit on-screen`);
 
     // Shooter on-screen
     ok(L.shooterX >= 0 && L.shooterX <= L.W,
-      `${vp.name}: shooter X within 0..W (${L.shooterX.toFixed(1)} / ${L.W})`);
+      `${v.name}: shooter X within 0..W (${L.shooterX.toFixed(1)} / ${L.W})`);
     ok(L.shooterY >= 0 && L.shooterY <= L.H,
-      `${vp.name}: shooter Y within 0..H (${L.shooterY.toFixed(1)} / ${L.H})`);
+      `${v.name}: shooter Y within 0..H (${L.shooterY.toFixed(1)} / ${L.H})`);
 
     // Shooter sits below the grid and above the bottom edge
     ok(L.shooterY > L.grid.bottom,
-      `${vp.name}: shooter below grid (shooterY=${L.shooterY.toFixed(1)} > gridBottom=${L.grid.bottom.toFixed(1)})`);
+      `${v.name}: shooter below grid (shooterY=${L.shooterY.toFixed(1)} > gridBottom=${L.grid.bottom.toFixed(1)})`);
     ok(L.shooterY < L.H,
-      `${vp.name}: shooter above bottom edge (shooterY=${L.shooterY.toFixed(1)} < H=${L.H})`);
+      `${v.name}: shooter above bottom edge (shooterY=${L.shooterY.toFixed(1)} < H=${L.H})`);
   }
-}
+);
 
 // ---- Shots bounce off the play-column wall, not the screen edge (landscape, where the column is inset) ----
 section('Bubble Pop: shot bounces off the column wall');
@@ -472,13 +368,4 @@ section('Bubble Pop: shot glues to the descended top row, not the fixed ceiling'
   ok(inTopRow, 'the new bubble glued into the top row (row 0)');
 }
 
-// ---- Summary ----
-console.log('\n----------------------------------------');
-console.log('PASS: ' + pass + '   FAIL: ' + fail);
-if (fail > 0) {
-  console.log('\nFailures:');
-  fails.forEach(f => console.log(' - ' + f));
-  process.exit(1);
-} else {
-  console.log('All tests passed ✓');
-}
+summary();
