@@ -935,23 +935,62 @@
       setTimeout(function () { try { URL.revokeObjectURL(u); if (a.parentNode) a.parentNode.removeChild(a); } catch (e) {} }, 1000);
     } catch (e) {}
   }
-  // share the card: native file-share on mobile → copy-as-image → download. Returns nothing.
+  // share the card via a small in-page menu: Share… (native sheet — direct app targets), Copy image
+  // (our own single-flavor PNG write; the OS sheet's Copy writes multiple clipboard flavors, which
+  // Discord/chat paste as TWO images), Download. Same menu on every platform; per-action detection.
   function shareCardBlob(blob, opts) {
     if (!blob) return;
     opts = opts || {};
     var name = (opts.slug || 'komyo') + '-score.png';
-    try {
-      var file = (typeof File !== 'undefined') ? new File([blob], name, { type: 'image/png' }) : null;
-      if (file && typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
-        navigator.share({ files: [file], title: opts.title || 'Komyo Games' })['catch'](function () {}); return;
-      }
-    } catch (e) {}
-    try {
-      if (typeof ClipboardItem !== 'undefined' && typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.write) {
-        navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function () {}, function () { downloadBlob(blob, name); }); return;
-      }
-    } catch (e) {}
-    downloadBlob(blob, name);
+    if (typeof document === 'undefined' || !document.body) return;
+    var file = null;
+    try { if (typeof File !== 'undefined') file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
+    var canNative = false, canCopy = false;
+    try { canNative = !!(file && typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share); } catch (e) {}
+    try { canCopy = !!(typeof ClipboardItem !== 'undefined' && typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.write); } catch (e) {}
+    var url = '';
+    try { if (typeof URL !== 'undefined' && URL.createObjectURL) url = URL.createObjectURL(blob); } catch (e) {}
+    var ov = document.createElement('div'); ov.className = 'gamekit-confirm';
+    ov.innerHTML = '<div class="gamekit-confirm-box gamekit-sharemenu">'
+      + (url ? '<img class="gamekit-sm-preview" alt="" src="' + url + '">' : '')
+      + '<div class="gamekit-sm-btns">'
+      + (canNative ? '<button class="gamekit-sm-share" type="button">📤 Share…</button>' : '')
+      + (canCopy ? '<button class="gamekit-sm-copy" type="button">📋 Copy image</button>' : '')
+      + '<button class="gamekit-sm-dl" type="button">💾 Download</button>'
+      + '<button class="gamekit-sm-x" type="button">Close</button>'
+      + '</div></div>';
+    // mount inside an open <dialog> when there is one (e.g. the profile modal) — the top layer
+    // renders above any z-index, so a body-level overlay would be invisible behind it
+    var host = document.body;
+    try { var dlg = document.querySelector('dialog[open]'); if (dlg) host = dlg; } catch (e) {}
+    host.appendChild(ov);
+    var done = false;
+    function close() {
+      if (done) return; done = true; _modalOpen = Math.max(0, _modalOpen - 1);
+      try { document.removeEventListener('keydown', onKey, true); } catch (e) {}
+      try { if (url) URL.revokeObjectURL(url); } catch (e) {}
+      try { if (ov.parentNode) ov.parentNode.removeChild(ov); } catch (e) {}
+    }
+    function onKey(e) { if (e && (e.key === 'Escape' || e.key === 'Esc')) { if (e.preventDefault) e.preventDefault(); close(); } }
+    var q = function (sel) { try { return ov.querySelector(sel); } catch (e) { return null; } };
+    var bShare = q('.gamekit-sm-share'), bCopy = q('.gamekit-sm-copy'), bDl = q('.gamekit-sm-dl'), bX = q('.gamekit-sm-x');
+    if (bShare) bShare.addEventListener('click', function () {
+      close();
+      try { navigator.share({ files: [file], title: opts.title || 'Komyo Games' })['catch'](function () {}); } catch (e) {}
+    });
+    if (bCopy) bCopy.addEventListener('click', function () {
+      try {
+        navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function () {
+          bCopy.textContent = '✓ Copied!';
+          if (typeof setTimeout === 'function') setTimeout(close, 900); else close();
+        }, function () { downloadBlob(blob, name); close(); });
+      } catch (e) { downloadBlob(blob, name); close(); }
+    });
+    if (bDl) bDl.addEventListener('click', function () { downloadBlob(blob, name); close(); });
+    if (bX) bX.addEventListener('click', close);
+    ov.addEventListener('click', function (e) { if (e && e.target === ov) close(); });
+    _modalOpen++;
+    if (typeof document.addEventListener === 'function') document.addEventListener('keydown', onKey, true);
   }
 
   function shareRow(el, o) {

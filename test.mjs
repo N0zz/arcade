@@ -190,7 +190,7 @@ function testCatalogue() {
       g.win.__renderProfile();
       const bh = g.getEl('profileBody').innerHTML || '';
       ok(bh.includes('Knight of the Realm') && bh.includes('pf-t3'), 'profile shows the earned title (Knight, tier 3) at 50 pts');
-      ok(bh.includes('🏆 50<span>'), 'title box surfaces the challenge-points total (🏆 50)');
+      ok(bh.includes('🏆 50 <span>'), 'title box surfaces the challenge-points total (🏆 50)');
       ok(bh.includes('pf-pfx'), 'a premium tier (3+) gets a particle canvas');
       ok(bh.includes('pf-tb-name') && bh.includes('pf-t3'), 'title + username share one full-width box, shined to the tier');
     }

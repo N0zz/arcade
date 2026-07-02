@@ -185,9 +185,10 @@
   /* feedback modal */
   #fbModal, #nlModal, #clModal, #aboutModal, #faqModal, #legalModal, #dataModal, #nameModal, #settingsModal, #profileModal { border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:16px; padding:0; width:min(440px,92vw); box-shadow:0 20px 60px rgba(0,0,0,0.6); }
   #fbModal::backdrop, #nlModal::backdrop, #clModal::backdrop, #aboutModal::backdrop, #faqModal::backdrop, #legalModal::backdrop, #dataModal::backdrop, #nameModal::backdrop, #settingsModal::backdrop, #profileModal::backdrop { background:rgba(5,8,13,0.66); }
-  #profileModal { width:min(760px,95vw); }
-  .about.profile { max-height:88vh; display:flex; flex-direction:column; overflow:hidden; position:relative; padding:44px 20px 20px; }
-  .pf-x { position:absolute; top:15px; right:16px; z-index:10; }
+  #profileModal { width:min(760px,95vw); overflow:visible; }
+  .about.profile { max-height:88vh; display:flex; flex-direction:column; overflow:hidden; position:relative; padding:20px; }
+  .pf-x { position:absolute; top:-13px; right:-13px; z-index:20; width:34px; height:34px; border-radius:50%; background:var(--surface); border:1px solid var(--border); color:var(--muted); font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.45); cursor:pointer; }
+  .pf-x:hover { color:#fff; border-color:#9fe8ff; }
   #profileBody { display:flex; flex-direction:column; min-height:0; flex:1 1 auto; overflow:hidden; }
   .pf-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; }
   /* about modal */
@@ -211,14 +212,12 @@
   /* identity row: name (left) + genre · since (right), reusing the modal header line */
   #pfTitle { display:flex; align-items:baseline; flex:1; min-width:0; gap:8px 14px; flex-wrap:wrap; }
   #pfTitle .pf-meta { margin-left:auto; font-family:inherit; font-weight:400; font-size:12px; letter-spacing:0; color:var(--faint); white-space:nowrap; }
-  /* stats row: the four big counts (left) + good-runs / challenges highlights (right) */
-  .pf-top { display:flex; justify-content:space-between; align-items:flex-end; gap:10px 28px; flex-wrap:wrap; margin:10px 0 2px; }
-  .pf-stats { display:flex; flex-wrap:wrap; gap:10px 20px; }
-  .pf-stat { display:flex; flex-direction:column; gap:1px; }
-  .pf-stat b { font-size:24px; color:var(--text); font-variant-numeric:tabular-nums; line-height:1.1; }
-  .pf-stat span { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); }
-  .pf-hl { display:flex; flex-direction:column; gap:4px; align-items:flex-end; text-align:right; font-size:13.5px; color:var(--muted); }
-  .pf-hl b { color:var(--text); font-variant-numeric:tabular-nums; }
+  /* the four core counts — a clean centered strip with dividers (understated, not title-flashy) */
+  .pf-stats { display:flex; justify-content:center; flex-wrap:wrap; margin:2px 0 4px; border:1px solid var(--border); border-radius:12px; background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent),var(--surface); overflow:hidden; }
+  .pf-stat { flex:1 1 0; min-width:72px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:12px 8px; text-align:center; }
+  .pf-stat + .pf-stat { border-left:1px solid var(--border); }
+  .pf-stat b { font-size:22px; color:var(--text); font-variant-numeric:tabular-nums; line-height:1.1; }
+  .pf-stat span { font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:var(--faint); }
   /* per-card column labels so the value column reads as "best" and the mode column is named */
   .pf-rhead { display:grid; grid-template-columns:1fr auto; gap:12px; font-size:9.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--faint); padding-bottom:5px; margin-bottom:2px; border-bottom:1px solid var(--border); }
   .pf-rhead span:last-child { text-align:right; }
@@ -244,13 +243,17 @@
   .pf-share button:hover { border-color:#9fe8ff; }
   /* ---- earned title (lifetime challenge points) — escalating shine, tier 0→8 ---- */
   .pf-titlebar { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:13px 16px; margin-bottom:12px; border:1px solid var(--border); border-radius:13px; background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent),var(--surface); }
-  .pf-tb-emoji { font-size:22px; position:relative; z-index:2; }
-  .pf-tb-main { position:relative; z-index:2; display:flex; flex-direction:column; gap:3px; min-width:0; }
-  .pf-tb-label { font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); }
-  .pf-title { position:relative; font-size:19px; line-height:1.15; }
-  .pf-tb-name { position:relative; z-index:2; font-size:13px; color:var(--muted); display:flex; align-items:center; gap:6px; }
-  .pf-tb-pts { position:relative; z-index:2; margin-left:auto; text-align:right; font-family:var(--mono); font-size:16px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .pf-tb-pts span { display:block; font-size:9px; font-weight:400; letter-spacing:1px; color:var(--faint); }
+  .pf-tb-emoji { font-size:22px; flex:0 0 auto; position:relative; z-index:2; }
+  .pf-tb-main { position:relative; z-index:2; flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .pf-tb-label { font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); white-space:nowrap; }
+  .pf-title { position:relative; font-size:clamp(15px,4.4vw,19px); line-height:1.15; }
+  .pf-tb-name { position:relative; z-index:2; font-size:13px; color:var(--muted); display:flex; align-items:center; gap:6px; min-width:0; }
+  /* right column: challenge points (emphasised) + good runs + since date */
+  .pf-tb-meta { flex:0 0 auto; position:relative; z-index:2; display:flex; flex-direction:column; align-items:flex-end; gap:8px; text-align:right; }
+  .pf-tb-pts { font-family:var(--mono); font-size:16px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; white-space:nowrap; line-height:1.1; }
+  .pf-tb-pts span { display:block; font-size:8.5px; font-weight:400; letter-spacing:1px; color:var(--faint); }
+  .pf-tb-mini { font-size:12px; color:var(--muted); white-space:nowrap; }
+  .pf-tb-mini b { color:var(--text); font-variant-numeric:tabular-nums; }
   .pf-pfx { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
   .pf-halo { position:absolute; inset:-8px -18px; z-index:0; border-radius:50%; filter:blur(14px); opacity:0; pointer-events:none; }
   .pf-sh { position:relative; z-index:1; font-family:var(--mono); font-weight:700; letter-spacing:.5px; }
@@ -795,8 +798,8 @@
   </dialog>
 
   <dialog id="profileModal">
+    <button type="button" class="pf-x" id="profileClose" aria-label="Close">✕</button>
     <div class="about profile">
-      <button type="button" class="dx pf-x" id="profileClose" aria-label="Close">✕</button>
       <div id="profileBody"></div>
     </div>
   </dialog>
@@ -1482,17 +1485,25 @@
             const panel = modal.querySelector('.about.profile');
             if (!panel || typeof XMLSerializer === 'undefined') return resolve(null);
             const W = Math.round(panel.getBoundingClientRect().width) || 480;
+            // the earned-title particle canvas isn't DOM (its bitmap won't serialize into the SVG),
+            // so grab the live element + its position now → composite the current frame in afterwards
+            let pfx = null;
+            try { const cv = panel.querySelector('.pf-pfx'); if (cv && cv.toDataURL) { const pr = panel.getBoundingClientRect(), cr = cv.getBoundingClientRect(); pfx = { cv: cv, x: cr.left - pr.left, y: cr.top - pr.top, w: cr.width, h: cr.height }; } } catch (e) {}
             const clone = panel.cloneNode(true);
             inlineStyles(panel, clone);                                   // BEFORE removals (indices must align)
             clone.querySelectorAll('.dx, .pf-share').forEach(n => n.remove());
             const cs = getComputedStyle(modal);
             clone.style.background = cs.backgroundColor; clone.style.border = '1px solid ' + cs.borderColor;
             clone.style.borderRadius = '16px'; clone.style.margin = '0'; clone.style.width = W + 'px'; clone.style.boxSizing = 'border-box';
-            clone.style.maxHeight = 'none'; clone.style.overflow = 'visible'; clone.style.height = 'auto';  // capture full content, not the scroll-capped view
+            clone.style.maxHeight = 'none'; clone.style.overflow = 'visible'; clone.style.height = 'auto'; clone.style.display = 'block';  // capture full content, not the scroll-capped view
+            // inlineStyles copied the flex scroll area's tall pixel height (incl. logical block-size /
+            // flex-basis) → force plain block flow with all sizing cleared so the clone (and the PNG)
+            // crop to the real content height instead of the 88vh scroll box
+            clone.querySelectorAll('#profileBody, .pf-scroll').forEach(n => { n.style.cssText += ';display:block;flex:none;height:auto;min-height:0;max-height:none;block-size:auto;min-block-size:0;max-block-size:none;overflow:visible'; });
             const foot = document.createElement('div'); foot.textContent = 'komyo.online';
             foot.style.cssText = 'text-align:right;font:600 13px ui-monospace,monospace;color:#7a8aa0;margin-top:14px;';
             clone.appendChild(foot);
-            clone.style.position = 'fixed'; clone.style.left = '-9999px'; clone.style.top = '0';
+            clone.style.position = 'fixed'; clone.style.left = '-9999px'; clone.style.top = '0'; clone.style.bottom = 'auto';
             document.body.appendChild(clone);
             const H = Math.ceil(clone.getBoundingClientRect().height);
             clone.style.position = 'static'; clone.style.left = 'auto'; clone.style.top = 'auto';
@@ -1506,6 +1517,7 @@
                 const c = document.createElement('canvas'), s = 2; c.width = W * s; c.height = H * s;
                 const g = c.getContext('2d'); g.scale(s, s);
                 g.fillStyle = cs.backgroundColor || '#12151c'; g.fillRect(0, 0, W, H); g.drawImage(img, 0, 0);
+                if (pfx) { try { g.drawImage(pfx.cv, pfx.x, pfx.y, pfx.w, pfx.h); } catch (e) {} }  // bake the particle frame on top
                 g.getImageData(0, 0, 1, 1);                               // throws if tainted (Safari) → fallback
                 c.toBlob(b => resolve(b), 'image/png');
               } catch (e) { resolve(null); }
@@ -1528,6 +1540,7 @@
         // identity (title + name) is the full-width box at the very top — no separate header
         // full-width identity box: title + username together (both shined to the tier), points on the right;
         // shown in both empty + populated states; particles for the shiny tiers (3+)
+        const goodRuns = (p && p.goodRuns) ? p.goodRuns : 0;
         const tb = '<div class="pf-titlebar pf-t' + TT.tier + '">'
           + (TT.tier >= 3 ? '<canvas class="pf-pfx" data-tier="' + TT.tier + '"></canvas>' : '')
           + '<span class="pf-tb-emoji">' + (TT.emoji || '🎖️') + '</span>'
@@ -1536,7 +1549,11 @@
           + '<span class="pf-title"><span class="pf-halo"></span><span class="pf-sh pf-gl" data-text="' + esc(TT.title) + '">' + esc(TT.title) + '</span></span>'
           + '<span class="pf-tb-name">👤 <span class="pf-sh pf-gl" data-text="' + esc(who) + '">' + esc(who) + '</span></span>'
           + '</div>'
-          + '<span class="pf-tb-pts">🏆 ' + fmt(chPts) + '<span>CHALLENGE PTS</span></span></div>';
+          + '<div class="pf-tb-meta">'
+          + '<span class="pf-tb-pts">🏆 ' + fmt(chPts) + ' <span>CHALLENGE PTS</span></span>'
+          + (goodRuns ? '<span class="pf-tb-mini" title="Runs that cleared a game’s bar">💪 <b>' + fmt(goodRuns) + '</b> good ' + (goodRuns === 1 ? 'run' : 'runs') + '</span>' : '')
+          + (sinceStr ? '<span class="pf-tb-mini">📅 Since <b>' + esc(sinceStr) + '</b></span>' : '')
+          + '</div></div>';
         // one list, most-played first: every game with plays, each showing its modes' bests
         const ranked = [];
         if (p) GAMES.forEach(gm => { const pg = p.perGame[gm.slug]; if (pg && pg.plays > 0) ranked.push({ gm, pg }); });
@@ -1548,12 +1565,9 @@
         const favGameMeta = meta(p.favGame.slug), accent = (favGameMeta && favGameMeta.accent) || '#9fe8ff';
         // stat labels pluralize with their count ("1 Day", not "1 Days")
         const chips = [['Game', p.gamesPlayed], ['Mode', p.modesPlayed], ['Play', p.plays], ['Day', p.daysPlayed]];
-        let html = '<div class="pf-scroll">' + tb + '<div class="pf-top"><div class="pf-stats">';
+        let html = '<div class="pf-scroll">' + tb + '<div class="pf-stats">';
         chips.forEach(s => { const lbl = s[1] === 1 ? s[0] : s[0] + 's'; html += '<div class="pf-stat"><b>' + esc(fmt(s[1])) + '</b><span>' + esc(lbl) + '</span></div>'; });
-        html += '</div><div class="pf-hl">';
-        if (p.goodRuns) html += '<span title="Runs that cleared a game’s bar">💪 <b>' + fmt(p.goodRuns) + '</b> good ' + (p.goodRuns === 1 ? 'run' : 'runs') + '</span>';
-        if (sinceStr) html += '<span>📅 Since <b>' + esc(sinceStr) + '</b></span>';
-        html += '</div></div>';
+        html += '</div>';
         // Your games — total plays in the header (its unit shown once), then each mode's best;
         // a per-mode "×N" appears only when that mode was played more than once (no ×1 noise).
         const rows = [];
@@ -1585,12 +1599,18 @@
         shareData = { player: who, accent: accent, stats: [{ label: 'Games', value: p.gamesPlayed }, { label: 'Modes', value: p.modesPlayed }, { label: 'Plays', value: p.plays }, { label: 'Days', value: p.daysPlayed }], rows: rows };
         const sh = document.getElementById('pfShare');
         if (sh) sh.addEventListener('click', () => {
-          const orig = sh.textContent; sh.disabled = true; sh.textContent = 'Rendering…';
-          const done = () => { sh.disabled = false; sh.textContent = orig; };
+          if (sh.disabled) return;
+          const orig = '📷 Share my profile';
+          sh.disabled = true; sh.textContent = 'Rendering…';
+          const flash = (msg) => { sh.textContent = msg; setTimeout(() => { sh.textContent = orig; sh.disabled = false; }, 1500); };
           snapshot()
             .then(b => b || (K && K.profileCard && shareData ? K.profileCard(shareData) : null))   // DOM snapshot, else drawn card
-            .then(b => { if (b && K && K.shareCard) K.shareCard(b, { slug: 'profile', title: 'My Komyo Games profile' }); done(); })
-            .catch(done);
+            .then(b => {
+              if (!(b && K && K.shareCard)) { flash("Couldn't render"); return; }
+              K.shareCard(b, { slug: 'profile', title: 'My Komyo Games profile' });   // opens the kit share menu (it owns the feedback)
+              sh.textContent = orig; sh.disabled = false;
+            })
+            .catch(() => flash("Couldn't render"));
         });
       }
       // earned-title particle field (premium tiers) — one canvas, cancelled when the modal closes
