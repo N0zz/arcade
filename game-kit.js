@@ -978,7 +978,8 @@
             } catch (e) { res(null); }
           });
         };
-        // Output = 780×410 (drawn at 1200×630 for detail, downscaled at encode) — a ROUNDED-corner
+        // Output = 1200×630, the full drawn resolution (a 780×410 export pixelated on zoom/hi-DPI;
+        // the Discord post still gets a halved copy via shrinkBlob) — a ROUNDED-corner
         // card on transparency (WebP keeps the alpha; the Safari JPEG fallback squares off dark).
         // WebP ≈ 10× smaller than PNG for this gradient-heavy art; browsers without a WebP encoder
         // (Safari) silently hand back PNG → re-encode as JPEG there.
@@ -986,7 +987,7 @@
           try {
             var out = c;
             try {
-              var R = 40, S = 0.65;
+              var R = 40, S = 1;
               var c2 = document.createElement('canvas');
               c2.width = Math.round(W * S); c2.height = Math.round(H * S);
               var g2 = c2.getContext('2d'); g2.scale(S, S);
