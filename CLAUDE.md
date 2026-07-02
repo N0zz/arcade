@@ -18,7 +18,8 @@ games.js        catalogue manifest — window.GAMES = [{slug,title,blurb,icon,ac
 analytics.js    GA4 loader, consent-gated (see "Analytics")
 game-kit.js    SHARED game shell — sound engine + mute, top nav, share row, PWA auto-update
 game-kit.css   shared shell styles (nav buttons, share row)
-test.mjs        top-level harness: catalogue + Keep Defender + live-games boot + game-kit test
+test.mjs        top-level suite: catalogue + Keep Defender + live-games boot + game-kit test
+test-harness.mjs  the ONE shared headless harness (sandbox/bootGame/runLayoutSuite) all suites import
 scripts/        post-changelog.mjs (Discord changelog action) + gen-icon.mjs (icon generation)
 manifest.json sw.js favicon.svg og-image.png logo-*.png   CNAME .nojekyll .gitignore
 games/<slug>/   each game: index.html (+ test.mjs, manifest.json, sw.js, favicon.svg, icon-192/512.png)
@@ -98,8 +99,10 @@ Don't ship a game straight from one prompt; treat the above as the floor for eve
 
 1. `games/<slug>/index.html` — load game-kit in `<head>`; use `gamekit.nav`/`gamekit.sound`/`gamekit.shareRow`/
    `gamekit.pwa` for the shell; keep game logic inline with the `__test` hook.
-2. `games/<slug>/test.mjs` — dependency-free harness; **preload the kit** (read `../../game-kit.js`,
-   run it in the sandbox before the inline script), then drive via `__test`.
+2. `games/<slug>/test.mjs` — import the shared harness (`../../test-harness.mjs`):
+   `bootGame('games/<slug>/index.html', opts)` (kit preloaded automatically) + game-specific
+   asserts driven via `__test`, a `runLayoutSuite` section, and `summary()` at the end.
+   Reference: `games/breakout/test.mjs`.
 3. Icon: `node scripts/gen-icon.mjs <emoji> <background-css> games/<slug>` (Chrome headless 512 →
    `sips` 192).
 4. `manifest.json` + `sw.js` (network-first; SHELL = the HTML + icons + the two `../../game-kit.*` files).
@@ -117,22 +120,31 @@ Don't ship a game straight from one prompt; treat the above as the floor for eve
 
 ## Testing
 
-- `node test.mjs` — top-level: catalogue + Keep Defender + boots every live game (kit preloaded) +
-  a **game-kit** test section.
-- `node games/<slug>/test.mjs` — each game's own suite (each preloads `../../game-kit.js` before the
-  game script). `node games/asteroids/test.mjs` too (asteroids is bespoke — no kit).
-- The inline-script extractor grabs the **last attribute-less `<script>` before `</body>`**, so
-  `<script src=...>` (analytics.js, **game-kit.js**, gtag) in `<head>` don't confuse it. The kit is
-  loaded as a separate sandbox pre-script (the real `game-kit.js`). Keep that pattern.
+- **All suites run through the shared `test-harness.mjs`** (repo root) — the ONE sandbox
+  (DOM/canvas/localStorage mocks, controllable rAF queue + `performance.now` clock, seeded-RNG
+  option), one reporter, one inline-script extractor. Suites import
+  `{ bootGame, ok, section, summary, runLayoutSuite }` and keep only game-specific asserts.
+- `node test.mjs` — top-level: catalogue + Keep Defender + boots every live game + a **game-kit**
+  test section. `node games/<slug>/test.mjs` — each game's own suite (incl. asteroids).
+- `bootGame(file, opts)` preloads the real `game-kit.js` automatically (mirrors the `<head>` load
+  order), accepts `{w, h, store, seed, search, preCode}`, and returns the drive handle
+  (`T()`/`test()`, `resize(w,h)` via `gamekit.layout.__emit`, `key/down/up`, `step(n)` for
+  rAF-driven engines, `fireRaf(t)`, `store`, `errors`). Its extractor grabs the **last
+  attribute-less `<script>` before `</body>`** (greedy), so `<script src=...>` in `<head>` and any
+  earlier bare `<script>` can't confuse it.
+- **Determinism:** pass `{seed}` wherever the game rolls `Math.random` in asserts' path
+  (asteroids, asteroids-plus, tower-defense do) — unseeded suites flake.
 - No browser automation here — the harness is the regression net. Always run after changes.
 - **Layout/overlap tests (standard for every live game).** Each game exposes a read-only
   `__test.layout` getter returning JS-computed bounds in canvas px (`W`, `H`, a `topReserve` for the
-  `.gamekit-hud` headroom, and the key drawn elements' rects), and its `test.mjs` has a `resize(w,h)`
-  helper (`gamekit.layout.__emit(w,h)` — sets the viewport + fires layout callbacks synchronously) plus
-  a section asserting, across **portrait (390×780) / landscape (780×390) / desktop (1280×800)**, that
-  content stays on-screen and clears the HUD (no score-box overlap). When you add/change a game's
-  layout, extend these — don't fabricate coords for DOM/CSS-positioned HUD elements (only JS-computed
-  layouts can be measured headlessly). Reference: `games/breakout/`.
+  `.gamekit-hud` headroom, and the key drawn elements' rects). The suite calls
+  `runLayoutSuite(makeGame, check)` — it sweeps **portrait (390×780) / landscape (780×390) /
+  desktop (1280×800)** and asserts the shared invariants itself (layout getter present, canvas
+  matches the viewport, **`topReserve` ≥ the kit's `hudTop()`** — the headless stand-in for "the
+  score box doesn't sit under the nav"); game-specific bounds go in the `check` callback (pass
+  `{size:false}` for scaled-world canvases like asteroids). Don't fabricate coords for
+  DOM/CSS-positioned HUD elements (only JS-computed layouts can be measured headlessly).
+  Reference: `games/breakout/test.mjs`.
 
 ## Local preview (test in a browser before pushing)
 

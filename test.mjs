@@ -1,60 +1,18 @@
-// Headless tests for the arcade: catalogue wiring + Tower Defense logic.
-// Mocks DOM/canvas, runs each inline script in a vm sandbox, drives via window.__test.
+// Headless tests for the arcade: catalogue wiring + Tower Defense logic + every live game's
+// boot + the shared game-kit — all through the shared harness (test-harness.mjs).
 import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
+import { bootGame, makeSandbox, ok, section, summary, KIT, ROOT } from './test-harness.mjs';
 
-const DIR = path.dirname(new URL(import.meta.url).pathname);
-const KIT = fs.readFileSync(path.join(DIR, 'game-kit.js'), 'utf8'); // shared kit, preloaded for game pages
-let pass = 0, fail = 0; const fails = [];
-const ok = (c, m) => { if (c) pass++; else { fail++; fails.push(m); console.log('  ✗ ' + m); } };
-const section = t => console.log('\n=== ' + t + ' ===');
-
-function ctx2d() { return new Proxy({}, { get: (_, p) => (p === 'canvas' ? { width: 1280, height: 800 } : () => {}), set: () => true }); }
-function makeEl() {
-  const cl = new Set(); const el = {
-    textContent: '', value: '', dataset: {}, children: [],
-    style: new Proxy({}, { get: (t, p) => p === 'setProperty' ? ((k, v) => { t[k] = v; }) : (t[p] ?? ''), set: (t, p, v) => (t[p] = v, true) }),
-    classList: { add:(...c)=>c.forEach(x=>cl.add(x)), remove:(...c)=>c.forEach(x=>cl.delete(x)), toggle:(c,f)=>{const w=f===undefined?!cl.has(c):!!f; w?cl.add(c):cl.delete(c); return w;}, contains:c=>cl.has(c) },
-    _l: {}, addEventListener:(t,fn)=>{(el._l[t]||=[]).push(fn);}, removeEventListener(){}, fire:(t,e={})=>(el._l[t]||[]).forEach(fn=>fn({preventDefault(){},stopPropagation(){},...e})),
-    appendChild:c=>{el.children.push(c); return c;}, querySelectorAll:()=>[], querySelector:()=>null, getContext:()=>ctx2d(), focus(){}, setAttribute(){}, getAttribute(){return null;}, getBoundingClientRect:()=>({left:0,top:0,width:1280,height:800}), showModal(){}, close(){},
-  };
-  let h=''; Object.defineProperty(el,'innerHTML',{get:()=>h,set:v=>{h=String(v??''); if(!v) el.children=[];}});
-  return el;
-}
-
-function runInline(file, extraSandbox = {}) {
-  const html = fs.readFileSync(path.join(DIR, file), 'utf8');
-  // greedy lead → grab the LAST attribute-less <script> before </body> (the game's main
-  // script), even if earlier attribute-less <script>s exist (e.g. the GA4 tag in <head>).
-  const m = html.match(/[\s\S]*<script>([\s\S]*?)<\/script>\s*<\/body>/);
-  if (!m) throw new Error('no inline script in ' + file);
-  const cache = {}; const getEl = id => (cache[id] ||= makeEl());
-  const handlers = {}; const store = {};
-  const win = { innerWidth: 1280, innerHeight: 800, addEventListener:(t,fn)=>{(handlers[t]||=[]).push(fn);}, removeEventListener(){}, matchMedia:()=>({matches:false}) };
-  const doc = { getElementById:getEl, createElement:()=>makeEl(), addEventListener(){}, querySelectorAll:()=>[], body:makeEl() };
-  const sandbox = Object.assign({
-    window: win, document: doc, location: { search: '' }, navigator: {},
-    localStorage: { getItem:k=>k in store?store[k]:null, setItem:(k,v)=>{store[k]=String(v);}, removeItem:k=>{delete store[k];} },
-    requestAnimationFrame: () => 0, cancelAnimationFrame: () => {}, setTimeout: () => 0, setInterval: () => 0, clearInterval: () => {},
-    matchMedia: () => ({ matches: false }), URLSearchParams, Math, JSON, String, Number, Array, Object, parseInt, parseFloat, isFinite, isNaN, Date, console,
-  }, extraSandbox);
-  sandbox.globalThis = sandbox;
-  const ctx = vm.createContext(sandbox);
-  let bootErr = null;
-  try {
-    if (extraSandbox.__preCode) vm.runInContext(extraSandbox.__preCode, ctx, { filename: 'pre.js' });
-    vm.runInContext(m[1], ctx, { filename: file });
-  } catch (e) { bootErr = e.stack; }
-  return { getEl, win, store, bootErr, test: () => win.__test };
-}
+const DIR = ROOT;
 
 // ---------------- Catalogue ----------------
 function testCatalogue() {
   section('index.html (catalogue)');
   const games = fs.readFileSync(path.join(DIR, 'games.js'), 'utf8');
   const challenges = fs.readFileSync(path.join(DIR, 'challenges.js'), 'utf8');
-  const g = runInline('index.html', { __preCode: KIT + '\n' + games + '\n' + challenges });
+  const g = bootGame('index.html', { preCode: [games, challenges] });
   ok(g.bootErr === null, 'catalogue boots: ' + g.bootErr);
   ok(typeof g.win.__renderChallenges === 'function', 'challenges panel render is wired');
   let cerr = null; try { g.win.__renderChallenges(); } catch (e) { cerr = e.message; }
@@ -222,7 +180,7 @@ function freeCell(T) { // find a buildable cell
 }
 function testTD() {
   section('games/tower-defense (logic)');
-  const g = runInline('games/tower-defense/index.html', { __preCode: KIT });
+  const g = bootGame('games/tower-defense/index.html', { seed: 0x7D5EED });
   ok(g.bootErr === null, 'TD boots: ' + g.bootErr);
   const T = () => g.test();
   ok(T() != null, 'TD exposes __test');
@@ -251,7 +209,7 @@ function testTD() {
   ok(T().gold < gBefore, 'upgrade spends gold');
 
   // leaks reduce keep HP -> game over after enough undefended waves
-  const g2 = runInline('games/tower-defense/index.html', { __preCode: KIT }); const U = () => g2.test();
+  const g2 = bootGame('games/tower-defense/index.html', { seed: 0x7D5EED }); const U = () => g2.test();
   U().start();
   let guard = 0; while (U().hp > 0 && guard++ < 60000) { if (U().state === 'build') U().startWave(); U().step(1); }
   ok(U().hp <= 0 && U().state === 'over', 'undefended waves drain the keep and end the run (hp=' + U().hp + ', state=' + U().state + ')');
@@ -268,7 +226,7 @@ function liveSlugs() {
 function testLiveGames() {
   section('live games (boot + __test)');
   for (const slug of liveSlugs()) {
-    const g = runInline('games/' + slug + '/index.html', { __preCode: KIT });
+    const g = bootGame('games/' + slug + '/index.html');
     ok(g.bootErr === null, slug + ' boots headless: ' + g.bootErr);
     ok(g.test() != null, slug + ' exposes window.__test');
     // rotation: relayout to landscape then portrait must not throw (kit fires the game's resize)
@@ -281,21 +239,11 @@ function testLiveGames() {
 // ---------------- game-kit (shared shell) ----------------
 function testKit() {
   section('game-kit (shared shell)');
-  const store = {};
-  const cl = () => { const s = new Set(); return { add: (...c) => c.forEach(x => s.add(x)), remove: (...c) => c.forEach(x => s.delete(x)), contains: c => s.has(c), toggle: () => {} }; };
-  const mk = () => { const e = { textContent: '', style: {}, classList: cl(), _l: {}, addEventListener: (t, fn) => { (e._l[t] ||= []).push(fn); }, appendChild: c => c, querySelector: () => null, querySelectorAll: () => [] }; let h = ''; Object.defineProperty(e, 'innerHTML', { get: () => h, set: v => { h = String(v ?? ''); } }); return e; };
-  const els = {};
-  const doc = { getElementById: id => (els[id] ||= mk()), createElement: () => mk(), body: mk() };
-  const sandbox = {
-    window: { addEventListener() {} }, document: doc, navigator: {}, location: {},
-    localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } },
-    setTimeout: () => 0, setInterval: () => 0, Math, JSON, String, Number, Array, Object, Date, encodeURIComponent, console,
-  };
-  sandbox.globalThis = sandbox;
-  const ctx = vm.createContext(sandbox);
-  let err = null; try { vm.runInContext(KIT, ctx, { filename: 'game-kit.js' }); } catch (e) { err = e.stack; }
-  ok(err === null, 'kit loads: ' + err);
-  const F = sandbox.gamekit;
+  const g = makeSandbox({});
+  g.run(KIT, 'game-kit.js');
+  const store = g.store, doc = g.doc, els = g.elCache;
+  ok(g.bootErr === null, 'kit loads: ' + g.bootErr);
+  const F = g.sandbox.gamekit;
   ok(F && F.sound && F.music && F.nav && F.audioMenu && F.resetScores && F.shareRow && F.shareUrls && F.pwa,
     'kit exposes sound/music/nav/audioMenu/resetScores/shareRow/shareUrls/pwa');
   if (!F) return;
@@ -321,19 +269,17 @@ function testKit() {
   // layout: orientation + hudTop + on()/__emit relayout
   ok(F.layout && typeof F.layout.on === 'function' && typeof F.layout.hudTop === 'function', 'kit exposes layout (on/hudTop)');
   let lay = null; F.layout.on(s => { lay = s; });
-  sandbox.window.innerWidth = 900; sandbox.window.innerHeight = 500; F.layout.__emit(900, 500);
+  F.layout.__emit(900, 500);
   ok(lay && lay.landscape === true && lay.hudTop === 48, 'landscape → hudTop 48 (' + (lay && lay.hudTop) + ')');
   F.layout.__emit(420, 840);
   ok(lay && lay.portrait === true && lay.narrow === true && lay.hudTop === 92, 'portrait → narrow, hudTop 92 (' + (lay && lay.hudTop) + ')');
   ok(F.layout.requireOrientation('') === true, 'requireOrientation falsy → satisfied (no lock)');
   // ---- fixed-timestep loop: 60 steps/sec of game-time at any frame rate ----
   {
-    let rafCb = null;
-    sandbox.requestAnimationFrame = fn => { rafCb = fn; return 1; };
     let steps = 0, renders = 0;
     F.loop(() => { steps++; }, () => { renders++; });
-    ok(typeof rafCb === 'function', 'gamekit.loop schedules a rAF tick');
-    const fire = t => rafCb(t);
+    ok(g.rafPending > 0, 'gamekit.loop schedules a rAF tick');
+    const fire = t => g.fireRaf(t);
     fire(0);
     ok(steps === 0 && renders === 1, 'first frame initialises without stepping');
     fire(99); // 99ms → 5 full steps of 1000/60 (~16.67ms), remainder accumulates
@@ -351,7 +297,6 @@ function testKit() {
     fire(0); fire(49.5); // 49.5ms × mult 2 = 99ms of game-time = 5 steps
     ok(fast === 5, 'opts.mult scales game-time (2× → 5 steps for 49.5ms, got ' + fast + ')');
     ok(polled === 2, 'opts.frame runs once per display frame (got ' + polled + ')');
-    delete sandbox.requestAnimationFrame;
   }
 
   // results + per-day activity log (powers challenges)
@@ -372,10 +317,10 @@ function testKit() {
   try { F.nav({ music: true, reset: 'snake_' }); F.shareRow(doc.getElementById('sr'), { slug: 'snake', message: () => 'x' }); F.pwa(); F.resetScores('snake_'); } catch (e) { threw = e.message; }
   ok(threw === null, 'nav/audioMenu/shareRow/pwa/resetScores run headless without throwing: ' + threw);
   // version tag (bottom-left build stamp): renders the SHA when present, no-op on dev
-  sandbox.window.KOMYO_VERSION = { sha: 'abc1234', url: 'https://github.com/N0zz/komyo.online/commit/abc1234' };
+  g.win.KOMYO_VERSION = { sha: 'abc1234', url: 'https://github.com/N0zz/komyo.online/commit/abc1234' };
   F.versionTag();
   ok(els['gamekitVersion'] && els['gamekitVersion'].textContent === 'abc1234', 'versionTag shows the commit SHA');
-  sandbox.window.KOMYO_VERSION = { sha: 'dev' };
+  g.win.KOMYO_VERSION = { sha: 'dev' };
   delete els['gamekitVersion'];
   F.versionTag();
   ok(!els['gamekitVersion'], 'versionTag is a no-op on dev (nothing rendered)');
@@ -436,7 +381,7 @@ function testKit() {
   try { F.controls({ title: 'Controls', keyboard: [['Space', 'Shoot'], ['Esc', 'Pause']], touch: [['Tap', 'Shoot']] }); } catch (e) { ctlErr = e.message; }
   ok(ctlErr === null && typeof F.controls === 'function', 'controls board builds headless: ' + ctlErr);
   // challenges: activeChallenge(slug) + the in-game panel (reads window.CHALLENGES + kit storage)
-  sandbox.window.CHALLENGES = { goals: { tg: { slug: 'testgame', title: 'Score 10 in Test', metric: 'score', target: 10 } }, daily: ['tg'], weekly: [] };
+  g.win.CHALLENGES = { goals: { tg: { slug: 'testgame', title: 'Score 10 in Test', metric: 'score', target: 10 } }, daily: ['tg'], weekly: [] };
   ok(F.activeChallenge('testgame') === true, 'activeChallenge true when this game is today’s pick');
   ok(F.activeChallenge('other') === false, 'activeChallenge false for a game with no active challenge');
   let chpErr = null; try { F.challengesPanel({ slug: 'testgame' }); } catch (e) { chpErr = e.message; }
@@ -451,7 +396,7 @@ function testKit() {
   ok(gr1 && gr1.val === 2 && gr1.done === true, 'challengeEval: two par-clearing runs complete a goodRuns daily (got ' + (gr1 && gr1.val) + ')');
   const grw = F.challengeEval({ title: 'g', scope: 'cross', range: 'week', metric: 'goodRuns', target: 2 }, {});
   ok(grw && grw.done === true, 'challengeEval: weekly goodRuns aggregates the week');
-  sandbox.window.CHALLENGES.randomSlug = (idx, pl) => pl[0] || '';
+  g.win.CHALLENGES.randomSlug = (idx, pl) => pl[0] || '';
   const rnd = F.challengeEval({ scope: 'random', range: 'day', title: 'x' }, { playable: ['snake'], titles: { snake: 'Neon Snake' } });
   ok(rnd && rnd.done === true && rnd.slug === 'snake' && rnd.title === 'Play Neon Snake today', 'challengeEval resolves a random pick (title + played)');
   const rnd2 = F.challengeEval({ scope: 'random', range: 'day', title: 'Mystery pick' }, {});
@@ -587,7 +532,4 @@ testKit();
 testKitChrome();
 testChallenges();
 testServiceWorkers();
-console.log('\n----------------------------------------');
-console.log('PASS: ' + pass + '   FAIL: ' + fail);
-if (fail) { console.log('\nFailures:'); fails.forEach(f => console.log(' - ' + f)); process.exit(1); }
-else console.log('All tests passed ✓');
+summary();
