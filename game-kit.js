@@ -708,6 +708,40 @@
   // embed / sound panel) — so opening any top-bar control halts the game underneath until it's closed.
   function isPaused() { return _paused || _frozen || _modalOpen > 0; }
 
+  // ---------- fixed-timestep main loop (frame-rate independence) ----------
+  // gamekit.loop(update, render, opts) — game-time advances in fixed 1000/60 ms steps regardless of
+  // the display's refresh rate (60/90/120 Hz): real elapsed time accumulates and drains in STEP
+  // chunks (update() once per chunk); render() runs once per display frame. The kit pause is built
+  // in (isPaused → render only; lastT stays fresh so resume has no dt jump), and a tab stall is
+  // clamped (MAX_FRAME) so there's no catch-up spiral. update()'s per-step physics is untouched —
+  // only how often it's called — so 60 Hz behavior is bit-identical to a plain per-frame loop.
+  // opts.mult: () => n scales game-time (a 2× speed toggle = exactly 2× real-time on any screen);
+  // opts.frame: fn runs once per display frame before stepping (input polling etc.).
+  // Headless-safe: no/inert requestAnimationFrame → never ticks (tests drive update() via __test.step).
+  var LOOP_STEP = 1000 / 60, LOOP_MAX_FRAME = 100;
+  function gameLoop(update, render, opts) {
+    opts = opts || {};
+    if (typeof requestAnimationFrame !== 'function') return;
+    var lastT = null, acc = 0;
+    function tick(now) {
+      requestAnimationFrame(tick);
+      try {
+        if (typeof opts.frame === 'function') opts.frame();
+        if (now === undefined) now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (lastT === null) lastT = now;
+        var dt = now - lastT;
+        lastT = now;
+        if (isPaused()) { if (typeof render === 'function') render(); return; }
+        if (dt > LOOP_MAX_FRAME) dt = LOOP_MAX_FRAME;
+        if (dt < 0) dt = 0;
+        acc += dt * (typeof opts.mult === 'function' ? (+opts.mult() || 1) : 1);
+        while (acc >= LOOP_STEP) { update(); acc -= LOOP_STEP; }
+        if (typeof render === 'function') render();
+      } catch (e) { try { if (typeof console !== 'undefined') console.error(e); } catch (e2) {} }
+    }
+    requestAnimationFrame(tick);
+  }
+
   // ---------- top-right sound menu (+ optional per-game "reset scores") ----------
   function audioMenu(opts) {
     opts = opts || {};
@@ -1775,7 +1809,7 @@
   }
   var menu = { show: menuShow, hide: menuHide, current: function () { return _menuHandle; } };
 
-  var api = { sound: sound, music: music, nav: nav, audioMenu: audioMenu, resetScores: resetScores, confirm: confirmDialog, menu: menu, stampUrl: stampUrl, shareRow: shareRow, shareUrls: shareUrls, shareText: shareText, param: param, pwa: pwa, player: player, setName: setName, postDiscord: postDiscord, discordTier: discordTier, inActivity: IN_ACTIVITY, proxyUrl: proxyUrl, layout: layout, recordResult: recordResult, lastResult: lastResult, playedToday: playedToday, profile: profile, best: getBest, bestScore: getBestScore, saveBest: saveBest, utcDateStr: utcDateStr, utcDayNumber: utcDayNumber, scoreCard: buildScoreCard, profileCard: buildProfileCard, shareCard: shareCardBlob, embedModal: embedModal, isPaused: isPaused, setPaused: setPaused, togglePause: togglePause, showMenuButton: showMenuButton, showPauseButton: showPauseButton, controls: controlsModal, challengesPanel: challengesPanel, activeChallenge: chActiveSlug, challengeEval: chEval, versionTag: versionTag };
+  var api = { sound: sound, music: music, nav: nav, audioMenu: audioMenu, resetScores: resetScores, confirm: confirmDialog, menu: menu, stampUrl: stampUrl, shareRow: shareRow, shareUrls: shareUrls, shareText: shareText, param: param, pwa: pwa, player: player, setName: setName, postDiscord: postDiscord, discordTier: discordTier, inActivity: IN_ACTIVITY, proxyUrl: proxyUrl, layout: layout, recordResult: recordResult, lastResult: lastResult, playedToday: playedToday, profile: profile, best: getBest, bestScore: getBestScore, saveBest: saveBest, utcDateStr: utcDateStr, utcDayNumber: utcDayNumber, scoreCard: buildScoreCard, profileCard: buildProfileCard, shareCard: shareCardBlob, embedModal: embedModal, isPaused: isPaused, setPaused: setPaused, togglePause: togglePause, loop: gameLoop, showMenuButton: showMenuButton, showPauseButton: showPauseButton, controls: controlsModal, challengesPanel: challengesPanel, activeChallenge: chActiveSlug, challengeEval: chEval, versionTag: versionTag };
   var g = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : this);
   g.gamekit = api;
   if (typeof window !== 'undefined') window.gamekit = api;

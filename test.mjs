@@ -326,6 +326,34 @@ function testKit() {
   F.layout.__emit(420, 840);
   ok(lay && lay.portrait === true && lay.narrow === true && lay.hudTop === 92, 'portrait → narrow, hudTop 92 (' + (lay && lay.hudTop) + ')');
   ok(F.layout.requireOrientation('') === true, 'requireOrientation falsy → satisfied (no lock)');
+  // ---- fixed-timestep loop: 60 steps/sec of game-time at any frame rate ----
+  {
+    let rafCb = null;
+    sandbox.requestAnimationFrame = fn => { rafCb = fn; return 1; };
+    let steps = 0, renders = 0;
+    F.loop(() => { steps++; }, () => { renders++; });
+    ok(typeof rafCb === 'function', 'gamekit.loop schedules a rAF tick');
+    const fire = t => rafCb(t);
+    fire(0);
+    ok(steps === 0 && renders === 1, 'first frame initialises without stepping');
+    fire(99); // 99ms → 5 full steps of 1000/60 (~16.67ms), remainder accumulates
+    ok(steps === 5, '99ms of real time drains 5 fixed steps (got ' + steps + ')');
+    fire(1099); // 1s stall → clamped to MAX_FRAME (100ms) → 6 steps, not 60
+    ok(steps === 11, 'a tab stall is clamped — no catch-up spiral (got ' + steps + ')');
+    F.setPaused(true);
+    fire(1150);
+    ok(steps === 11 && renders === 4, 'paused → renders only, no steps');
+    F.setPaused(false);
+    fire(1200); // dt = 50 since the paused frame kept lastT fresh → 3 steps (a stale lastT would clamp-drain 6)
+    ok(steps === 14, 'resume has no dt jump (3 steps for 50ms, got ' + (steps - 11) + ')');
+    let fast = 0, polled = 0;
+    F.loop(() => { fast++; }, null, { mult: () => 2, frame: () => { polled++; } });
+    fire(0); fire(49.5); // 49.5ms × mult 2 = 99ms of game-time = 5 steps
+    ok(fast === 5, 'opts.mult scales game-time (2× → 5 steps for 49.5ms, got ' + fast + ')');
+    ok(polled === 2, 'opts.frame runs once per display frame (got ' + polled + ')');
+    delete sandbox.requestAnimationFrame;
+  }
+
   // results + per-day activity log (powers challenges)
   F.recordResult('snake', { mode: 'classic', score: 42, stats: { length: 5 } });
   const rr = F.lastResult('snake');
