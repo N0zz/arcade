@@ -1,111 +1,11 @@
 // Headless tests for Meadow Flyer (games/flappy/index.html).
-// Mocks DOM/canvas, runs the IIFE in a vm sandbox, drives via window.__test.
-import fs from 'node:fs';
-import vm from 'node:vm';
-import path from 'node:path';
+// Boots via the shared harness, drives window.__test.
+import { bootGame, ok, section, summary, runLayoutSuite } from '../../test-harness.mjs';
 
-const DIR = path.dirname(new URL(import.meta.url).pathname);
-const KIT = fs.readFileSync(path.join(DIR, '../../game-kit.js'), 'utf8'); // shared kit, loaded before the game
-let pass = 0, fail = 0;
-const fails = [];
-function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
-function section(t) { console.log('\n=== ' + t + ' ==='); }
+const FILE = 'games/flappy/index.html';
+const runGame = (store) => bootGame(FILE, { store });
 // best now lives in the shared kit store (gamekit_pb) under flappy's single '' mode
 const pbScore = (store, mode) => { try { return ((JSON.parse(store['gamekit_pb'] || '{}').flappy || {})[mode || ''] || {}).score || 0; } catch (e) { return 0; } };
-
-function makeCtx2d() {
-  return new Proxy({}, {
-    get: (_, p) => {
-      if (p === 'canvas') return { width: 1280, height: 800 };
-      if (p === 'createLinearGradient') return () => ({ addColorStop: () => {} });
-      return () => {};
-    },
-    set: () => true,
-  });
-}
-
-function makeEl(id) {
-  const classes = new Set();
-  const el = {
-    id, textContent: '', value: '', dataset: {}, children: [],
-    style: new Proxy({}, { get: (t, p) => t[p] ?? '', set: (t, p, v) => { t[p] = v; return true; } }),
-    classList: {
-      add: (...c) => c.forEach(x => classes.add(x)),
-      remove: (...c) => c.forEach(x => classes.delete(x)),
-      toggle: (c, f) => { const has = classes.has(c); const want = f === undefined ? !has : !!f; if (want) classes.add(c); else classes.delete(c); return want; },
-      contains: c => classes.has(c),
-    },
-    _l: {},
-    addEventListener: (type, fn) => { (el._l[type] ||= []).push(fn); },
-    removeEventListener: () => {},
-    fire: (type, ev = {}) => (el._l[type] || []).forEach(fn => fn({ preventDefault() {}, ...ev })),
-    appendChild: c => { el.children.push(c); return c; },
-    querySelectorAll: () => [], querySelector: () => null,
-    getContext: () => makeCtx2d(),
-    focus: () => {},
-    setAttribute: () => {},
-    getAttribute: () => null,
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1280, height: 800 }),
-  };
-  let _html = '';
-  Object.defineProperty(el, 'innerHTML', { get: () => _html, set: v => { _html = String(v ?? ''); if (!v) el.children = []; } });
-  return el;
-}
-
-function runGame(initialStore) {
-  const html = fs.readFileSync(path.join(DIR, 'index.html'), 'utf8');
-  const m = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
-  if (!m) throw new Error('no inline script found in index.html');
-  const code = m[1];
-
-  const elCache = {};
-  const getEl = id => (elCache[id] ||= makeEl(id));
-  const store = Object.assign({}, initialStore || {});
-  const handlers = {};
-
-  const win = {
-    innerWidth: 1280, innerHeight: 800,
-    addEventListener: (type, fn) => { (handlers[type] ||= []).push(fn); },
-    removeEventListener: () => {},
-  };
-  const docMock = {
-    getElementById: getEl,
-    createElement: () => makeEl('new'),
-    addEventListener: (type, fn) => { (handlers[type] ||= []).push(fn); },
-    querySelectorAll: () => [],
-    body: makeEl('body'),
-  };
-  const sandbox = {
-    window: win, document: docMock,
-    location: { search: '' },
-    navigator: {},
-    localStorage: {
-      getItem: k => (k in store ? store[k] : null),
-      setItem: (k, v) => { store[k] = String(v); },
-      removeItem: k => { delete store[k]; },
-    },
-    requestAnimationFrame: () => 0,
-    cancelAnimationFrame: () => {},
-    setTimeout: (fn, t) => 0,
-    setInterval: () => 0,
-    clearInterval: () => {},
-    matchMedia: () => ({ matches: false }),
-    Math, JSON, String, Number, Array, Object, parseInt, parseFloat, isFinite, isNaN, Date, console,
-    URLSearchParams,
-  };
-  sandbox.globalThis = sandbox;
-  const ctx = vm.createContext(sandbox);
-
-  let bootErr = null;
-  try { vm.runInContext(KIT, ctx, { filename: 'game-kit.js' }); vm.runInContext(code, ctx, { filename: 'index.html' }); }
-  catch (e) { bootErr = e.stack; }
-
-  function resize(w, h) {
-    if (win.gamekit && win.gamekit.layout && win.gamekit.layout.__emit) win.gamekit.layout.__emit(w, h);
-    else { win.innerWidth = w; win.innerHeight = h; }
-  }
-  return { win, store, bootErr, test: () => win.__test, getEl, resize, fireKey: (key) => (handlers['keydown'] || []).forEach(fn => fn({ key, preventDefault() {} })) };
-}
 
 // ----------------------------------------------------------------
 
@@ -460,33 +360,24 @@ section('Bird unlocks');
 
 // (v) layout fits the screen across portrait / landscape / desktop viewports
 section('Meadow Flyer: layout fits the screen across viewports');
-{
-  const VIEWPORTS = [
-    { name: 'portrait phone', w: 390, h: 780 },
-    { name: 'landscape phone', w: 780, h: 390 },
-    { name: 'desktop', w: 1280, h: 800 },
-  ];
-  for (const vp of VIEWPORTS) {
-    g = runGame();
-    T().start();
-    g.resize(vp.w, vp.h);
-    T().obstacles.length = 0; // drop pipes pre-filled before the resize — their gaps used the old H
-    T().step(1);
-    const L = T().layout;
+runLayoutSuite(
+  () => { const gl = runGame(); gl.T().start(); return gl; },
+  (gl, v, L0) => {
+    const Tl = gl.T;
+    Tl().obstacles.length = 0; // drop pipes pre-filled before the resize — their gaps used the old H
+    Tl().step(1);
+    const L = Tl().layout;
     // Step past the spawn grace period (frame >= 60) to surface a real pipe, keeping the bird
     // alive by flapping toward the playable band's center so the gap-placement asserts run.
-    let lp = T().layout;
+    let lp = Tl().layout;
     const center = (lp.playTop + lp.playBottom) / 2;
-    for (let i = 0; i < 90 && T().state === 'playing' && !lp.gap; i++) {
-      if (T().bird.y > center) T().flap();
-      T().step(1);
-      lp = T().layout;
+    for (let i = 0; i < 90 && Tl().state === 'playing' && !lp.gap; i++) {
+      if (Tl().bird.y > center) Tl().flap();
+      Tl().step(1);
+      lp = Tl().layout;
     }
     const G = lp; // layout snapshot that (likely) now carries a pipe gap
-    const tag = '[' + vp.name + ' ' + vp.w + 'x' + vp.h + '] ';
-
-    // canvas tracks the viewport exactly
-    ok(L.W === vp.w && L.H === vp.h, tag + 'canvas matches viewport (got ' + L.W + 'x' + L.H + ')');
+    const tag = '[' + v.name + ' ' + v.w + 'x' + v.h + '] ';
 
     // bird is fully on-screen horizontally and vertically
     ok(L.bird.left >= 0 && L.bird.right <= L.W, tag + 'bird within 0..W (left=' + L.bird.left + ', right=' + L.bird.right + ', W=' + L.W + ')');
@@ -511,10 +402,6 @@ section('Meadow Flyer: layout fits the screen across viewports');
       ok(true, tag + 'no pipe spawned yet — gap placement check skipped');
     }
   }
-}
+);
 
-// ----------------------------------------------------------------
-console.log('\n----------------------------------------');
-console.log('PASS: ' + pass + '   FAIL: ' + fail);
-if (fail > 0) { console.log('\nFailures:'); fails.forEach(f => console.log(' - ' + f)); process.exit(1); }
-else console.log('All tests passed ✓');
+summary();
