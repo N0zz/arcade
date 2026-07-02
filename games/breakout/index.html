@@ -769,6 +769,8 @@
       else { balls[0].x = x; balls[0].y = y; balls[0].vx = vx; balls[0].vy = vy; }
       ballStuck = false;
     },
+    addBall(x, y, vx, vy) { balls.push({ x, y, vx, vy }); ballStuck = false; },
+    get ballCount() { return balls.length; },
     step(n) { for (let i = 0; i < (n || 1); i++) update(); },
   };
 
