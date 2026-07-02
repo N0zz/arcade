@@ -790,7 +790,7 @@
     var verEl = document.getElementById('gamekitMoreVer'), upBtn = document.getElementById('gamekitUpdate');
     function renderMoreVer() {
       var b = buildInfo(), st = _upState;
-      if (verEl) verEl.textContent = 'v ' + b.label;
+      if (verEl) verEl.textContent = b.when ? 'v ' + b.sha + '\n' + b.when : 'v ' + b.label; // sha + date stacked — one line overflows the panel
       if (upBtn) {
         var busy = st.status === 'refreshing' || st.status === 'checking';
         upBtn.textContent = st.status === 'refreshing' ? '⟳ Updating…'
