@@ -17,6 +17,7 @@ window.CHANGELOG = [
     'New: sharing a score card or your profile now opens a small menu — send it straight to an app, copy the image, or download it.',
     'Fix: the shared profile image is now cropped to its content (no more half-empty picture) and includes the title sparkles.',
     'Fix: copying a shared image no longer pastes twice in Discord and other chats.',
+    'Improved: games render razor-sharp on phones and other high-density screens (they were slightly blurry before).',
     'Fix: in Neon Snake, quick double-turns now land exactly as pressed (inputs are buffered, none get lost).',
     'Fix: Meadow Flyer on wide screens no longer starts with a long empty flight — the first trees are a fair distance away, like on phones.',
     'Fix: score cards are sharper — the shared image now keeps its full resolution, so it no longer looks pixelated when zoomed or posted to Discord on mobile.',
