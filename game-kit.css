@@ -28,9 +28,18 @@
   background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
 .gamekit-au-toggle:hover { border-color: #9fe8ff; }
 .gamekit-au-slider { flex: 1; min-width: 92px; accent-color: #9fe8ff; cursor: pointer; }
-/* embed = its own always-visible button in the top-right cluster (like reset), not inside the panel */
-.gamekit-au-embedbtn { font-size: 16px; }
 .gamekit-au-pausebtn { font-size: 13px; color: #9fe8ff; }
+/* ☰ menu panel: version/update status + refresh + embed + reset */
+.gamekit-au-morebtn { font-size: 15px; }
+.gamekit-more-panel { min-width: 208px; gap: 8px; }
+.gamekit-more-ver { font: 500 11px/1.5 ui-monospace, "SFMono-Regular", Menlo, monospace; color: #cfe3f5;
+  white-space: pre-line; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+.gamekit-more-item { font: 600 12px/1 system-ui, sans-serif; letter-spacing: .5px; text-align: left; color: #fff; cursor: pointer;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 10px 12px; }
+.gamekit-more-item:hover { border-color: #9fe8ff; }
+.gamekit-more-item:disabled { opacity: .6; cursor: default; }
+.gamekit-more-danger { color: #ffb4b4; border-color: rgba(255, 120, 120, 0.4); }
+.gamekit-more-danger:hover { color: #fff; background: rgba(255, 90, 90, 0.25); border-color: #ff8a8a; }
 
 /* universal pause overlay */
 .gamekit-pause { position: fixed; inset: 0; z-index: 8500; display: none; align-items: center; justify-content: center;
@@ -42,12 +51,6 @@
 .gamekit-pause-resume { font: 600 14px system-ui, sans-serif; letter-spacing: 1px; color: #06121a; background: #9fe8ff;
   border: none; border-radius: 9px; padding: 10px 24px; cursor: pointer; }
 .gamekit-pause-resume:hover { background: #c2f0ff; }
-/* reset-scores is its own button (top-right, below the sound button) — NOT part of the sound panel */
-.gamekit-au-resetbtn { font-size: 15px; line-height: 0; width: 38px; height: 34px; cursor: pointer; color: #ffb4b4;
-  background: rgba(8, 12, 20, 0.66); border: 1px solid rgba(255, 120, 120, 0.4); border-radius: 8px;
-  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); display: inline-flex; align-items: center; justify-content: center; }
-.gamekit-au-resetbtn:hover { color: #fff; background: rgba(255, 90, 90, 0.25); border-color: #ff8a8a; }
-
 /* standard center-top HUD — clears the left nav and the right sound menu; wraps when busy */
 .gamekit-hud { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 5;
   display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; align-items: center;
@@ -63,7 +66,7 @@
 @media (max-width: 560px) {
   .gamekit-nav { left: 6px; gap: 6px; }
   .gamekit-audio { right: 6px; gap: 4px; }
-  .gamekit-au-btn, .gamekit-au-resetbtn { width: 34px; height: 32px; }
+  .gamekit-au-btn { width: 34px; height: 32px; }
   .gamekit-back { padding: 6px 9px; }
 }
 @media (max-width: 400px) {
@@ -72,7 +75,7 @@
   .gamekit-home-label { display: none; }
   .gamekit-back { padding: 6px 8px; font-size: 11px; letter-spacing: .5px; }
   .gamekit-audio { gap: 3px; }
-  .gamekit-au-btn, .gamekit-au-resetbtn { width: 30px; height: 30px; font-size: 12px; }
+  .gamekit-au-btn { width: 30px; height: 30px; font-size: 12px; }
 }
 
 /* in-page confirm dialog (reset scores) */
@@ -377,13 +380,6 @@
 @keyframes gkTapPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 @media (prefers-reduced-motion: reduce) { .gamekit-tap { transition: none; } .gamekit-tap-play { animation: none; } }
 
-/* "New version — tap to update" — shown (bottom-center) when a new build is ready and the tab is visible,
-   instead of a surprise reload. Clicking it reloads. */
-.gamekit-update { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 90;
-  font: 600 12px/1 ui-monospace, "SFMono-Regular", Menlo, monospace; letter-spacing: 1px; color: #fff; cursor: pointer;
-  background: rgba(8, 12, 20, 0.92); border: 1px solid #9fe8ff; border-radius: 999px; padding: 9px 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 18px -6px #9fe8ff; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
-.gamekit-update:hover { background: rgba(8, 12, 20, 1); }
 .gamekit-share .sbtn:disabled { opacity: 0.55 !important; cursor: default !important; }
 
 /* "rotate your phone" overlay (gamekit.layout.requireOrientation) — for games locked to one orientation */

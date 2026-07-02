@@ -249,8 +249,11 @@
   // MODAL — while open it owns the keyboard (_modalOpen gates the menu engine; events are stopped so
   // nothing behind it reacts).
   var _modalOpen = 0;
+  var _confirmOn = false; // one confirm at a time — repeated clicks must not stack overlays
   function confirmDialog(msg, onYes, yesLabel, onCancel) {
     if (typeof document === 'undefined' || !document.body) { if (onYes) onYes(); return; }
+    if (_confirmOn) return;
+    _confirmOn = true;
     var ov = document.createElement('div'); ov.className = 'gamekit-confirm';
     ov.innerHTML = '<div class="gamekit-confirm-box"><p>' + msg + '</p><div class="gamekit-confirm-btns">'
       + '<button class="gamekit-cf-no" type="button">Cancel</button>'
@@ -262,7 +265,7 @@
     function paint() { for (var i = 0; i < btns.length; i++) if (btns[i] && btns[i].classList) btns[i].classList.toggle('gkm-cf-focus', i === fi); }
     var done = false;
     function finish(cb) {
-      if (done) return; done = true; _modalOpen = Math.max(0, _modalOpen - 1);
+      if (done) return; done = true; _confirmOn = false; _modalOpen = Math.max(0, _modalOpen - 1);
       try { document.removeEventListener('keydown', onKey, true); } catch (e) {}
       try { if (ov.parentNode) ov.parentNode.removeChild(ov); } catch (e) {}
       if (cb) try { cb(); } catch (e) {}
@@ -299,7 +302,7 @@
     var games = opts.games || (opts.slug ? [{ slug: opts.slug, title: opts.title || (typeof document !== 'undefined' && document.title) || opts.slug }] : []);
     if (!games.length) return;
     var ov = document.createElement('div'); ov.className = 'gamekit-embed';
-    var picker = games.length > 1 ? '<select class="gamekit-embed-sel" aria-label="Pick a game">' + games.map(function (g, i) { return '<option value="' + i + '">' + (g.title || g.slug) + '</option>'; }).join('') + '</select>' : '';
+    var picker = games.length > 1 ? '<select class="gamekit-embed-sel" aria-label="Pick a game">' + games.map(function (g, i) { return '<option value="' + i + '">' + (g.icon ? g.icon + ' ' : '') + (g.title || g.slug) + '</option>'; }).join('') + '</select>' : '';
     ov.innerHTML = '<div class="gamekit-embed-box"><button class="gamekit-embed-x" type="button" aria-label="Close">✕</button>'
       + '<h3>Embed ' + (games.length > 1 ? 'a game' : 'this game') + '</h3>'
       + '<p>Paste this where you want the game on your site or blog — it runs right there, free, no account, no ads.</p>'
@@ -751,27 +754,57 @@
       + '<input class="gamekit-au-slider" id="gamekitSfxV" type="range" min="0" max="100" aria-label="Sound effects volume"></div>';
     if (opts.music) rows += '<div class="gamekit-au-row"><button class="gamekit-au-toggle" id="gamekitMusM" type="button" aria-label="Mute music">🎵</button>'
       + '<input class="gamekit-au-slider" id="gamekitMusV" type="range" min="0" max="100" aria-label="Music volume"></div>';
+    // ☰ menu panel: version + update status, force refresh, embed, reset — one home for the
+    // rarely-needed actions (keeps the button cluster narrow on phones)
+    var more = '<div class="gamekit-more-ver" id="gamekitMoreVer"></div>'
+      + '<button class="gamekit-more-item" id="gamekitUpdate" type="button">✓ Up to date</button>'
+      + '<button class="gamekit-more-item" id="gamekitEmbed" type="button" title="Embed this game on your website or blog">&#x29C9; Embed this game</button>'
+      + (opts.reset ? '<button class="gamekit-more-item gamekit-more-danger" id="gamekitReset" type="button" title="Reset this game’s saved scores">↺ Reset game data</button>' : '');
     wrap.innerHTML = '<button class="gamekit-au-btn gamekit-au-pausebtn" id="gamekitPause" type="button" aria-pressed="false" aria-label="Pause" title="Pause">⏸</button>'
       + '<button class="gamekit-au-btn" id="gamekitAudioBtn" type="button" aria-label="Sound settings" title="Sound settings">🔊</button>'
       + '<div class="gamekit-au-panel" id="gamekitAudioPanel">' + rows + '</div>'
       + (opts.challenges ? '<button class="gamekit-au-btn gamekit-au-chbtn" id="gamekitChallenges" type="button" aria-label="Challenges" title="Today’s challenges">🏆</button>' : '')
       + (opts.controls ? '<button class="gamekit-au-btn gamekit-au-ctlbtn" id="gamekitControls" type="button" aria-label="Controls" title="How to play — controls">🎮</button>' : '')
-      + '<button class="gamekit-au-btn gamekit-au-embedbtn" id="gamekitEmbed" type="button" aria-label="Embed this game" title="Embed this game on your website or blog">&#x29C9;</button>'
-      + (opts.reset ? '<button class="gamekit-au-resetbtn" id="gamekitReset" type="button" aria-label="Reset this game’s scores" title="Reset this game’s saved scores">↺</button>' : '');
+      + '<button class="gamekit-au-btn gamekit-au-morebtn" id="gamekitMore" type="button" aria-label="Game menu" title="Game menu">☰</button>'
+      + '<div class="gamekit-au-panel gamekit-more-panel" id="gamekitMorePanel">' + more + '</div>';
     document.body.appendChild(wrap);
     _audioEl = wrap;
     var btn = document.getElementById('gamekitAudioBtn'), panel = document.getElementById('gamekitAudioPanel');
-    // open/close the sound panel idempotently; an open panel counts as an overlay (halts the game)
-    var panelOpen = false;
-    function setPanel(open) { if (!panel || !panel.classList) return; open = !!open; if (open === panelOpen) return; panelOpen = open; panel.classList.toggle('open', open); _modalOpen += open ? 1 : -1; }
+    var moreBtn = document.getElementById('gamekitMore'), morePanel = document.getElementById('gamekitMorePanel');
+    // open/close panels idempotently; an open panel counts as an overlay (halts the game); the two
+    // panels (sound / ☰) are mutually exclusive
+    var panelOpen = false, moreOpen = false;
+    function setPanel(open) { if (!panel || !panel.classList) return; open = !!open; if (open === panelOpen) return; if (open) setMore(false); panelOpen = open; panel.classList.toggle('open', open); _modalOpen += open ? 1 : -1; }
+    function setMore(open) { if (!morePanel || !morePanel.classList) return; open = !!open; if (open === moreOpen) return; if (open) setPanel(false); moreOpen = open; morePanel.classList.toggle('open', open); _modalOpen += open ? 1 : -1; if (open) { renderMoreVer(); updates.check(); } }
     if (btn && panel) btn.addEventListener('click', function () { setPanel(!panelOpen); });
-    // click anywhere outside the sound menu closes the open panel
-    if (panel && typeof document.addEventListener === 'function') document.addEventListener('click', function (e) {
-      if (!panelOpen) return;
+    if (moreBtn && morePanel) moreBtn.addEventListener('click', function () { setMore(!moreOpen); });
+    // click anywhere outside an open panel closes it
+    if (typeof document.addEventListener === 'function') document.addEventListener('click', function (e) {
       var t = e && e.target;
-      if (t === btn || (t && t.closest && (t.closest('#gamekitAudioBtn') || t.closest('#gamekitAudioPanel')))) return;
-      setPanel(false);
+      if (panelOpen && !(t === btn || (t && t.closest && (t.closest('#gamekitAudioBtn') || t.closest('#gamekitAudioPanel'))))) setPanel(false);
+      if (moreOpen && !(t === moreBtn || (t && t.closest && (t.closest('#gamekitMore') || t.closest('#gamekitMorePanel'))))) setMore(false);
     });
+    // ☰ version row + update button: the button IS the status — greyed "✓ Up to date" when current
+    // (checked live on every panel open), lit "🔆 Update now" when a new build is ready. The badge
+    // dot on ☰ mirrors "an update is ready" without interrupting anyone.
+    var verEl = document.getElementById('gamekitMoreVer'), upBtn = document.getElementById('gamekitUpdate');
+    function renderMoreVer() {
+      var b = buildInfo(), st = _upState;
+      if (verEl) verEl.textContent = 'v ' + b.label;
+      if (upBtn) {
+        var busy = st.status === 'refreshing' || st.status === 'checking';
+        upBtn.textContent = st.status === 'refreshing' ? '⟳ Updating…'
+          : st.status === 'checking' ? '⟳ Checking…'
+          : st.available ? '🔆 Update now'
+          : st.status === 'offline' ? '⚠ Offline — can’t check'
+          : '✓ Up to date';
+        upBtn.disabled = busy || !st.available;
+      }
+      if (moreBtn && moreBtn.classList) moreBtn.classList.toggle('gkm-notify', !!st.available && st.status !== 'refreshing');
+    }
+    updates.onChange(renderMoreVer);
+    renderMoreVer();
+    if (upBtn) upBtn.addEventListener('click', function () { updates.apply(); });
     var u = { mainBtn: btn };
     u.sfxBtn = document.getElementById('gamekitSfxM'); u.sfxSlider = document.getElementById('gamekitSfxV');
     if (u.sfxBtn) u.sfxBtn.addEventListener('click', function () { sound.toggle(); });
@@ -784,11 +817,13 @@
     if (opts.reset) {
       var rb = document.getElementById('gamekitReset');
       if (rb) rb.addEventListener('click', function () {
+        setMore(false);
         confirmDialog('Reset your saved scores for this game?', function () { resetScores(opts.reset); try { location.reload(); } catch (e) {} }, 'Reset');
       });
     }
     var eb = document.getElementById('gamekitEmbed');
     if (eb) eb.addEventListener('click', function () {
+      setMore(false);
       var m = ((typeof location !== 'undefined' && location.pathname) ? location.pathname : '').match(/games\/([^\/?#]+)/);
       embedModal({ slug: m ? m[1] : '', title: (typeof document !== 'undefined' ? document.title : '') });
     });
@@ -838,7 +873,7 @@
       if (!v || !v.sha || v.sha === 'dev') return;
       var el = document.getElementById('gamekitVersion');
       if (!el) { el = document.createElement('div'); el.id = 'gamekitVersion'; document.body.appendChild(el); }
-      el.textContent = v.sha;
+      el.textContent = buildInfo().label; // sha · deploy date+time (viewer-local)
     } catch (e) {}
   }
 
@@ -1310,18 +1345,34 @@
   // ---------- PWA auto-update ----------
   function pwa(file) {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
-    var had = !!navigator.serviceWorker.controller;
-    var pgStart = (typeof Date !== 'undefined' && Date.now) ? Date.now() : 0;
-    // A new build took over → offer an update (never surprise-reload while the page is visible; see
-    // safeReload). Ignore the hand-over that fires right after load — on a first game visit the page is
-    // briefly controlled by the catalogue's root SW, then this game's own SW claims it: same version, not
-    // an update, and reloading there was what re-triggered the "tap to play" splash.
+    var prevCtl = navigator.serviceWorker.controller || null;
+    // "has the player touched the page yet?" — gates the silent launch-time reload
+    var interacted = false;
+    var markTouch = function () { interacted = true; };
+    try {
+      if (typeof window !== 'undefined' && window.addEventListener) { window.addEventListener('pointerdown', markTouch, true); window.addEventListener('keydown', markTouch, true); window.addEventListener('touchstart', markTouch, true); }
+      if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('pointerdown', markTouch, true);
+    } catch (e) {}
+    // A new worker took control. Two cases, told apart by the worker SCRIPT URL (not a timing guess):
+    //  - different URL → scope hand-over (first visit: the catalogue's root SW briefly controls a game
+    //    page until the game's own SW claims it) — same build, not an update, ignore;
+    //  - same URL → a genuinely new build of THIS page's worker is live. Untouched page → reload
+    //    silently (the launch fast-path). In-use page → light the ☰ badge and leave the player alone
+    //    (backgrounding the tab applies it silently; the ☰ Refresh button applies it on demand).
     navigator.serviceWorker.addEventListener('controllerchange', function () {
-      if (_swReloaded || !had) return;
-      if (pgStart && (Date.now() - pgStart) < 4000) return; // first-load SW scope hand-over, not a new version
-      _pendingReload = true; safeReload();
+      var ctl = navigator.serviceWorker.controller || null;
+      var handover = !prevCtl || !ctl || (ctl.scriptURL !== prevCtl.scriptURL);
+      prevCtl = ctl;
+      if (_swReloaded) return;
+      if (_upApplying) { doReload(); return; }             // the player pressed Refresh — finish it
+      if (handover) return;
+      _upState.available = true; _upState.controlled = true; upEmit(); // new build already controls; reload = updated
+      if (!interacted) { doReload(); return; }
+      if (typeof document !== 'undefined' && document.hidden) doReload();
     });
-    if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('visibilitychange', function () { if (document.hidden) safeReload(); });
+    if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('visibilitychange', function () {
+      if (document.hidden && _upState.available && _upState.controlled) doReload(); // backgrounded → apply silently
+    });
     var register = function () {
       try {
         navigator.serviceWorker.register(file || 'sw.js').then(function (r) {
@@ -1437,25 +1488,67 @@
   var _menuEl = null, _menuKey = null, _menuHandle = null, _menuKind = null;
   var _recRun = 1, _recDone = 0; // record idempotency: run counter (armed by menuHide) vs last run recorded
   var _bdRaf = 0, _bdFrame = 0, _bdResize = null; // per-menu backdrop canvas: rAF id, frame counter, resize listener
-  // Deferred service-worker update. NEVER surprise-reload while the page is visible (that interrupts play
-  // and re-triggered the tap-to-play splash). When a new build is ready: reload silently only if the tab
-  // is backgrounded; otherwise show a small "New version — tap to update" button and let the player choose.
-  var _pendingReload = false, _swReloaded = false, _updateBtn = null;
+  // ---------- build info + update engine (gamekit.updates) ----------
+  // Policy: updates NEVER interrupt a visible, in-use page. A new build applies silently only when
+  // (a) the page hasn't been touched yet (launch fast-path — fixes the "always one launch behind"
+  // lag) or (b) the tab is backgrounded. Otherwise it's a dot on the ☰ menu; the player refreshes
+  // from there (or from the catalogue's "Refresh site & games") whenever they choose.
+  var _swReloaded = false;
   function doReload() { if (_swReloaded) return; _swReloaded = true; try { location.reload(); } catch (e) {} }
-  function showUpdateButton() {
-    try {
-      if (_updateBtn || typeof document === 'undefined' || !document.body || typeof document.createElement !== 'function') return;
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'gamekit-update';
-      b.setAttribute('aria-label', 'A new version is available — tap to update'); b.textContent = '🔄 New version — tap to update';
-      b.addEventListener('click', doReload);
-      document.body.appendChild(b); _updateBtn = b;
-    } catch (e) {}
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function buildInfo() {
+    var v = (typeof window !== 'undefined' && window.KOMYO_VERSION) || {};
+    var sha = v.sha || 'dev', when = '';
+    if (v.built) {
+      try {
+        var d = new Date(v.built); // deploy stamp (UTC ISO) → shown in the viewer's local time
+        if (!isNaN(d.getTime())) when = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+      } catch (e) {}
+    }
+    return { sha: sha, url: v.url || '', built: v.built || '', when: when, label: sha === 'dev' ? 'dev' : (when ? sha + ' · ' + when : sha) };
   }
-  function safeReload() {
-    if (!_pendingReload || _swReloaded) return;
-    if (typeof document !== 'undefined' && document.hidden) doReload(); // backgrounded → apply silently
-    else showUpdateButton();                                           // visible → offer a button, don't interrupt
+  var _upSubs = [], _upApplying = false;
+  var _upState = { status: 'idle', available: false, controlled: false, latest: null }; // status: idle|checking|ok|offline|refreshing
+  function upEmit() { for (var i = 0; i < _upSubs.length; i++) { try { _upSubs[i](_upState); } catch (e) {} } }
+  function upCheck() {
+    var cur = buildInfo();
+    var setSt = function (v) { if (!_upApplying) _upState.status = v; upEmit(); }; // apply()'s 'refreshing' outranks check states
+    if (typeof fetch !== 'function' || cur.sha === 'dev') { setSt('ok'); return Promise.resolve(_upState); }
+    setSt('checking');
+    // version.js is tiny and SW-cached — the cache-buster query + no-store dodges both cache layers
+    var base = (typeof location !== 'undefined' && (location.pathname || '').indexOf('/games/') >= 0) ? '../../version.js' : 'version.js';
+    return fetch(base + '?u=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (txt) {
+      var sha = (txt.match(/sha:\s*'([^']+)'/) || [])[1] || '';
+      var built = (txt.match(/built:\s*'([^']*)'/) || [])[1] || '';
+      _upState.latest = { sha: sha, built: built };
+      if (sha && sha !== 'dev' && sha !== cur.sha) _upState.available = true; // sticky until applied
+      setSt('ok'); return _upState;
+    }).catch(function () { setSt('offline'); return _upState; });
   }
+  function upApply() {
+    if (_upApplying || _swReloaded) return;
+    _upApplying = true; _upState.status = 'refreshing'; upEmit();
+    var cap = setTimeout(doReload, 8000); // never leave the spinner hanging
+    upCheck().then(function (st) {
+      if (!st.available || _upState.controlled) { clearTimeout(cap); doReload(); return; } // latest, or the new worker already controls → plain refresh serves it
+      // a new build exists: pull every scope's SW (root + all games precache fresh); our scope's new
+      // worker takes control (skipWaiting+claim) → the pwa() controllerchange handler reloads us
+      try {
+        if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            for (var i = 0; i < regs.length; i++) { try { regs[i].update(); } catch (e) {} }
+          }).catch(function () { clearTimeout(cap); doReload(); });
+        } else { clearTimeout(cap); doReload(); }
+      } catch (e) { clearTimeout(cap); doReload(); }
+    });
+  }
+  var updates = {
+    info: buildInfo,
+    state: function () { return _upState; },
+    onChange: function (cb) { if (typeof cb === 'function') _upSubs.push(cb); },
+    check: upCheck,
+    apply: upApply,
+  };
   function stampUrl(params) {
     try {
       if (typeof history === 'undefined' || !history.replaceState || typeof location === 'undefined') return;
@@ -1743,7 +1836,6 @@
         _bdRaf = requestAnimationFrame(bdLoop);
       }
     }
-    if (_pendingReload) safeReload(); // a start/end menu is a safe moment to apply a deferred SW update
     if (cfg.record && _recDone !== _recRun) { _recDone = _recRun; try { recordResult(cfg.record.slug || (cfg.share && cfg.share.slug), cfg.record); } catch (e) {} }
     if (shareHost) { try { shareRow(shareHost, cfg.share); } catch (e) {} }
 
@@ -1809,7 +1901,7 @@
   }
   var menu = { show: menuShow, hide: menuHide, current: function () { return _menuHandle; } };
 
-  var api = { sound: sound, music: music, nav: nav, audioMenu: audioMenu, resetScores: resetScores, confirm: confirmDialog, menu: menu, stampUrl: stampUrl, shareRow: shareRow, shareUrls: shareUrls, shareText: shareText, param: param, pwa: pwa, player: player, setName: setName, postDiscord: postDiscord, discordTier: discordTier, inActivity: IN_ACTIVITY, proxyUrl: proxyUrl, layout: layout, recordResult: recordResult, lastResult: lastResult, playedToday: playedToday, profile: profile, best: getBest, bestScore: getBestScore, saveBest: saveBest, utcDateStr: utcDateStr, utcDayNumber: utcDayNumber, scoreCard: buildScoreCard, profileCard: buildProfileCard, shareCard: shareCardBlob, embedModal: embedModal, isPaused: isPaused, setPaused: setPaused, togglePause: togglePause, loop: gameLoop, showMenuButton: showMenuButton, showPauseButton: showPauseButton, controls: controlsModal, challengesPanel: challengesPanel, activeChallenge: chActiveSlug, challengeEval: chEval, versionTag: versionTag };
+  var api = { sound: sound, music: music, nav: nav, audioMenu: audioMenu, resetScores: resetScores, confirm: confirmDialog, menu: menu, stampUrl: stampUrl, shareRow: shareRow, shareUrls: shareUrls, shareText: shareText, param: param, pwa: pwa, player: player, setName: setName, postDiscord: postDiscord, discordTier: discordTier, inActivity: IN_ACTIVITY, proxyUrl: proxyUrl, layout: layout, recordResult: recordResult, lastResult: lastResult, playedToday: playedToday, profile: profile, best: getBest, bestScore: getBestScore, saveBest: saveBest, utcDateStr: utcDateStr, utcDayNumber: utcDayNumber, scoreCard: buildScoreCard, profileCard: buildProfileCard, shareCard: shareCardBlob, embedModal: embedModal, isPaused: isPaused, setPaused: setPaused, togglePause: togglePause, loop: gameLoop, showMenuButton: showMenuButton, showPauseButton: showPauseButton, controls: controlsModal, challengesPanel: challengesPanel, activeChallenge: chActiveSlug, challengeEval: chEval, versionTag: versionTag, updates: updates, buildInfo: buildInfo };
   var g = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : this);
   g.gamekit = api;
   if (typeof window !== 'undefined') window.gamekit = api;

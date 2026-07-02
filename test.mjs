@@ -19,6 +19,12 @@ function testCatalogue() {
   ok(cerr === null, 'rendering challenges does not throw: ' + cerr);
   const eb = g.getEl('embedBtn'); let ebErr = null; try { eb.fire('click'); } catch (e) { ebErr = e.message; }
   ok(ebErr === null, 'Embed-a-game menu opens without throwing: ' + ebErr);
+  // Settings → Version row: update button wired to gamekit.updates, greyed when current, headless-safe
+  ok(g.getEl('setVersion').textContent === 'dev', 'Settings shows the running version (dev locally, got "' + g.getEl('setVersion').textContent + '")');
+  ok(String(g.getEl('setUpdate').textContent).indexOf('Up to date') >= 0 && g.getEl('setUpdate').disabled === true,
+    'Settings update button is greyed "✓ Up to date" when no update is known (got "' + g.getEl('setUpdate').textContent + '")');
+  let drErr = null; try { g.getEl('setUpdate').fire('click'); } catch (e) { drErr = e.message; }
+  ok(drErr === null, 'Settings update button runs headless without throwing: ' + drErr);
   // density toggle: cozy ⇄ compact
   const db = g.getEl('densityBtn'); db.fire('click');
   ok(g.getEl('grid').classList.contains('compact'), 'density toggle → compact');
@@ -169,6 +175,11 @@ function testCatalogue() {
       ok(bh.includes('🏆 50 <span>'), 'title box surfaces the challenge-points total (🏆 50)');
       ok(bh.includes('pf-pfx'), 'a premium tier (3+) gets a particle canvas');
       ok(bh.includes('pf-tb-name') && bh.includes('pf-t3'), 'title + username share one full-width box, shined to the tier');
+      ok(bh.includes('pf-name-btn') && bh.includes('Click to change your name'), 'profile name is a rename button with an instant tooltip');
+      ok(bh.includes('pf-tb-info'), 'titles-ladder (i) button present in the full box');
+      const card = g.getEl('profileBtn').innerHTML || '';
+      ok(card.includes('pf-titlebar') && card.includes('pf-compact') && !card.includes('pf-tb-meta'),
+        'drawer identity card reuses the title box (compact: no meta / no (i))');
     }
   }
 }
@@ -237,7 +248,7 @@ function testLiveGames() {
 }
 
 // ---------------- game-kit (shared shell) ----------------
-function testKit() {
+async function testKit() {
   section('game-kit (shared shell)');
   const g = makeSandbox({});
   g.run(KIT, 'game-kit.js');
@@ -324,6 +335,58 @@ function testKit() {
   delete els['gamekitVersion'];
   F.versionTag();
   ok(!els['gamekitVersion'], 'versionTag is a no-op on dev (nothing rendered)');
+  // ---- build info + update engine (gamekit.updates) ----
+  ok(F.updates && typeof F.updates.check === 'function' && typeof F.updates.apply === 'function' && typeof F.updates.onChange === 'function' && typeof F.buildInfo === 'function',
+    'kit exposes updates (check/apply/onChange/state) + buildInfo');
+  g.win.KOMYO_VERSION = { sha: 'abc1234', url: 'https://x', built: '2026-07-02T16:45:00Z' };
+  {
+    const p2 = n => (n < 10 ? '0' : '') + n;
+    const d = new Date('2026-07-02T16:45:00Z'); // buildInfo renders the stamp in local time — mirror it
+    const when = d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+    const bi = F.buildInfo();
+    ok(bi.when === when && bi.label === 'abc1234 · ' + when, 'buildInfo formats the deploy stamp as sha · local date+time (' + bi.label + ')');
+    F.versionTag();
+    ok(els['gamekitVersion'] && els['gamekitVersion'].textContent === 'abc1234 · ' + when, 'versionTag shows sha · built date+time');
+  }
+  g.win.KOMYO_VERSION = { sha: 'dev' };
+  ok(F.buildInfo().label === 'dev', 'buildInfo label is plain "dev" locally');
+  ok(typeof F.updates.state().available === 'boolean' && F.updates.state().available === false, 'updates.state() readable headless, no false "update available"');
+  // ---- update policy: hand-over ignored / pre-interaction silent reload / in-use badge only ----
+  {
+    const mk = () => {
+      const s = makeSandbox({});
+      let reloads = 0;
+      s.sandbox.location.reload = () => { reloads++; };
+      const swL = {};
+      s.sandbox.navigator.serviceWorker = {
+        controller: { scriptURL: 'https://k/sw.js' },
+        addEventListener: (t, fn) => { (swL[t] ||= []).push(fn); },
+        register: () => Promise.resolve({ update() {} }),
+        getRegistrations: () => Promise.resolve([]),
+      };
+      s.run(KIT, 'game-kit.js');
+      return { s, F2: s.sandbox.gamekit, reloads: () => reloads,
+        setCtl(url) { s.sandbox.navigator.serviceWorker.controller = url ? { scriptURL: url } : null; },
+        fire() { (swL.controllerchange || []).forEach(fn => fn()); } };
+    };
+    // launch fast-path: a new build takes control before the player touches anything → silent reload
+    const a = mk();
+    a.F2.pwa();
+    a.setCtl('https://k/sw.js'); a.fire(); // same worker URL = genuinely new build
+    ok(a.reloads() === 1, 'pre-interaction new build → one silent reload (launch fast-path)');
+    // scope hand-over is not an update; an in-use page only gets the badge
+    const b = mk();
+    b.F2.pwa();
+    b.setCtl('https://k/games/x/sw.js'); b.fire(); // different worker URL = root→game hand-over
+    ok(b.reloads() === 0 && b.F2.updates.state().available === false, 'scope hand-over (different worker URL) is ignored');
+    b.s.key('pointerdown'); // the player touches the page
+    b.fire();               // same-URL new build lands mid-session
+    ok(b.reloads() === 0 && b.F2.updates.state().available === true, 'in-use page: update lights the badge, never reloads');
+    b.F2.updates.apply();
+    ok(b.F2.updates.state().status === 'refreshing', 'apply() enters the refreshing state');
+    await Promise.resolve(); await Promise.resolve(); // flush the check→reload microtasks
+    ok(b.reloads() === 1, 'apply() with the new worker already in control reloads straight away');
+  }
   // ---- menu engine (gamekit.menu.show) ----
   ok(F.menu && typeof F.menu.show === 'function' && typeof F.menu.hide === 'function' && typeof F.stampUrl === 'function',
     'kit exposes menu.show/hide + stampUrl');
@@ -456,8 +519,9 @@ function testKitChrome() {
   // game_start analytics event
   ok(js.includes("'game_start'") && js.includes('function currentSlug'), 'game_start event fires with the URL slug');
   // SW update: manual button when visible (no surprise reload that re-triggered the splash)
-  ok(css.includes('.gamekit-update'), 'update-available button style present');
-  ok(js.includes('showUpdateButton') && js.includes('document.hidden) doReload'), 'new build → silent reload only when hidden, else an update button');
+  ok(css.includes('.gamekit-more-panel') && css.includes('.gamekit-au-morebtn'), '☰ menu panel styles present');
+  ok(js.includes('ctl.scriptURL !== prevCtl.scriptURL'), 'update vs scope-hand-over told apart by worker script URL (not timing)');
+  ok(js.includes('if (!interacted) { doReload(); return; }') && !js.includes('showUpdateButton'), 'new build → silent reload only pre-interaction; in-use pages get the ☰ badge, never a reload');
 }
 
 function testChallenges() {
@@ -528,7 +592,7 @@ console.log('Running arcade tests…');
 testCatalogue();
 testTD();
 testLiveGames();
-testKit();
+await testKit();
 testKitChrome();
 testChallenges();
 testServiceWorkers();

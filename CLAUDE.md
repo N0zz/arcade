@@ -66,13 +66,23 @@ API on `window.gamekit`:
   with music keeps its own music engine and does `gamekit.music.subscribe(s => applyGain(s.gain))`
   (`s.gain` is 0 when muted). Only asteroids uses this today.
 - `gamekit.nav({ music, reset, onMenu })` — injects the top-left `‹ Menu · komyo ›` bar **and** the
-  top-right **sound menu** (🔊 SFX mute+slider, ♪ Music mute+slider when `music:true`). `reset` is a
-  localStorage **prefix** (e.g. `'snake_'`) → adds a scoped "↺ Reset scores" entry. `onMenu` overrides
-  the Menu button's default `location.reload()` (asteroids uses it to drop its `?v` and reshow the picker).
+  top-right cluster: ⏸ pause, 🔊 **sound menu** (SFX mute+slider, ♪ Music when `music:true`) and the
+  **☰ game menu** (version + an Update button that IS the status — greyed "✓ Up to date" / lit
+  "🔆 Update now", "⧉ Embed this game", and — when `reset` is given a localStorage **prefix** like
+  `'snake_'` — "↺ Reset game data"). `onMenu` overrides the
+  Menu button's default `location.reload()` (asteroids uses it to drop its `?v` and reshow the picker).
 - `gamekit.shareRow(el, { slug, title, message })` — builds + wires Native/X/Reddit/Copy into `el`;
   `message` is a function → a standalone sentence (no url), evaluated at click time. (Its `.sbtn`
   visual props are `!important` so a game's broad `#overlay button {…}` rule can't clobber the icons.)
-- `gamekit.pwa()` — auto-update SW registration (reload once when a new worker takes control).
+- `gamekit.pwa()` — SW registration + the ONE update policy (catalogue passes `'sw.js'`): a new build
+  reloads silently only pre-interaction (launch fast-path) or when the tab is backgrounded; an in-use
+  page just gets a dot on ☰ — apply via the ☰ Update button (`gamekit.updates.apply()`; the
+  catalogue's lives in Settings as "Update now"). Scope hand-overs are told apart from real updates
+  by the worker **script URL**, never by timing.
+- `gamekit.updates` — `check()` (fresh `version.js` vs the running build), `apply()` (update every
+  scope's SW + reload), `state()`/`onChange(cb)`; `gamekit.buildInfo()` → `{sha, built, when, label}`
+  (label = `sha · local deploy date+time`, shown by `versionTag()`, the ☰ panel and the catalogue
+  footer/drawer).
 - `gamekit.resetScores(prefix)` — clears only the localStorage keys starting with `prefix`.
 - `gamekit.shareUrls(url, msg)` — pure helper the kit test asserts.
 - **`.gamekit-hud`** (CSS) — the standard **center-top** HUD (translucent pill, wraps; clears the left

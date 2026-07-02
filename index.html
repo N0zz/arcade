@@ -155,6 +155,15 @@
   .verlink:hover { color:#9fe8ff; }
   .verlink.nolink { pointer-events:none; opacity:.7; }
   .dver { text-align:center; margin:6px 4px 10px; }
+  .set-note { color:var(--faint); font-size:12.5px; margin:2px 0 10px; }
+  .sethint { display:block; font-size:11.5px; font-weight:400; color:var(--faint); margin-top:3px; letter-spacing:.2px; }
+  .setverv { font-family:var(--mono); font-weight:500; }
+  .drefresh { font:600 12px/1 var(--mono); letter-spacing:.5px; color:var(--muted); cursor:pointer; white-space:nowrap;
+    background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.18); border-radius:8px; padding:9px 14px; }
+  .drefresh:hover:not(:disabled) { color:#9fe8ff; border-color:#9fe8ff; }
+  .drefresh:disabled { opacity:.6; cursor:default; }
+  .setdanger { color:#ffb4b4; border-color:rgba(255,120,120,0.4); }
+  .setdanger:hover:not(:disabled) { color:#fff; background:rgba(255,90,90,0.18); border-color:#ff8a8a; }
   .ghlink { color:var(--muted); display:inline-flex; align-items:center; gap:5px; vertical-align:middle; }
   .ghlink svg { width:15px; height:15px; fill:currentColor; }
   .ghlink:hover { color:#fff; }
@@ -286,8 +295,17 @@
   @keyframes pftBreathe { 0%,100%{ transform:scale(.92); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
   @keyframes pftGlint { 0%{ background-position:180% 0; } 42%,100%{ background-position:-90% 0; } }
   /* titles ladder modal — every rank prerendered with its tier shine, points only */
-  .pf-tb-info { width:15px; height:15px; border-radius:50%; border:1px solid var(--faint); background:none; color:var(--faint); font:600 9px/1 var(--mono); cursor:pointer; padding:0; display:inline-flex; align-items:center; justify-content:center; }
-  .pf-tb-info:hover { border-color:#9fe8ff; color:#9fe8ff; }
+  /* titles-ladder (i): must be findable — accent-tinted, 20px visual, ~34px hitbox via ::after */
+  .pf-tb-info { position:relative; width:20px; height:20px; border-radius:50%; border:1px solid rgba(159,232,255,0.65); background:rgba(159,232,255,0.12); color:#9fe8ff; font:700 11px/1 var(--mono); cursor:pointer; padding:0; display:inline-flex; align-items:center; justify-content:center; }
+  .pf-tb-info::after { content:""; position:absolute; inset:-7px; border-radius:50%; }
+  .pf-tb-info:hover { background:#9fe8ff; color:#0c111c; }
+  /* clickable display name (rename) with an instant tooltip */
+  .pf-name-btn { position:relative; background:none; border:none; padding:0; cursor:pointer; color:inherit; font:inherit; display:inline-flex; align-items:center; text-align:left; }
+  .pf-name-btn:hover .pf-sh, .pf-name-btn:focus-visible .pf-sh { text-decoration:underline dotted; text-underline-offset:3px; }
+  .pf-tt { position:absolute; bottom:calc(100% + 7px); left:0; z-index:4; background:#0c111c; border:1px solid var(--border); color:var(--muted); font:600 10.5px var(--mono); letter-spacing:.4px; padding:5px 9px; border-radius:7px; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .1s; }
+  .pf-name-btn:hover .pf-tt, .pf-name-btn:focus-visible .pf-tt { opacity:1; }
+  .pf-pen { width:12px; height:12px; margin-left:6px; flex:0 0 auto; fill:var(--faint); }
+  .pf-name-btn:hover .pf-pen, .pf-name-btn:focus-visible .pf-pen { fill:#9fe8ff; }
   .about.titles { max-height:88vh; overflow-y:auto; }
   .tl-sub { color:var(--muted); font-size:13.5px; margin:0 0 4px; }
   .tl-list { display:flex; flex-direction:column; gap:6px; }
@@ -329,6 +347,10 @@
   .faq::-webkit-scrollbar-thumb:hover, .cl-list::-webkit-scrollbar-thumb:hover, .filter-pop::-webkit-scrollbar-thumb:hover, .dscroll::-webkit-scrollbar-thumb:hover, .data-ta::-webkit-scrollbar-thumb:hover, .pf-scroll::-webkit-scrollbar-thumb:hover { background:var(--faint); }
   .faq-q { font-weight:700; color:var(--text); font-size:15.5px; margin-top:6px; }
   .faq-a { margin:0; font-size:14.5px; line-height:1.62; color:var(--muted); }
+  /* FAQ modal only (the Legal modal reuses .faq-q/.faq-a without these): Q/A markers + dividers */
+  .faq .faq-q::before { content:"Q"; color:#9fe8ff; font-family:var(--mono); font-size:13px; margin-right:8px; }
+  .faq .faq-a::before { content:"A"; color:var(--faint); font-family:var(--mono); font-weight:700; font-size:12px; margin-right:8px; }
+  .faq .faq-a + .faq-q { margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
   .faq-a b { color:var(--text); } .faq-a a { color:#9fe8ff; }
   /* favicon image used in place of an emoji glyph in a menu item */
   .ditem .di-img { width:18px; height:18px; border-radius:4px; display:block; margin:0 auto; }
@@ -465,13 +487,14 @@
   .dx { background:none; border:none; color:var(--faint); font-size:18px; cursor:pointer; line-height:1; padding:0; }
   .dx:hover { color:#fff; }
   .dscroll { flex:1; overflow-y:auto; padding:6px 8px; display:flex; flex-direction:column; }
-  .dwelcome { display:flex; flex-direction:column; align-items:center; gap:1px; padding:8px 8px 12px; margin-bottom:4px; font-size:14px; color:var(--muted); border-bottom:1px solid var(--border); }
-  .dw-word { color:var(--text); min-height:1.35em; transition:opacity .35s ease; }
-  .dw-line { display:inline-flex; align-items:center; gap:4px; }
-  .dw-name { color:#9fe8ff; font-weight:700; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .dw-edit { background:none; border:none; color:var(--faint); cursor:pointer; font-size:12px; line-height:1; padding:2px 4px; }
-  .dw-edit:hover { color:#9fe8ff; }
-  @media (prefers-reduced-motion: reduce){ .dw-word { transition:none; } }
+  /* drawer identity card: the compact title box IS the profile button */
+  .idcard { display:block; width:100%; background:none; border:none; padding:0; margin:2px 0 8px; cursor:pointer; text-align:left; font:inherit; color:inherit; }
+  .idcard .pf-titlebar { margin-bottom:0; transition:border-color .15s ease; }
+  .idcard:hover .pf-titlebar, .idcard:focus-visible .pf-titlebar { border-color:#9fe8ff; }
+  .idcard:hover .pf-chev { color:#9fe8ff; transform:translateX(2px); }
+  .pf-compact { padding:11px 12px; gap:10px; }
+  .pf-chev { color:var(--faint); font-size:19px; line-height:1; margin-left:auto; transition:all .15s ease; }
+  @media (prefers-reduced-motion: reduce){ .idcard .pf-titlebar, .pf-chev { transition:none; } }
   .dscroll > .dbottom { margin-top:auto; } /* pin the Share group (+ version below it) to the drawer bottom */
   .dgrp { padding:10px 4px 2px; }
   .dl { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--faint); padding:0 8px 6px; text-align:center; }
@@ -481,17 +504,6 @@
   .ditem .di { width:20px; text-align:center; font-size:16px; }
   .ditem .mock { margin-left:auto; font-family:var(--mono); font-size:8px; letter-spacing:1px; padding:2px 6px; border-radius:5px;
     color:#ffce5c; border:1px solid color-mix(in srgb,#ffce5c 45%,transparent); background:rgba(255,206,92,0.08); }
-  .ddata { position:relative; } /* normal group in the list (no separator); position for the ? popover */
-  .dhelp { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; margin-left:5px; vertical-align:middle;
-    border:1px solid var(--border); border-radius:50%; background:none; color:var(--faint); font-family:var(--mono); font-size:9px; line-height:1; cursor:pointer; padding:0; }
-  .dhelp:hover { color:#9fe8ff; border-color:#9fe8ff; }
-  .dnote { display:none; position:absolute; left:8px; right:8px; bottom:100%; margin:0 0 8px; padding:9px 11px; z-index:6;
-    font-size:11.5px; line-height:1.55; color:var(--muted); text-align:left;
-    background:var(--surface-2); border:1px solid var(--border); border-radius:9px; box-shadow:0 8px 24px rgba(0,0,0,0.5); }
-  .dnote.show { display:block; }
-  .dnote b { color:var(--text); }
-  .ditem.reset { color:#ff7a7a; }
-  .ditem.reset:hover { background:rgba(255,90,90,0.10); }
   /* challenges (preview/mock) */
   .streak { align-self:center; display:inline-flex; align-items:center; gap:7px; margin:12px 4px 2px; font-family:var(--mono); font-size:12px; color:#ffce5c;
     border:1px solid color-mix(in srgb,#ffce5c 40%,transparent); border-radius:999px; padding:5px 12px; background:rgba(255,206,92,0.07); }
@@ -643,18 +655,11 @@
     <div class="dresize" title="Drag to resize"></div>
     <div class="dh"><span class="dt">☰ Komyo Games</span><button class="dx" data-close aria-label="Close menu">✕</button></div>
     <div class="dscroll">
-      <div class="dwelcome">
-        <span class="dw-word" id="dwWord">Welcome</span>
-        <span class="dw-line"><span class="dw-name" id="dwName">anonymous</span><button class="dw-edit" id="dwEdit" type="button" aria-label="Edit display name" title="Edit display name">✏️</button></span>
-      </div>
-      <div class="dgrp">
-        <div class="dl">You</div>
-        <button class="ditem" id="profileBtn" type="button"><span class="di">👤</span> My profile</button>
-      </div>
+      <button class="idcard" id="profileBtn" type="button" aria-label="My profile"></button>
       <div class="dgrp">
         <div class="dl">Connect</div>
         <button class="ditem" id="feedback" type="button"><span class="di">💬</span> Feedback</button>
-        <button class="ditem" id="newsletter" type="button"><span class="di">📬</span> Subscribe</button>
+        <button class="ditem" id="newsletter" type="button"><span class="di">📬</span> Newsletter</button>
         <a class="ditem" href="https://discord.gg/hz2fhpD5sz" target="_blank" rel="noopener"><span class="di"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.369A19.79 19.79 0 0 0 16.558 3.2a.074.074 0 0 0-.079.037c-.34.6-.71 1.39-.97 2.01a18.3 18.3 0 0 0-5.02 0 12.6 12.6 0 0 0-.98-2.01.077.077 0 0 0-.079-.037A19.74 19.74 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C1.533 8.02.943 11.58 1.51 15.09a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.1 13.1 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.371-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.009c.12.099.245.198.372.292a.077.077 0 0 1-.006.127c-.598.349-1.225.645-1.873.892a.076.076 0 0 0-.04.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-4.06-.838-7.59-3.549-10.695a.06.06 0 0 0-.031-.028zM8.02 12.95c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.956 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.946 2.419-2.157 2.419z"/></svg></span> Discord</a>
         <button class="ditem" id="embedBtn" type="button"><span class="di">🔗</span> Embed a game</button>
       </div>
@@ -663,14 +668,11 @@
         <button class="ditem" id="aboutBtn" type="button"><span class="di"><img src="favicon.svg" alt="" class="di-img"></span> About Komyo Games</button>
         <button class="ditem" id="faqBtn" type="button"><span class="di">❓</span> FAQ</button>
         <button class="ditem" id="changelogBtn" type="button"><span class="di">🗒️</span> Changelog</button>
-        <button class="ditem" id="legalBtn" type="button"><span class="di">⚖️</span> License &amp; privacy</button>
+        <button class="ditem" id="legalBtn" type="button"><span class="di">⚖️</span> Legal</button>
       </div>
-      <div class="dgrp ddata">
-        <div class="dl">Settings &amp; data <button class="dhelp" id="dataHelp" type="button" aria-label="What is this?" aria-expanded="false">?</button></div>
+      <div class="dgrp">
+        <div class="dl">Settings</div>
         <button class="ditem" id="settingsBtn" type="button"><span class="di">⚙️</span> Settings</button>
-        <div class="dnote" id="dataNote">Your scores, progress, favorites &amp; settings are saved <b>only on this device</b>. <b>Export</b> turns them into a code you can <b>Import</b> on another device — to carry your records between phone &amp; desktop, or keep a backup. Nothing is sent to a server.</div>
-        <button class="ditem" id="dataBtn" type="button"><span class="di">⇄</span> Export &amp; import data</button>
-        <a class="ditem reset" id="resetAll" href="#" title="Clear all saved scores &amp; progress for every game"><span class="di">↺</span> Reset all data</a>
       </div>
       <div class="dgrp">
         <div class="dl">Support</div>
@@ -794,7 +796,7 @@
   <dialog id="settingsModal">
     <div class="about">
       <div class="cl-head"><h3>⚙️ Settings</h3><button type="button" class="dx" id="settingsClose" aria-label="Close">✕</button></div>
-      <p>These apply across <b>every game</b> on this device.</p>
+      <p class="set-note">Applies to every game · saved on this device</p>
       <div class="setrow">
         <span class="setlbl"><span class="di">🔊</span> Sound effects</span>
         <button class="settoggle" id="setSfxToggle" type="button" role="switch" aria-checked="true">On</button>
@@ -806,12 +808,25 @@
         <input class="setvol" id="setMusVol" type="range" min="0" max="100" aria-label="Music volume">
       </div>
       <div class="setrow">
-        <span class="setlbl"><span class="di">📣</span> Show my nickname in Discord score posts</span>
+        <span class="setlbl"><span class="di">📣</span><span>Nickname in Discord posts
+          <small class="sethint">Anonymous unless on · only with cookie consent</small></span></span>
         <button class="settoggle" id="setDiscordName" type="button" role="switch" aria-checked="false">Off</button>
       </div>
-      <p class="about-foot">Saved on this device. Each game also has the sound controls in its top-right menu.
-        Scores post to our public Discord only if you've accepted cookies — anonymously unless you turn the
-        nickname on.</p>
+      <div class="setrow">
+        <span class="setlbl"><span class="di">⇄</span><span>Your data
+          <small class="sethint">Move scores &amp; progress to another device — nothing is sent to a server</small></span></span>
+        <button class="drefresh" id="dataBtn" type="button">Export / Import</button>
+      </div>
+      <div class="setrow">
+        <span class="setlbl"><span class="di">↺</span><span>Reset all data
+          <small class="sethint">Clears every game's scores &amp; progress · keeps your name, sound &amp; consent</small></span></span>
+        <button class="drefresh setdanger" id="resetAll" type="button">Reset</button>
+      </div>
+      <div class="setrow">
+        <span class="setlbl"><span class="di">🧩</span><span>Version
+          <small class="sethint setverv" id="setVersion"></small></span></span>
+        <button class="drefresh" id="setUpdate" type="button" title="Fetch the newest version of the site and every game">✓ Up to date</button>
+      </div>
     </div>
   </dialog>
 
@@ -852,7 +867,7 @@
 
   <dialog id="legalModal">
     <div class="about">
-      <div class="cl-head"><h3>⚖️ License &amp; privacy</h3><button type="button" class="dx" id="legalClose" aria-label="Close">✕</button></div>
+      <div class="cl-head"><h3>⚖️ Legal</h3><button type="button" class="dx" id="legalClose" aria-label="Close">✕</button></div>
       <div class="faq-q">License</div>
       <p class="faq-a">Komyo Games is <b>source-available</b> under <b>PolyForm Noncommercial 1.0.0</b> — free to read, use and tinker with for any <b>non-commercial</b> purpose; commercial use isn't permitted. <a href="https://github.com/N0zz/komyo.online/blob/main/LICENSE" target="_blank" rel="noopener">Read the full license</a>.</p>
       <div class="faq-q">Privacy</div>
@@ -1202,7 +1217,7 @@
       document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
       [menu, chal].forEach(d => d && d.addEventListener('click', e => {
         // aggregate, consent-gated: which drawer feature a player opens (id 'fooBtn' → 'foo')
-        const item = e.target.closest('.ditem');
+        const item = e.target.closest('.ditem, .idcard');
         if (item && item.id && window.gamekitTrack) window.gamekitTrack('feature_open', { feature: item.id.replace(/Btn$/, '') });
         // close button, or any actionable item (link / action button) dismisses the drawer
         if (e.target.closest('[data-close]') || item) close();
@@ -1404,7 +1419,13 @@
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         const msg = 'Reset your saved scores, progress & favorites for ALL games? This cannot be undone.';
-        if (window.gamekit && window.gamekit.confirm) window.gamekit.confirm(msg, wipe);
+        // the kit confirm is a plain overlay — a native <dialog> (Settings) sits in the top layer above
+        // it, so close Settings first and bring it back if the player cancels
+        const sm = document.getElementById('settingsModal');
+        const wasOpen = !!(sm && sm.open);
+        if (wasOpen) { try { sm.close(); } catch (_) {} }
+        const back = () => { if (wasOpen && sm) { try { sm.showModal(); } catch (_) {} } };
+        if (window.gamekit && window.gamekit.confirm) window.gamekit.confirm(msg, wipe, 'Reset', back);
         else if (typeof confirm !== 'function' || confirm(msg)) wipe();
       });
     })();
@@ -1533,7 +1554,7 @@
             try { const cv = panel.querySelector('.pf-pfx'); if (cv && cv.toDataURL) { const pr = panel.getBoundingClientRect(), cr = cv.getBoundingClientRect(); pfx = { cv: cv, x: cr.left - pr.left, y: cr.top - pr.top, w: cr.width, h: cr.height }; } } catch (e) {}
             const clone = panel.cloneNode(true);
             inlineStyles(panel, clone);                                   // BEFORE removals (indices must align)
-            clone.querySelectorAll('.dx, .pf-share').forEach(n => n.remove());
+            clone.querySelectorAll('.dx, .pf-share, .pf-tt, .pf-pen').forEach(n => n.remove());
             const cs = getComputedStyle(modal);
             clone.style.background = cs.backgroundColor; clone.style.border = '1px solid ' + cs.borderColor;
             clone.style.borderRadius = '16px'; clone.style.margin = '0'; clone.style.width = W + 'px'; clone.style.boxSizing = 'border-box';
@@ -1569,40 +1590,62 @@
           } catch (e) { resolve(null); }
         });
       }
-      function render() {
-        const p = (K && K.profile) ? K.profile() : null;
+      // lifetime challenge points → earned title (points never reset); shared by the profile box
+      // AND the drawer identity card
+      function titleData() {
         const who = (K && K.player) ? K.player() : 'anonymous';
-        // lifetime challenge points → earned title (points never reset)
-        let chPts = 0, chDone = 0;
+        let chPts = 0;
         try { const d = JSON.parse(localStorage.getItem('gamekit_done') || '{}'); for (const k in d) chPts += (d[k] | 0); } catch (e) {}
-        try { const h = JSON.parse(localStorage.getItem('gamekit_history') || '[]'); if (Array.isArray(h)) chDone = h.length; } catch (e) {}
         const TT = (window.CHALLENGES && window.CHALLENGES.titleFor) ? window.CHALLENGES.titleFor(chPts) : { tier: 0, emoji: '🎖️', title: '' };
-        let sinceStr = '';
-        if (p && p.since) { try { sinceStr = new Date(p.since).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }); } catch (e) {} }
-        // identity (title + name) is the full-width box at the very top — no separate header
-        // full-width identity box: title + username together (both shined to the tier), points on the right;
-        // shown in both empty + populated states; particles for the shiny tiers (3+)
-        const goodRuns = (p && p.goodRuns) ? p.goodRuns : 0;
-        const tb = '<div class="pf-titlebar pf-t' + TT.tier + '">'
-          + (TT.tier >= 3 ? '<canvas class="pf-pfx" data-tier="' + TT.tier + '"></canvas>' : '')
+        return { who, chPts, TT };
+      }
+      // the identity box (title + name, both shined to the tier). Full (profile): particles for
+      // tiers 3+, clickable name (rename), (i) → titles ladder, meta column (pts / good runs /
+      // since). Compact (drawer card): just emoji + title + name + chevron.
+      function titleBarHTML(o) {
+        const TT = o.TT, who = o.who;
+        let h = '<div class="pf-titlebar' + (o.compact ? ' pf-compact' : '') + ' pf-t' + TT.tier + '">'
+          + (!o.compact && TT.tier >= 3 ? '<canvas class="pf-pfx" data-tier="' + TT.tier + '"></canvas>' : '')
           + '<span class="pf-tb-emoji">' + (TT.emoji || '🎖️') + '</span>'
           + '<div class="pf-tb-main">'
-          + '<span class="pf-tb-label">Title<button type="button" class="pf-tb-info" id="pfTitlesInfo" aria-label="See all titles" title="All titles">i</button></span>'
-          + '<span class="pf-title"><span class="pf-halo"></span><span class="pf-sh pf-gl" data-text="' + esc(TT.title) + '">' + esc(TT.title) + '</span></span>'
-          + '<span class="pf-tb-name"><span class="pf-sh pf-gl" data-text="' + esc(who) + '">' + esc(who) + '</span></span>'
-          + '</div>'
-          + '<div class="pf-tb-meta">'
-          + '<span class="pf-tb-pts">🏆 ' + fmt(chPts) + ' <span>CHALLENGE PTS</span></span>'
-          + '<span class="pf-tb-mini" title="Runs that cleared a game’s bar">💪 <b>' + fmt(goodRuns) + '</b> good ' + (goodRuns === 1 ? 'run' : 'runs') + '</span>'
-          + '<span class="pf-tb-mini">📅 Since <b>' + esc(sinceStr || '—') + '</b></span>'
-          + '</div></div>';
+          + '<span class="pf-tb-label">Title' + (o.compact ? '' : '<button type="button" class="pf-tb-info" id="pfTitlesInfo" aria-label="See all titles" title="All titles">i</button>') + '</span>'
+          + '<span class="pf-title"><span class="pf-halo"></span><span class="pf-sh pf-gl" data-text="' + esc(TT.title) + '">' + esc(TT.title) + '</span></span>';
+        h += o.compact
+          ? '<span class="pf-tb-name"><span class="pf-sh pf-gl" data-text="' + esc(who) + '">' + esc(who) + '</span></span>'
+          : '<span class="pf-tb-name"><button type="button" class="pf-name-btn" id="pfNameEdit" aria-label="Change your display name">'
+            + '<span class="pf-sh pf-gl" data-text="' + esc(who) + '">' + esc(who) + '</span>'
+            + '<svg class="pf-pen" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>'
+            + '<span class="pf-tt">Click to change your name</span></button></span>';
+        h += '</div>';
+        if (o.compact) h += '<span class="pf-chev">›</span>';
+        else h += '<div class="pf-tb-meta">'
+          + '<span class="pf-tb-pts">🏆 ' + fmt(o.chPts) + ' <span>CHALLENGE PTS</span></span>'
+          + '<span class="pf-tb-mini" title="Runs that cleared a game’s bar">💪 <b>' + fmt(o.goodRuns) + '</b> good ' + (o.goodRuns === 1 ? 'run' : 'runs') + '</span>'
+          + '<span class="pf-tb-mini">📅 Since <b>' + esc(o.sinceStr || '—') + '</b></span>'
+          + '</div>';
+        return h + '</div>';
+      }
+      window.__titleBar = () => { const d = titleData(); return titleBarHTML({ compact: true, TT: d.TT, who: d.who }); };
+      function wireNameEdit() {
+        const nb = document.getElementById('pfNameEdit');
+        if (nb) nb.addEventListener('click', () => { if (window.__openNameModal) window.__openNameModal(); });
+      }
+      function render() {
+        const p = (K && K.profile) ? K.profile() : null;
+        const { who, chPts, TT } = titleData();
+        let sinceStr = '';
+        if (p && p.since) { try { sinceStr = new Date(p.since).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }); } catch (e) {} }
+        // identity (title + name) is the full-width box at the very top — no separate header;
+        // shown in both empty + populated states
+        const goodRuns = (p && p.goodRuns) ? p.goodRuns : 0;
+        const tb = titleBarHTML({ TT, who, chPts, goodRuns, sinceStr });
         // one list, most-played first: every game with plays, each showing its modes' bests
         const ranked = [];
         if (p) GAMES.forEach(gm => { const pg = p.perGame[gm.slug]; if (pg && pg.plays > 0) ranked.push({ gm, pg }); });
         ranked.sort((a, b) => b.pg.plays - a.pg.plays || b.pg.best - a.pg.best);
         if (!ranked.length) {
           body.innerHTML = '<div class="pf-scroll">' + tb + '<p class="pf-empty">No scores yet — play a few games and your bests, favorites and stats show up here, sorted by how much you play them. Everything stays on this device.</p></div>';
-          shareData = null; startTitleFx(); wireTitlesInfo(TT.tier); return;
+          shareData = null; startTitleFx(); wireTitlesInfo(TT.tier); wireNameEdit(); return;
         }
         const favGameMeta = meta(p.favGame.slug), accent = (favGameMeta && favGameMeta.accent) || '#9fe8ff';
         // stat labels pluralize with their count ("1 Day", not "1 Days")
@@ -1639,6 +1682,7 @@
         body.innerHTML = html;
         startTitleFx();
         wireTitlesInfo(TT.tier);
+        wireNameEdit();
         shareData = { player: who, accent: accent, stats: [{ label: 'Games', value: p.gamesPlayed }, { label: 'Modes', value: p.modesPlayed }, { label: 'Plays', value: p.plays }, { label: 'Days', value: p.daysPlayed }], rows: rows };
         const sh = document.getElementById('pfShare');
         if (sh) sh.addEventListener('click', () => {
@@ -1913,8 +1957,8 @@
       const btn = document.getElementById('embedBtn');
       if (!btn || !window.gamekit || !window.gamekit.embedModal) return;
       btn.addEventListener('click', () => {
-        const games = (window.GAMES || []).filter(g => g && !g.soon).map(g => ({ slug: g.slug, title: g.title || g.slug }));
-        games.unshift({ slug: '', title: '🎮 Whole arcade (all games)' }); // embed the full catalogue, not just one game
+        const games = (window.GAMES || []).filter(g => g && !g.soon).map(g => ({ slug: g.slug, title: g.title || g.slug, icon: g.icon }));
+        games.unshift({ slug: '', title: 'Whole arcade (all games)', icon: '🎮' }); // embed the full catalogue, not just one game
         window.gamekit.embedModal({ games });
       });
     })();
@@ -1989,57 +2033,38 @@
     })();
 
 
-    // ---- "Your data" help toggle (hamburger) ----
-    (function () {
-      const dh = document.getElementById('dataHelp'), dn = document.getElementById('dataNote');
-      if (!dh || !dn) return;
-      dh.addEventListener('click', (e) => { e.stopPropagation(); const on = dn.classList.toggle('show'); dh.setAttribute('aria-expanded', on ? 'true' : 'false'); });
-    })();
-
-    // ---- welcome banner + display name (default anonymous · set via the ✏️ edit only · cycling greeting) ----
+    // ---- drawer identity card (compact title box → the profile) + display name modal ----
+    // The card IS the profile button (same id, so deep links + GA tracking keep working); the name
+    // is changed by clicking it on the profile page (window.__openNameModal), not from the drawer.
     (function () {
       const modal = document.getElementById('nameModal');
       const form = document.getElementById('nameForm'), input = document.getElementById('nameInput'), skip = document.getElementById('nameSkip');
-      const dwName = document.getElementById('dwName'), edit = document.getElementById('dwEdit'), word = document.getElementById('dwWord');
       const cur = () => (window.gamekit && window.gamekit.player) ? window.gamekit.player() : 'anonymous';
-      const refresh = () => { if (dwName) dwName.textContent = cur(); };
-      const apply = v => { if (window.gamekit && window.gamekit.setName) window.gamekit.setName(v); refresh(); };
-      let editing = false;
-      const open = (isEdit) => {
+      const card = document.getElementById('profileBtn');
+      const paint = () => { if (card && window.__titleBar) { try { card.innerHTML = window.__titleBar(); } catch (e) {} } };
+      window.__renderIdCard = paint;
+      paint();
+      const mb = document.getElementById('menuBtn');
+      if (mb) mb.addEventListener('click', paint); // re-render on drawer open (name/title/points may have changed)
+      const apply = v => {
+        if (window.gamekit && window.gamekit.setName) window.gamekit.setName(v);
+        paint();
+        try { if (window.__renderProfile) window.__renderProfile(); } catch (e) {} // profile is open behind the name modal
+      };
+      window.__openNameModal = () => {
         if (!modal || !modal.showModal) return;
-        editing = !!isEdit;
-        if (input) input.value = isEdit ? (cur() === 'anonymous' ? '' : cur()) : '';
-        if (skip) skip.textContent = isEdit ? 'Cancel' : 'Skip';
+        if (input) input.value = cur() === 'anonymous' ? '' : cur();
+        if (skip) skip.textContent = 'Cancel';
         try { modal.showModal(); } catch (e) {}
       };
       if (form) form.addEventListener('submit', e => { e.preventDefault(); apply(input ? input.value : ''); try { modal.close(); } catch (_) {} });
-      if (skip) skip.addEventListener('click', () => { if (!editing) apply(''); try { modal.close(); } catch (_) {} }); // first-visit skip = anonymous
-      if (edit) edit.addEventListener('click', () => open(true));
-      refresh(); // default is 'anonymous'; no entry prompt — a name is set only via the drawer ✏️ (true opt-in)
-      if (word) {
-        const words = ['Welcome', 'Bienvenue', 'Bienvenido', 'Willkommen', 'Benvenuto', 'Witaj', 'Olá', 'Välkommen', 'Hoş geldin', 'ようこそ', '환영합니다', '欢迎', 'Привіт', 'مرحبا'];
-        // random order each visit: shuffle, cycle through, reshuffle on each full pass
-        const shuffle = a => { for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; };
-        let seq = shuffle(words.slice()), i = 0;
-        setInterval(() => {
-          word.style.opacity = '0';
-          setTimeout(() => { word.textContent = seq[i]; word.style.opacity = '1'; }, 350);
-          if (++i >= seq.length) { i = 0; seq = shuffle(words.slice()); }
-        }, 2800);
-      }
+      if (skip) skip.addEventListener('click', () => { try { modal.close(); } catch (_) {} });
+      if (modal) modal.addEventListener('click', e => { if (e.target === modal) modal.close(); }); // backdrop click closes
     })();
 
-    if ('serviceWorker' in navigator) {
-      // auto-update: when a freshly-installed worker takes control, reload once to the new version
-      let swReloaded = false;
-      const hadController = !!navigator.serviceWorker.controller;
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (swReloaded || !hadController) return; swReloaded = true; location.reload();
-      });
-      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js')
-        .then(reg => { reg.update(); setInterval(() => reg.update(), 3600000); })
-        .catch(() => {}));
-    }
+    // SW registration + update policy come from the kit (same rules as in-game: silent reload only
+    // pre-interaction or when backgrounded; otherwise the drawer's Refresh button lights up)
+    if (window.gamekit && window.gamekit.pwa) window.gamekit.pwa('sw.js');
 
     // ---- Deep links: /?m=faq|changelog|about|privacy|embed|data — open that panel + keep it in the URL ----
     (function () {
@@ -2067,14 +2092,35 @@
     // missing/'dev' (local) → shows "dev", no link.
     (function () {
       try {
-        var v = (window.KOMYO_VERSION) || {};
-        var real = v.sha && v.sha !== 'dev';
+        var K = window.gamekit;
+        var b = (K && K.buildInfo) ? K.buildInfo() : { sha: (window.KOMYO_VERSION || {}).sha || 'dev', label: 'dev', url: '' };
+        var real = b.sha && b.sha !== 'dev';
         ['footVersion', 'drawerVersion'].forEach(function (id) {
           var el = document.getElementById(id); if (!el) return;
-          el.textContent = real ? (v.sha + ' ↗') : 'dev';
-          if (real && v.url) { el.href = v.url; if (v.built) el.title = 'Built ' + v.built; }
+          el.textContent = real ? (b.label + ' ↗') : 'dev'; // sha · deploy date+time (viewer-local)
+          if (real && b.url) { el.href = b.url; if (b.built) el.title = 'Built ' + b.built; }
           else { if (el.removeAttribute) el.removeAttribute('href'); if (el.classList && el.classList.add) el.classList.add('nolink'); }
         });
+        // Settings → Version row: current build + the update button. The button IS the status —
+        // greyed "✓ Up to date" when current (checked live when Settings opens), lit "🔆 Update now"
+        // when a new build exists; clicking updates every scope's SW (site + all games) and reloads.
+        var sv = document.getElementById('setVersion'), su = document.getElementById('setUpdate');
+        if (sv) sv.textContent = real ? b.label : 'dev';
+        if (su && K && K.updates) {
+          var upLabel = function (st) {
+            var busy = st.status === 'refreshing' || st.status === 'checking';
+            su.textContent = st.status === 'refreshing' ? '⟳ Updating…'
+              : st.status === 'checking' ? '⟳ Checking…'
+              : st.available ? '🔆 Update now'
+              : st.status === 'offline' ? '⚠ Offline — can’t check'
+              : '✓ Up to date';
+            su.disabled = busy || !st.available;
+          };
+          K.updates.onChange(upLabel); upLabel(K.updates.state());
+          su.addEventListener('click', function () { K.updates.apply(); });
+          var sb2 = document.getElementById('settingsBtn');
+          if (sb2) sb2.addEventListener('click', function () { K.updates.check(); });
+        }
       } catch (e) {}
     })();
 
