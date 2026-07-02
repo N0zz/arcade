@@ -183,8 +183,8 @@
   #shareCopy.ok { color:#7fe0a0; border-color:#7fe0a0; }
 
   /* feedback modal */
-  #fbModal, #nlModal, #clModal, #aboutModal, #faqModal, #legalModal, #dataModal, #nameModal, #settingsModal, #profileModal { border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:16px; padding:0; width:min(440px,92vw); box-shadow:0 20px 60px rgba(0,0,0,0.6); }
-  #fbModal::backdrop, #nlModal::backdrop, #clModal::backdrop, #aboutModal::backdrop, #faqModal::backdrop, #legalModal::backdrop, #dataModal::backdrop, #nameModal::backdrop, #settingsModal::backdrop, #profileModal::backdrop { background:rgba(5,8,13,0.66); }
+  #fbModal, #nlModal, #clModal, #aboutModal, #faqModal, #legalModal, #dataModal, #nameModal, #settingsModal, #profileModal, #titlesModal { border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:16px; padding:0; width:min(440px,92vw); box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+  #fbModal::backdrop, #nlModal::backdrop, #clModal::backdrop, #aboutModal::backdrop, #faqModal::backdrop, #legalModal::backdrop, #dataModal::backdrop, #nameModal::backdrop, #settingsModal::backdrop, #profileModal::backdrop, #titlesModal::backdrop { background:rgba(5,8,13,0.66); }
   #profileModal { width:min(760px,95vw); overflow:visible; }
   .about.profile { max-height:88vh; display:flex; flex-direction:column; overflow:hidden; position:relative; padding:20px; }
   .pf-x { position:absolute; top:-13px; right:-13px; z-index:20; width:34px; height:34px; border-radius:50%; background:var(--surface); border:1px solid var(--border); color:var(--muted); font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.45); cursor:pointer; }
@@ -245,13 +245,13 @@
   .pf-titlebar { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:13px 16px; margin-bottom:12px; border:1px solid var(--border); border-radius:13px; background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent),var(--surface); }
   .pf-tb-emoji { font-size:22px; flex:0 0 auto; position:relative; z-index:2; }
   .pf-tb-main { position:relative; z-index:2; flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px; }
-  .pf-tb-label { font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); white-space:nowrap; }
+  .pf-tb-label { display:inline-flex; align-items:center; gap:5px; font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); white-space:nowrap; }
   .pf-title { position:relative; font-size:clamp(15px,4.4vw,19px); line-height:1.15; }
   .pf-tb-name { position:relative; z-index:2; font-size:13px; color:var(--muted); display:flex; align-items:center; gap:6px; min-width:0; }
   /* right column: challenge points (emphasised) + good runs + since date */
   .pf-tb-meta { flex:0 0 auto; position:relative; z-index:2; display:flex; flex-direction:column; align-items:flex-end; gap:8px; text-align:right; }
-  .pf-tb-pts { font-family:var(--mono); font-size:16px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; white-space:nowrap; line-height:1.1; }
-  .pf-tb-pts span { display:block; font-size:8.5px; font-weight:400; letter-spacing:1px; color:var(--faint); }
+  .pf-tb-pts { font-family:var(--mono); font-size:16px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; white-space:nowrap; line-height:1.2; }
+  .pf-tb-pts span { display:block; font-size:8.5px; font-weight:400; letter-spacing:1px; color:var(--faint); margin-top:2px; }
   .pf-tb-mini { font-size:12px; color:var(--muted); white-space:nowrap; }
   .pf-tb-mini b { color:var(--text); font-variant-numeric:tabular-nums; }
   .pf-pfx { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
@@ -285,6 +285,18 @@
   @keyframes pftPulseGold { 0%,100%{ filter:drop-shadow(0 0 9px rgba(255,215,106,.6)); } 50%{ filter:drop-shadow(0 0 20px rgba(255,215,106,1)); } }
   @keyframes pftBreathe { 0%,100%{ transform:scale(.92); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
   @keyframes pftGlint { 0%{ background-position:180% 0; } 42%,100%{ background-position:-90% 0; } }
+  /* titles ladder modal — every rank prerendered with its tier shine, points only */
+  .pf-tb-info { width:15px; height:15px; border-radius:50%; border:1px solid var(--faint); background:none; color:var(--faint); font:600 9px/1 var(--mono); cursor:pointer; padding:0; display:inline-flex; align-items:center; justify-content:center; }
+  .pf-tb-info:hover { border-color:#9fe8ff; color:#9fe8ff; }
+  .about.titles { max-height:88vh; overflow-y:auto; }
+  .tl-sub { color:var(--muted); font-size:13.5px; margin:0 0 4px; }
+  .tl-list { display:flex; flex-direction:column; gap:6px; }
+  .tl-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid var(--border); border-radius:11px; background:var(--surface); }
+  .tl-row .pf-title { font-size:15px; min-width:0; }
+  .tl-emoji { font-size:17px; flex:0 0 auto; }
+  .tl-pts { margin-left:auto; flex:0 0 auto; font-family:var(--mono); font-size:12px; color:var(--faint); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .tl-cur { border-color:#9fe8ff; }
+  .tl-cur .tl-pts { color:var(--text); }
   @media (prefers-reduced-motion: reduce) { .pf-sh, .pf-halo, .pf-gl::after { animation:none !important; } .pf-halo { opacity:.8; } }
   /* Discord Activity: games open in an in-page iframe (mobile Discord blocks top-frame navigation) */
   .act-frame { position:fixed; inset:0; z-index:300; background:var(--bg,#0a0e14); display:flex; flex-direction:column; }
@@ -801,6 +813,14 @@
     <button type="button" class="pf-x" id="profileClose" aria-label="Close">✕</button>
     <div class="about profile">
       <div id="profileBody"></div>
+    </div>
+  </dialog>
+
+  <dialog id="titlesModal">
+    <div class="about titles">
+      <div class="cl-head"><h3>🏆 Titles</h3><button type="button" class="dx" id="titlesClose" aria-label="Close">✕</button></div>
+      <p class="tl-sub">Earn challenge points to climb the ladder — your title shows on your profile.</p>
+      <div class="tl-list" id="titlesList"></div>
     </div>
   </dialog>
 
@@ -1549,7 +1569,7 @@
           + (TT.tier >= 3 ? '<canvas class="pf-pfx" data-tier="' + TT.tier + '"></canvas>' : '')
           + '<span class="pf-tb-emoji">' + (TT.emoji || '🎖️') + '</span>'
           + '<div class="pf-tb-main">'
-          + '<span class="pf-tb-label">Title</span>'
+          + '<span class="pf-tb-label">Title<button type="button" class="pf-tb-info" id="pfTitlesInfo" aria-label="See all titles" title="All titles">i</button></span>'
           + '<span class="pf-title"><span class="pf-halo"></span><span class="pf-sh pf-gl" data-text="' + esc(TT.title) + '">' + esc(TT.title) + '</span></span>'
           + '<span class="pf-tb-name"><span class="pf-sh pf-gl" data-text="' + esc(who) + '">' + esc(who) + '</span></span>'
           + '</div>'
@@ -1564,7 +1584,7 @@
         ranked.sort((a, b) => b.pg.plays - a.pg.plays || b.pg.best - a.pg.best);
         if (!ranked.length) {
           body.innerHTML = '<div class="pf-scroll">' + tb + '<p class="pf-empty">No scores yet — play a few games and your bests, favorites and stats show up here, sorted by how much you play them. Everything stays on this device.</p></div>';
-          shareData = null; startTitleFx(); return;
+          shareData = null; startTitleFx(); wireTitlesInfo(TT.tier); return;
         }
         const favGameMeta = meta(p.favGame.slug), accent = (favGameMeta && favGameMeta.accent) || '#9fe8ff';
         // stat labels pluralize with their count ("1 Day", not "1 Days")
@@ -1600,6 +1620,7 @@
         html += '<div class="pf-share"><button type="button" id="pfShare">📷 Share my profile</button></div>';
         body.innerHTML = html;
         startTitleFx();
+        wireTitlesInfo(TT.tier);
         shareData = { player: who, accent: accent, stats: [{ label: 'Games', value: p.gamesPlayed }, { label: 'Modes', value: p.modesPlayed }, { label: 'Plays', value: p.plays }, { label: 'Days', value: p.daysPlayed }], rows: rows };
         const sh = document.getElementById('pfShare');
         if (sh) sh.addEventListener('click', () => {
@@ -1617,34 +1638,73 @@
             .catch(() => flash("Couldn't render"));
         });
       }
-      // earned-title particle field (premium tiers) — one canvas, cancelled when the modal closes
+      // titles ladder modal — every rank prerendered with its tier shine (same classes as the
+      // profile title box), current one highlighted; points only, no time estimates
+      const tlModal = document.getElementById('titlesModal'), tlList = document.getElementById('titlesList'), tlClose = document.getElementById('titlesClose');
+      function renderTitles(curTier) {
+        if (!tlList || !window.CHALLENGES || !window.CHALLENGES.titles) return;
+        let h = '';
+        window.CHALLENGES.titles.forEach(t => {
+          h += '<div class="tl-row pf-t' + t.tier + (t.tier === curTier ? ' tl-cur' : '') + '">'
+            + (t.tier >= 3 ? '<canvas class="pf-pfx" data-tier="' + t.tier + '"></canvas>' : '')
+            + '<span class="tl-emoji">' + (t.emoji || '🎖️') + '</span>'
+            + '<span class="pf-title"><span class="pf-halo"></span><span class="pf-sh pf-gl" data-text="' + esc(t.title) + '">' + esc(t.title) + '</span></span>'
+            + '<span class="tl-pts">' + fmt(t.min) + ' pts</span></div>';
+        });
+        tlList.innerHTML = h;
+      }
+      function wireTitlesInfo(tier) {
+        const ti = document.getElementById('pfTitlesInfo');
+        if (ti && tlModal && tlModal.showModal) ti.addEventListener('click', () => {
+          renderTitles(tier); tlModal.showModal(); startTitleFx();
+          if (window.gamekitTrack) window.gamekitTrack('feature_open', { feature: 'titles' });
+        });
+      }
+      if (tlClose) tlClose.addEventListener('click', () => tlModal.close());
+      if (tlModal) tlModal.addEventListener('click', e => { if (e.target === tlModal) tlModal.close(); });
+      if (tlModal) tlModal.addEventListener('close', () => { tlList.innerHTML = ''; startTitleFx(); });   // drop the ladder fields, keep the profile-box one running
+      // earned-title particle fields (premium tiers) — ONE engine driving EVERY `.pf-pfx` canvas in
+      // the profile body + titles ladder, so a new title-shine surface only has to include the canvas.
+      // Canvases with no size yet (modal not open / closed) are retried each frame and skipped.
       let _pfRaf = 0;
       function stopTitleFx() { if (_pfRaf) { try { cancelAnimationFrame(_pfRaf); } catch (e) {} _pfRaf = 0; } }
       function startTitleFx() {
         stopTitleFx();
-        const cv = body.querySelector && body.querySelector('.pf-pfx');
-        if (!cv || !cv.getContext) return;
         const CFG = { 3: { n: 9, cols: ['#d3deed', '#fff'], sz: [.7, 1.8], v: .13, glow: 5 }, 4: { n: 12, cols: ['#b98cff', '#c9b3ff'], sz: [.7, 2], v: .16, glow: 5 }, 5: { n: 15, cols: ['#b98cff', '#9fe8ff'], sz: [.7, 2.2], v: .18, glow: 6 }, 6: { n: 18, cols: ['#9fe8ff', '#7fe8d0', '#fff'], sz: [.7, 2.4], v: .22, glow: 7 }, 7: { n: 24, cols: ['#ff8ad1', '#b98cff', '#9fe8ff', '#7fffc4'], sz: [.8, 2.6], v: .26, glow: 8 }, 8: { n: 32, cols: ['#ffd76a', '#fff3c0', '#fff', '#ff9ad1'], sz: [.9, 3], v: .32, glow: 10 } };
-        const cfg = CFG[+cv.getAttribute('data-tier')]; if (!cfg) return;
-        const ctx = cv.getContext('2d'); if (!ctx) return;
         const dpr = Math.min(window.devicePixelRatio || 1, 2), rnd = (a, b) => a + Math.random() * (b - a);
-        let W = 0, H = 0; const ps = [];
-        const spawn = y => ({ x: rnd(0, W), y: y == null ? rnd(0, H) : y, r: rnd(cfg.sz[0], cfg.sz[1]), c: cfg.cols[(Math.random() * cfg.cols.length) | 0], vy: rnd(cfg.v * .6, cfg.v * 1.5), sway: rnd(.2, .9), ph: rnd(0, 6.28), tw: rnd(1.5, 3.5) });
-        const draw = (t, moving) => { ctx.clearRect(0, 0, W, H); for (const q of ps) { ctx.globalAlpha = moving ? (.35 + .65 * (.5 + .5 * Math.sin(t * (6.28 / q.tw) + q.ph))) : .7; ctx.fillStyle = q.c; ctx.shadowBlur = cfg.glow; ctx.shadowColor = q.c; ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, 6.28); ctx.fill(); } ctx.globalAlpha = 1; ctx.shadowBlur = 0; };
+        const fields = [];
+        const cvs = document.querySelectorAll ? document.querySelectorAll('#profileBody .pf-pfx, #titlesList .pf-pfx') : [];
+        cvs.forEach(cv => {
+          const cfg = CFG[+cv.getAttribute('data-tier')];
+          const ctx = cv.getContext && cv.getContext('2d');
+          if (cfg && ctx) fields.push({ cv, ctx, cfg, W: 0, H: 0, ps: [] });
+        });
+        if (!fields.length) return;
         const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : null;
-        // the modal is shown right AFTER render(), so the canvas has no size yet — wait for layout
-        let tries = 0;
-        const begin = () => {
-          const r = cv.getBoundingClientRect();
-          if ((!r.width || !r.height)) { if (raf && tries++ < 40) { _pfRaf = raf(begin); } return; }
-          W = r.width; H = r.height; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          for (let i = 0; i < cfg.n; i++) ps.push(spawn());
-          if (reduce || !raf) { draw(0, false); return; }
-          const frame = ms => { const t = ms / 1000; for (const q of ps) { q.y -= q.vy; q.x += Math.sin(t * q.sway + q.ph) * .25; if (q.y < -6) { const np = spawn(H + 6); for (const k in np) q[k] = np[k]; } } draw(t, true); _pfRaf = raf(frame); };
+        const spawn = (f, y) => ({ x: rnd(0, f.W), y: y == null ? rnd(0, f.H) : y, r: rnd(f.cfg.sz[0], f.cfg.sz[1]), c: f.cfg.cols[(Math.random() * f.cfg.cols.length) | 0], vy: rnd(f.cfg.v * .6, f.cfg.v * 1.5), sway: rnd(.2, .9), ph: rnd(0, 6.28), tw: rnd(1.5, 3.5) });
+        const size = f => {
+          const r = f.cv.getBoundingClientRect();
+          if (!r.width || !r.height) return false;
+          f.W = r.width; f.H = r.height; f.cv.width = f.W * dpr; f.cv.height = f.H * dpr; f.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          for (let i = 0; i < f.cfg.n; i++) f.ps.push(spawn(f));
+          return true;
+        };
+        const draw = (f, t, moving) => { const ctx = f.ctx; ctx.clearRect(0, 0, f.W, f.H); for (const q of f.ps) { ctx.globalAlpha = moving ? (.35 + .65 * (.5 + .5 * Math.sin(t * (6.28 / q.tw) + q.ph))) : .7; ctx.fillStyle = q.c; ctx.shadowBlur = f.cfg.glow; ctx.shadowColor = q.c; ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, 6.28); ctx.fill(); } ctx.globalAlpha = 1; ctx.shadowBlur = 0; };
+        if (!raf) { fields.forEach(f => { if (size(f)) draw(f, 0, false); }); return; }
+        const frame = ms => {
+          const t = ms / 1000;
+          let pending = false;
+          for (const f of fields) {
+            if (!f.W) { if (!size(f)) { pending = true; continue; } if (reduce) { draw(f, 0, false); continue; } }
+            if (reduce) continue;
+            for (const q of f.ps) { q.y -= q.vy; q.x += Math.sin(t * q.sway + q.ph) * .25; if (q.y < -6) { const np = spawn(f, f.H + 6); for (const k in np) q[k] = np[k]; } }
+            draw(f, t, true);
+          }
+          if (reduce && !pending) return;
           _pfRaf = raf(frame);
         };
-        if (raf) _pfRaf = raf(begin); else begin();
+        _pfRaf = raf(frame);
       }
       window.__renderProfile = render; // exposed for tests
       if (btn) btn.addEventListener('click', () => { render(); modal.showModal(); lock(true); });
