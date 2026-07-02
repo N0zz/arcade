@@ -1,139 +1,13 @@
-// Headless test harness for the Asteroids games.
-// Mocks the DOM + canvas, runs each game's IIFE in a vm sandbox, steps the
-// requestAnimationFrame loop manually, simulates input, and asserts behavior.
-import fs from 'node:fs';
-import vm from 'node:vm';
-import path from 'node:path';
+// Headless tests for Asteroids+ — boots via the shared harness, drives window.__test.
+import { bootGame, ok, section, summary, VIEWPORTS } from '../../test-harness.mjs';
 
-const DIR = path.dirname(new URL(import.meta.url).pathname);
-let pass = 0, fail = 0;
-const fails = [];
-function ok(cond, msg) { if (cond) { pass++; } else { fail++; fails.push(msg); console.log('  ✗ ' + msg); } }
-function section(t) { console.log('\n=== ' + t + ' ==='); }
+const runGame = (file, opts = {}) => bootGame('games/asteroids-plus/' + file, { seed: 0x1234abcd, ...opts });
+
 // bests now live in the shared kit store (gamekit_pb): normal keeps score, speedrun keeps time (per progression)
 const pbG = (store) => { try { return JSON.parse(store['gamekit_pb'] || '{}')['asteroids-plus'] || {}; } catch (e) { return {}; } };
 const plabel = (prog, sr) => { const b = { levelup: 'Level-up', milestones: 'Milestones', shop: 'Wave Shop' }[prog] || 'Level-up'; return sr ? b + ' Speedrun' : b; };
 const pbScore = (store, mode) => (pbG(store)[mode] || {}).score || 0;
 const pbTime = (store, mode) => (pbG(store)[mode] || {}).time || 0;
-
-function makeCtx2d() {
-  return new Proxy({}, {
-    get: (_, p) => { if (p === 'canvas') return { width: 1280, height: 800 }; return () => {}; },
-    set: () => true,
-  });
-}
-
-function makeEl(id) {
-  const classes = new Set();
-  const el = {
-    id, _id: id, textContent: '', value: '',
-    dataset: {}, children: [],
-    style: new Proxy({}, { get: (t, p) => t[p] ?? '', set: (t, p, v) => { t[p] = v; return true; } }),
-    classList: {
-      add: (...c) => c.forEach(x => classes.add(x)),
-      remove: (...c) => c.forEach(x => classes.delete(x)),
-      toggle: (c, f) => { const has = classes.has(c); const want = f === undefined ? !has : !!f; if (want) classes.add(c); else classes.delete(c); return want; },
-      contains: c => classes.has(c),
-    },
-    _l: {},
-    addEventListener: (type, fn) => { (el._l[type] ||= []).push(fn); },
-    removeEventListener: () => {},
-    fire: (type, ev = {}) => (el._l[type] || []).forEach(fn => fn({ preventDefault() {}, ...ev })),
-    appendChild: (c) => { el.children.push(c); return c; },
-    querySelectorAll: () => [], querySelector: () => null,
-    getContext: () => makeCtx2d(),
-    focus: () => {},
-  };
-  let _html = '';
-  Object.defineProperty(el, 'innerHTML', { get: () => _html, set: v => { _html = String(v ?? ''); if (v === '' || v == null) el.children = []; } });
-  return el;
-}
-
-// Deterministic Math for the game sandbox so a run is reproducible (the game uses Math.random for
-// spawns/collisions/pickups; without a seed, random asteroid hits set the same invuln window that
-// absorbs the test's manual hurt() calls → the "dies after enough hits" check was flaky).
-function makeSeededMath(seed) {
-  let s = (seed >>> 0) || 0x2545f491;
-  const m = Object.create(Math);
-  m.random = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
-  return m;
-}
-function runGame(file, { search = '' } = {}) {
-  // a file token may carry its own query (e.g. 'roguelite.html?prog=shop') — the knobs that
-  // used to be separate files. Split it off and merge into the mocked location.search.
-  const qi = file.indexOf('?');
-  if (qi >= 0) { const fq = file.slice(qi + 1); file = file.slice(0, qi); search = search ? (search + '&' + fq) : ('?' + fq); }
-  // game files live in levels/; tests still pass basenames
-  let p = path.join(DIR, file);
-  if (!fs.existsSync(p)) p = path.join(DIR, 'levels', file);
-  const html = fs.readFileSync(p, 'utf8');
-  const m = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
-  if (!m) throw new Error('no inline script found in ' + file);
-  const code = m[1];
-
-  const elCache = {};
-  const getEl = (id) => (elCache[id] ||= makeEl(id));
-  // canvas needs getContext
-  const handlers = {};
-  let rafQ = []; // multiple concurrent rAF callbacks (game loop + menu-backdrop loop), like a real browser
-  let clock = 1000;
-  const errors = [];
-
-  const store = {};
-  const posted = [];
-  const win = {
-    innerWidth: 1280, innerHeight: 800,
-    addEventListener: (type, fn) => { (handlers[type] ||= []).push(fn); },
-    removeEventListener: () => {},
-    performance: { now: () => clock },
-    __test: undefined, LEVELS: undefined,
-  };
-  win.parent = { postMessage: (m) => posted.push(m) }; // simulate being inside the launcher iframe
-  const documentMock = {
-    getElementById: getEl,
-    createElement: (tag) => makeEl('new-' + tag),
-    addEventListener: (type, fn) => { (handlers[type] ||= []).push(fn); },
-    querySelectorAll: () => [],
-    body: makeEl('body'),
-  };
-  const sandbox = {
-    window: win, document: documentMock,
-    location: { search }, localStorage: {
-      getItem: k => (k in store ? store[k] : null),
-      setItem: (k, v) => { store[k] = String(v); },
-      removeItem: k => { delete store[k]; },
-    },
-    performance: win.performance,
-    requestAnimationFrame: (cb) => { rafQ.push(cb); return rafQ.length; },
-    cancelAnimationFrame: () => {},
-    URLSearchParams, Math: makeSeededMath(0x1234abcd), JSON, String, Number, Array, Object, parseInt, parseFloat,
-    isFinite, isNaN, Date, console,
-    navigator: { userAgent: 'test' },
-  };
-  sandbox.globalThis = sandbox;
-  const ctx = vm.createContext(sandbox);
-
-  // preload the shared game-kit so window.gamekit exists before the game's inline script (mirrors the <head> load order)
-  try { vm.runInContext(fs.readFileSync(path.join(DIR, '..', '..', 'game-kit.js'), 'utf8'), ctx, { filename: 'game-kit.js' }); }
-  catch (e) { errors.push('kit boot: ' + e.message); }
-
-  try { vm.runInContext(code, ctx, { filename: file }); }
-  catch (e) { errors.push('boot: ' + e.message); }
-
-  const api = {
-    file, errors, store, posted,
-    el: getEl,
-    test: () => win.__test,
-    key(type, key) { (handlers[type] || []).forEach(fn => { try { fn({ key, preventDefault() {} }); } catch (e) { errors.push(type + ' ' + key + ': ' + e.stack); } }); },
-    down(k) { this.key('keydown', k); }, up(k) { this.key('keyup', k); },
-    step(n = 1) { for (let i = 0; i < n; i++) { clock += 1000 / 60; const q = rafQ; rafQ = []; q.forEach(cb => { try { cb(); } catch (e) { errors.push('frame: ' + e.stack); } }); } },
-    // drive a viewport change: the kit's __emit sets window dims + fires the layout callbacks (the
-    // game's resize()) synchronously; fall back to setting dims directly if the kit is absent.
-    resize(w, h) { if (win.gamekit && win.gamekit.layout && win.gamekit.layout.__emit) win.gamekit.layout.__emit(w, h); else { win.innerWidth = w; win.innerHeight = h; } },
-    get clock() { return clock; },
-  };
-  return api;
-}
 
 // ---------------- Classic / Enhanced smoke tests ----------------
 function smokeClassic(file, { enhanced = false } = {}) {
@@ -512,69 +386,6 @@ function testShopProgression(file) {
   console.log('    (credits after wave 1 clear: ' + firstShopCredits + ')');
 }
 
-function testLauncher() {
-  section('index.html (launcher)');
-  const html = fs.readFileSync(path.join(DIR, 'index.html'), 'utf8');
-  const m = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
-  ok(!!m, 'launcher has inline script');
-  const verCode = fs.readFileSync(path.join(DIR, 'levels.js'), 'utf8');
-  const elCache = {};
-  const getEl = id => (elCache[id] ||= makeEl(id));
-  const winHandlers = {};
-  const win = { addEventListener: (t, fn) => { (winHandlers[t] ||= []).push(fn); }, LEVELS: undefined, innerWidth: 1280, innerHeight: 800, confirm: () => true };
-  const documentMock = { getElementById: getEl, createElement: t => makeEl('new-' + t), addEventListener: () => {} };
-  const store = {};
-  const sandbox = { window: win, document: documentMock, location: { search: '' },
-    localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; },
-      get length() { return Object.keys(store).length; }, key: i => Object.keys(store)[i] ?? null },
-    requestAnimationFrame: () => 0, cancelAnimationFrame: () => {}, setInterval: () => 0, clearInterval: () => {},
-    Math, JSON, String, Number, Array, Object, parseInt, parseFloat, console, URLSearchParams };
-  sandbox.globalThis = sandbox;
-  const ctx = vm.createContext(sandbox);
-  let bootErr = null;
-  try {
-    vm.runInContext(fs.readFileSync(path.join(DIR, '..', '..', 'game-kit.js'), 'utf8'), ctx, { filename: 'game-kit.js' });
-    vm.runInContext(verCode, ctx, { filename: 'levels.js' }); vm.runInContext(m[1], ctx, { filename: 'index.html' });
-  }
-  catch (e) { bootErr = e.message; }
-  ok(bootErr === null, 'launcher boots: ' + bootErr);
-  ok(Array.isArray(win.LEVELS) && win.LEVELS.length === 5, 'levels.js exposes 5 versions (got ' + (win.LEVELS && win.LEVELS.length) + ')');
-  const cards = getEl('cards');
-  // two rows: [label, classic-row, label, roguelite-row]
-  const rows = cards.children.filter(c => c.className === 'crow');
-  ok(rows.length === 2, 'launcher renders two rows (got ' + rows.length + ')');
-  const classicCount = (win.LEVELS || []).filter(v => v.tag === 'CLASSIC').length;
-  const rogueCount = (win.LEVELS || []).filter(v => v.tag === 'ROGUELITE').length;
-  ok(rows[0] && rows[0].children.length === classicCount, 'classic row has ' + classicCount + ' cards (got ' + (rows[0] && rows[0].children.length) + ')');
-  ok(rows[1] && rows[1].children.length === rogueCount, 'roguelite row has ' + rogueCount + ' cards (got ' + (rows[1] && rows[1].children.length) + ')');
-  const totalCards = rows.reduce((n, r) => n + r.children.length, 0);
-  ok(totalCards === 5, 'launcher renders 5 cards total (got ' + totalCards + ')');
-  const toggle = getEl('modeToggle');
-  ok(toggle.textContent === 'NORMAL', 'mode starts NORMAL (got ' + toggle.textContent + ')');
-  toggle.fire('click');
-  ok(toggle.textContent === 'SPEEDRUN', 'toggle switches to SPEEDRUN');
-  // launch the first card (first classic version) in speedrun mode
-  const frame = getEl('frame');
-  const firstVersion = (win.LEVELS || []).find(v => v.tag === 'CLASSIC');
-  cards.children.filter(c => c.className === 'crow')[0].children[0].fire('click');
-  ok(frame.src === firstVersion.file + '?speedrun=1', 'card launches version with speedrun param (got ' + frame.src + ')');
-  ok(getEl('frameWrap').style.display === 'block', 'frame shown on launch');
-  // quit to menu: the in-game pause "QUIT TO MENU" posts 'asteroids:menu'; the launcher returns to select
-  (winHandlers['message'] || []).forEach(fn => fn({ data: 'asteroids:menu' }));
-  ok(frame.src === 'about:blank', 'in-game Quit-to-menu clears the iframe');
-  ok(getEl('select').style.display === 'flex', 'in-game Quit-to-menu returns to menu');
-  // reset best scores: the bespoke reset button is gone — the launcher wires the game-kit
-  // sound menu's Reset entry via gamekit.nav({ reset: 'asteroids_' }), which clears asteroids_* keys.
-  const fb = (win.LEVELS[0].file).split('/').pop();
-  store['asteroids_score_' + fb] = '1234';
-  store['asteroids_best_' + fb] = '9999';
-  store['unrelated_key'] = 'keep';
-  ok(typeof win.gamekit === 'object' && typeof win.gamekit.resetScores === 'function', 'game-kit loaded with resetScores');
-  win.gamekit.resetScores('asteroids_');
-  ok(store['asteroids_score_' + fb] == null && store['asteroids_best_' + fb] == null, 'kit resetScores clears saved asteroids_ bests');
-  ok(store['unrelated_key'] === 'keep', 'kit resetScores leaves unrelated keys');
-}
-
 // ---------------- Run ----------------
 // Asteroids+ is the de-iframed roguelite game: one engine (index.html), variant via ?prog=.
 // ---- bounded power: lowered caps ----
@@ -721,13 +532,14 @@ testKamikaze('index.html?prog=levelup');
 testAimAssist('index.html?prog=levelup');
 
 // ---------------- Layout: everything on-screen + clears the top HUD, in portrait / landscape / desktop ----------------
+// NOTE: not using the shared runLayoutSuite() here — it assumes canvas px == viewport px, which
+// doesn't hold for this game: on narrow screens the canvas is deliberately rendered at a higher
+// internal resolution (SCALE, from resize() in index.html) for crispness, then CSS-stretched back
+// down to 100vw/100vh. So canvas W/H only equal the viewport at desktop (SCALE=1); the shared
+// helper's "canvas matches viewport" + HUD-headroom invariants would misfire on the phone
+// viewports (harness gap — reusing its VIEWPORTS + ok/section instead, same as before).
 function testLayoutFits(file) {
   section(file + ' (layout fits the screen — on-screen + no HUD overlap)');
-  const VIEWPORTS = [
-    { name: 'portrait phone', w: 390, h: 780 },
-    { name: 'landscape phone', w: 780, h: 390 },
-    { name: 'desktop', w: 1280, h: 800 },
-  ];
   for (const v of VIEWPORTS) {
     const g = runGame(file);
     const T = () => g.test();
@@ -759,7 +571,4 @@ function testLayoutFits(file) {
 }
 testLayoutFits('index.html?prog=levelup');
 
-console.log('\n----------------------------------------');
-console.log('PASS: ' + pass + '   FAIL: ' + fail);
-if (fail > 0) { console.log('\nFailures:'); fails.forEach(f => console.log(' - ' + f)); process.exit(1); }
-else console.log('All tests passed ✓');
+summary();
