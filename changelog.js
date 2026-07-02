@@ -23,6 +23,7 @@ window.CHANGELOG = [
     'Fix: speedrun clocks in both Asteroids no longer keep ticking while the game is paused or in a menu — and finishing a speedrun on the exact frame you crash now counts as the win it is.',
     'Fix: Keep Defender’s speed button now reads 1x/2x honestly (there is no 3x), and the Marsh map no longer secretly weakens your archers — it plays exactly as its description says.',
     'Fix: “Reset all data” on the home page keeps your chosen player name.',
+    'Fix: the “Have 3 good runs today” and “10 good runs this week” challenges now actually track your good runs and award their points — they could never complete before. Challenge progress also can’t double-count a run anymore.',
   ] },
   { date: '2026-07-01', title: 'Roll the dice 🎲', items: [
     'New: a 🎲 Random button on the home page picks a game for you — it leans toward ones you haven’t tried yet, an easy way to discover something new.',
