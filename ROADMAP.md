@@ -427,6 +427,18 @@ Play Store via PWA → itch.io. Rest are post-launch or parked.
 - **Merch** — mascot on stickers/tees/mugs/pins (print-on-demand). Brand + fun, not revenue; gate behind
   the mascot + some audience.
 - **Hand-made komyo plushie** — one-off passion/brand object; giveaway / hero photo. Needs the mascot.
+- **AI/vibecoding-channel marketing — the repo IS the ad** *(idea — risky, considerable)*. Advertise in
+  AI / genAI / vibecoding communities (Show HN, r/ClaudeAI, r/vibecoding, AI-dev X/YouTube), promoting
+  the **GitHub repo itself** as the artifact: a whole product built AI-first with the full development
+  history public (~400 commits in the first week, CLAUDE.md-driven workflow, per-game test harnesses,
+  the create-a-game skill). People check what the repo *produces* → discover komyo.online. Upside: the
+  "watch a complete product get built" story is rare content, and that audience IS the HN/curator crowd
+  that features browser games; it's a second acquisition lane that doesn't compete on game keywords.
+  Risks to weigh before doing it: publicly brands the site "AI-made" (quality skepticism sticks to the
+  brand, not just the post), audience is devs not players (traffic may not convert to play sessions),
+  and it spotlights the repo for cloners (public anyway, but promotion invites it). Mitigation if tried:
+  lead with the games' polish, frame AI as the *how*; do it as one deliberate launch-style post, not the
+  identity.
 
 ## Parked (someday)
 
